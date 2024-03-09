@@ -1,12 +1,7 @@
-open Hardcaml
+module type Bus = sig
+  type data
 
-module Make (M : sig
-  module Data : Interface.S
-end) =
-struct
-  type data = M.Data.t
-
-  module Tx = struct
+  module Tx : sig
     type 'a t =
       { valid : 'a
       ; data : 'a data
@@ -14,7 +9,7 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  module Rx = struct
+  module Rx : sig
     type 'a t = { ready : 'a } [@@deriving sexp_of, hardcaml]
   end
 end

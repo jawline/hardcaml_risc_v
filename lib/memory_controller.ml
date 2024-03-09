@@ -10,6 +10,15 @@ module Make (M : sig
   val data_bus_width : int
 end) =
 struct
+  let () =
+    if M.data_bus_width % 8 <> 0 then raise_s [%message "BUG: data bus must be in bytes"]
+  ;;
+
+  include Memory_bus.Make (M)
+
+  let data_bus_in_bytes = M.data_bus_width / 8
+  let desired_bytes_in_words = M.num_bytes / data_bus_in_bytes
+
   module Tx_data = struct
     type 'a t =
       { address : 'a [@bits M.address_width]
@@ -54,22 +63,36 @@ struct
     in
     let last_ch = reg reg_spec which_ch in
     let which_ch_to_controller = Tx_bus.Tx.mux which_ch i.ch_to_controller in
+    let unaligned_bits = (M.data_bus_width / 8) - 1 in
+    (* We truncate the address by unaligned bits to get the address in words. *)
+    let real_address = which_ch_co_controller.data.addr lsr unaligned_bits in
+    let illegal_operation =
+      let is_operation = which_ch_to_controller.valid in
+      let is_unaligned = which_ch_co_controller.data.addr &:. unaligned_bits <>:. 0 in
+      let is_out_of_range =
+        real_address
+        >:. M.num_bytes / M
+        &: (which_ch_co_controller.data.addr &:. unaligned_bits)
+        <>:. 0
+      in
+      is_operation &: (is_unaligned |: is_out_of_range)
+    in
+    let is_operation_and_is_legal = is_operation &: ~:illegal_operation in
+    let is_write = which_ch_to_controller.data.write in
     let memory =
       Ram.create
         ~collision_mode:Read_before_write
         ~size:(M.num_bytes * 8)
         ~write_ports:
-          [| { write_enable =
-                 which_ch_to_controller.valid &: which_ch_to_controller.data.write
-             ; write_address = which_ch_co_controller.data.addr
+          [| { write_enable = is_operation_and_is_legal &: is_write
+             ; write_address = real_address
              ; write_data = which_ch_co_controller.data.data
              ; write_clock = i.clock
              }
           |]
         ~read_ports:
-          [| { read_enable =
-                 which_ch_to_controller.valid &: ~:(which_ch_to_controller.data.write)
-             ; read_address = which_ch_co_controller.data.addr
+          [| { read_enable = is_operation_and_is_legal &: ~:is_write
+             ; read_address = real_address
              ; read_clock = i.clock
              }
           |]
@@ -78,15 +101,19 @@ struct
     { O.ch_to_controller =
         List.init
           ~f:(fun channel ->
-            (* Set ready for the channel we're considering
-                        in round robin. *)
+            (* Set ready for the channel we're considering in round robin. *)
             Tx_bus.Rx.mux
               (which_ch ==:. channel)
               [ Tx_bus.Rx.Of_signal.of_int 1; Tx_bus.Rx.Of_signal.of_int 0 ])
           M.num_channels
     ; controller_to_ch =
         List.init
-          ~f:(fun channel -> Rx_bus.Tx.mux (last_ch ==:. channel) (assert false))
+          ~f:(fun channel ->
+            Rx_bus.Tx.mux
+              (last_ch ==:. channel)
+              [ { Rx_bus.Tx.error = was_error; data = read_data }
+              ; Rx_bus.Tx.Of_signal.of_int 0
+              ])
           M.num_channels
     }
   ;;
