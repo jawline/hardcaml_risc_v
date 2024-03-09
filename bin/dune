@@ -1,0 +1,4 @@
+(executable
+ (public_name risc_v_hardcaml)
+ (name main)
+ (libraries risc_v_hardcaml))
