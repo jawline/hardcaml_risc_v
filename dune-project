@@ -1,4 +1,4 @@
-(lang dune 3.12)
+(lang dune 2.9)
 
 (name risc_v_hardcaml)
 
