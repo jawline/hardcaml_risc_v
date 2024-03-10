@@ -30,7 +30,9 @@ struct
   end
 
   module O = struct
-    type 'a t = { ok : 'a } [@@deriving sexp_of, hardcaml]
+    type 'a t =
+      { registers : 'a Hart.Registers.t list [@length General_config.num_harts] }
+    [@@deriving sexp_of, hardcaml]
   end
 
   let create scope (i : _ I.t) =
@@ -91,7 +93,7 @@ struct
           (List.zip_exn harts controller_to_ch_per_hart)
         |> proc
       ];
-    { O.ok = vdd }
+    { O.registers = List.map ~f:(fun o -> o.registers) harts }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =

@@ -18,5 +18,5 @@ module Design =
 
 module Command = Synth.Command.With_interface (Design.I) (Design.O)
 
-let command = Command.command_basic ~name:"Memory controller and two harts" Design.create
+let command = Command.command_basic ~name:"Dual_hart" Design.create
 let () = Command_unix.run command

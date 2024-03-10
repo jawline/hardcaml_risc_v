@@ -32,6 +32,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller"]
+      ; registers :
+          (* TODO: I've stuck this in mostly to avoid the whole
+             design getting const-prop deleted for testing. Remove it
+             after this is IO in the top level design. *)
+          'a Registers.t
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -69,11 +74,13 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               ] )
           ; Decode_and_execute, []
           ]
+      ; Registers.Of_always.assign registers (Registers.Of_signal.of_int 0)
       ];
     { O.memory_controller_to_hart =
         Memory.Rx_bus.Rx.Of_always.value memory_controller_to_hart
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
+    ; registers = Registers.Of_always.value registers
     }
   ;;
 
