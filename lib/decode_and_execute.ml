@@ -14,7 +14,7 @@ struct
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
       ; enable : 'a
-      ; instruction : 'a (* TODO: This is assuming Rv32i *) [@bits 32]
+      ; instruction : 'a (* TODO: This is assuming Rv32i, I guess in practice this should be the length of the longest instruction we support? *) [@bits 32]
       ; registers : 'a Registers.t
       }
     [@@deriving sexp_of, hardcaml]
