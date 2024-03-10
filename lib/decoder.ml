@@ -14,8 +14,11 @@ let sign_extend ~to_ t =
   let sign_bit = msb t in
   let rest = drop_top t 1 in
   let extended_bits = to_ - width t in
-  concat_lsb [ t; mux2 to_ (ones extended_bits) (zero extended_bits) ]
+  concat_msb [ mux2 to_ (ones extended_bits) (zero extended_bits); t ]
 ;;
+
+(** u-immediates are 20-bit immediates encoded at the top of the the instruction *)
+let u_immediate ~width t = uresize (sel_top t 12) width
 
 (** Sign extended 12-bit immediate stored in the upper 12 bits of the
     instruction. *)
@@ -27,14 +30,14 @@ let csr ~width t = uresize (sel_top t 12) width
 (** S-type immediates are sign extended 12 bit immediates packed into bits
     (7-11) for imm(0:4) and bits 25-31 for bits 5-11 (inclusive). *)
 let s_immediate ~width t =
-  concat_lsb [ select t 11 7; select t 31 25 ] |> sign_extend ~width
+  concat_msb [ select t 31 25; select t 11 7 ] |> sign_extend ~width
 ;;
 
 (** B-type immediates are sign extended 13 bit immediates packed into bits
     (8-11) for imm(1:4), bits 25-30 for imm(5:10), bit 7 for imm(11) and bit 31
     for imm(12). imm(0) is always 0 (inclusive). *)
 let b_immediate ~width t =
-  concat_lsb [ zero 1; select t 11 8; select t 30 25; select t 7 7; select t 31 31 ]
+  concat_msb [ select t 31 31; select t 7 7; select t 30 25; select t 11 8; zero 1 ]
   |> sign_extend ~width
 ;;
 
@@ -42,6 +45,6 @@ let b_immediate ~width t =
     bits 21-30 => imm(1:10), bit 20 => imm(11), bits 12-19 => imm(12:19), bits
     31 => imm(20) (The sign extend bit). *)
 let j_immediate ~width t =
-  concat_lsb [ zero 1; select t 21 30; select t 19 12; select t 31 31 ]
+  concat_msb [ select t 31 31; select t 19 12; select t 21 30; zero 1 ]
   |> sign_extend ~width
 ;;
