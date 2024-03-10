@@ -18,7 +18,7 @@ let sign_extend ~to_ t =
 ;;
 
 (** u-immediates are 20-bit immediates encoded at the top of the the instruction *)
-let u_immediate ~width t = uresize (sel_top t 12) width
+let u_immediate ~width t = concat_msb [ sel_top t 12; zero (width - 12) ]
 
 (** Sign extended 12-bit immediate stored in the upper 12 bits of the
     instruction. *)
