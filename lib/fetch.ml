@@ -6,7 +6,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   module I = struct
     type 'a t =
       { memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
+           [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
+           [@rtlprefix "hart_to_memory_controller"]
       ; should_fetch : 'a
       ; address : 'a [@bits Address_width.bits Hart_config.address_width]
       }
@@ -16,7 +18,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   module O = struct
     type 'a t =
       { memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
+           [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
+           [@rtlprefix "hart_to_memory_controller"]
       ; has_fetched : 'a
       ; instruction : 'a [@bits 32]
       }

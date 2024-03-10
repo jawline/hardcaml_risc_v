@@ -42,17 +42,23 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; ch_to_controller : 'a Tx_bus.Tx.t list [@length M.num_channels]
+      ; ch_to_controller : 'a Tx_bus.Tx.t list
+           [@length M.num_channels] [@rtlprefix "ch_co_controller"]
       ; (* We ignore the ready signal from the ch when responding, we do not permit pushback. Consider dropping this input. *)
-        controller_to_ch : 'a Rx_bus.Rx.t list [@length M.num_channels]
+        controller_to_ch : 'a Rx_bus.Rx.t list
+           [@length M.num_channels] [@rtlprefix "controller_to_ch"]
       }
+    [@@deriving sexp_of, hardcaml]
   end
 
   module O = struct
     type 'a t =
-      { ch_to_controller : 'a Tx_bus.Rx.t list [@length M.num_channels]
-      ; controller_to_ch : 'a Rx_bus.Tx.t list [@length M.num_channels]
+      { ch_to_controller : 'a Tx_bus.Rx.t list
+           [@length M.num_channels] [@rtlprefix "ch_co_controller"]
+      ; controller_to_ch : 'a Rx_bus.Tx.t list
+           [@length M.num_channels] [@rtlprefix "controller_to_ch"]
       }
+    [@@deriving sexp_of, hardcaml]
   end
 
   let create _scope (i : _ I.t) =
@@ -68,13 +74,7 @@ struct
     let is_operation = which_ch_to_controller.valid in
     let illegal_operation =
       let is_unaligned = which_ch_to_controller.data.address &:. unaligned_bits <>:. 0 in
-      let is_out_of_range =
-        real_address
-        >:. desired_bytes_in_words
-        &: which_ch_to_controller.data.address
-        &:. unaligned_bits
-        <>:. 0
-      in
+      let is_out_of_range = real_address >:. desired_bytes_in_words in
       is_operation &: (is_unaligned |: is_out_of_range)
     in
     let was_error = reg reg_spec illegal_operation in
@@ -118,5 +118,10 @@ struct
               ])
           M.num_channels
     }
+  ;;
+
+  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+    let module H = Hierarchy.In_scope (I) (O) in
+    H.hierarchical ~scope ~name:"Memory_controller" ~instance create input
   ;;
 end

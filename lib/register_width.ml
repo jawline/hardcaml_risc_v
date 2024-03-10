@@ -1,6 +1,6 @@
-type t = Register_width
+type t = B32
 
 let bits t =
   match t with
-  | Register_width -> 32
+  | B32 -> 32
 ;;
