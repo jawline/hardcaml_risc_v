@@ -61,7 +61,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         }
     in
     compile
-      [ current_state.switch
+      [ (* For now, ground all general registers until some instructions build out transitions *)
+        List.map ~f:(fun register -> register <--. 0) registers.general |> proc
+      ; current_state.switch
           [ ( State.Fetching
             , [ Memory.Rx_bus.Rx.Of_always.assign
                   memory_controller_to_hart
@@ -72,9 +74,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               ; fetched_instruction <-- fetch.instruction
               ; when_ fetch.has_fetched [ current_state.set_next Decode_and_execute ]
               ] )
-          ; Decode_and_execute, []
+          ; ( Decode_and_execute
+            , [ current_state.set_next Fetching
+              ; registers.pc <-- registers.pc.value +:. 4
+              ] )
           ]
-      ; Registers.Of_always.assign registers (Registers.Of_signal.of_int 0)
       ];
     { O.memory_controller_to_hart =
         Memory.Rx_bus.Rx.Of_always.value memory_controller_to_hart
