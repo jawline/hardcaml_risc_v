@@ -1,9 +1,9 @@
-open Core
+open! Core
 open Hardcaml
 open Signal
 open Always
 
-module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus.S) = struct
+module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
   module Registers = Registers.Make (Hart_config)
   module Fetch = Fetch.Make (Hart_config) (Memory)
 
@@ -33,17 +33,18 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus.S) = struct
   end
 
   let create scope (i : _ I.t) =
-    let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear in
+    let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let registers = Registers.Of_always.reg reg_spec in
     let current_state = Always.State_machine.create (module State) ~enable:vdd reg_spec in
-    let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
-    let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
-    let fetch =
+    let _memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
+    let _hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
+    let _fetch =
       Fetch.hierarchical
         ~instance:"fetcher"
+        scope
         { Fetch.I.memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
-        ; should_fetch = scurrent_state.is State.Fetching
+        ; should_fetch = current_state.is State.Fetching
         ; address = registers.pc.value
         }
     in

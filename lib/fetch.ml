@@ -1,7 +1,6 @@
-open Core
+open! Core
 open Hardcaml
 open Signal
-open Always
 
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
   module I = struct
@@ -11,6 +10,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; should_fetch : 'a
       ; address : 'a [@bits Address_width.bits Hart_config.address_width]
       }
+    [@@deriving sexp_of, hardcaml]
   end
 
   module O = struct
@@ -20,9 +20,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; has_fetched : 'a
       ; instruction : 'a [@bits 32]
       }
+    [@@deriving sexp_of, hardcaml]
   end
 
-  let create scope (i : _ I.t) =
+  let create _scope (i : _ I.t) =
     let should_fetch = i.hart_to_memory_controller.ready &: i.should_fetch in
     { O.memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 1
     ; hart_to_memory_controller =
@@ -31,8 +32,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
             { Memory.Tx_data.address = i.address; write = zero 1; write_data = zero 32 }
         }
     ; has_fetched =
-        i.memory_controller_to_hart.valid &: ~:(i.memory_controler_to_hart.error)
-    ; instruction = i.memory_controler_to_hart.read_data
+        i.memory_controller_to_hart.valid &: ~:(i.memory_controller_to_hart.data.error)
+    ; instruction = i.memory_controller_to_hart.data.read_data
     }
   ;;
 
