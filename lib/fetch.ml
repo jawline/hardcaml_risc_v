@@ -23,6 +23,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            [@rtlprefix "hart_to_memory_controller"]
       ; has_fetched : 'a
       ; instruction : 'a [@bits 32]
+      ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -38,6 +39,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     ; has_fetched =
         i.memory_controller_to_hart.valid &: ~:(i.memory_controller_to_hart.data.error)
     ; instruction = i.memory_controller_to_hart.data.read_data
+    ; error = i.memory_controller_to_hart.valid &: i.memory_controller_to_hart.data.error
     }
   ;;
 

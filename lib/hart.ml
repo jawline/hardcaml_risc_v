@@ -6,6 +6,7 @@ open Always
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
   module Registers = Registers.Make (Hart_config)
   module Fetch = Fetch.Make (Hart_config) (Memory)
+  module Decode_and_execute = Decode_and_execute.Make (Hart_config) (Memory) (Registers)
 
   module State = struct
     type t =
@@ -37,6 +38,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              design getting const-prop deleted for testing. Remove it
              after this is IO in the top level design. *)
           'a Registers.t
+      ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -47,6 +49,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let current_state = State_machine.create (module State) ~enable:vdd reg_spec in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
+    let error = Variable.wire ~default:(zero 1) in
     let fetched_instruction =
       Variable.reg ~width:(Address_width.bits Hart_config.address_width) reg_spec
     in
@@ -60,10 +63,19 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         ; address = registers.pc.value
         }
     in
+    let decode_and_execute =
+      Decode_and_execute.hierarchical
+        ~instance:"decode_and_execute"
+        scope
+        { Decode_and_execute.I.memory_controller_to_hart = i.memory_controller_to_hart
+        ; hart_to_memory_controller = i.hart_to_memory_controller
+        ; enable = current_state.is State.Decode_and_execute
+        ; instruction = fetched_instruction.value
+        ; registers = Registers.Of_always.value registers
+        }
+    in
     compile
-      [ (* For now, ground all general registers until some instructions build out transitions *)
-        List.map ~f:(fun register -> register <--. 0) registers.general |> proc
-      ; current_state.switch
+      [ current_state.switch
           [ ( State.Fetching
             , [ Memory.Rx_bus.Rx.Of_always.assign
                   memory_controller_to_hart
@@ -72,11 +84,22 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   hart_to_memory_controller
                   fetch.hart_to_memory_controller
               ; fetched_instruction <-- fetch.instruction
+              ; error <-- fetch.error
               ; when_ fetch.has_fetched [ current_state.set_next Decode_and_execute ]
               ] )
           ; ( Decode_and_execute
             , [ current_state.set_next Fetching
               ; registers.pc <-- registers.pc.value +:. 4
+              ; Memory.Rx_bus.Rx.Of_always.assign
+                  memory_controller_to_hart
+                  decode_and_execute.memory_controller_to_hart
+              ; Memory.Tx_bus.Tx.Of_always.assign
+                  hart_to_memory_controller
+                  decode_and_execute.hart_to_memory_controller
+              ; when_
+                  decode_and_execute.finished
+                  [ Registers.Of_always.assign registers decode_and_execute.new_registers
+                  ]
               ] )
           ]
       ];
@@ -85,6 +108,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     ; registers = Registers.Of_always.value registers
+    ; error = error.value
     }
   ;;
 
