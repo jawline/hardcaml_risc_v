@@ -1,4 +1,4 @@
-module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus.S) = struct
+module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
   let address_width = Address_width.bits Hart_config.address_width
   let register_width = Register_width.bits Hart_config.register_width
 
@@ -6,5 +6,5 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus.S) = struct
     { pc : 'a [@bits address_width]
     ; general : 'a list [@bits register_width] [@length Hart_config.num_registers]
     }
-  [@@deriving sexp_op, hardcaml]
+  [@@deriving sexp_of, hardcaml]
 end

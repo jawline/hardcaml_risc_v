@@ -1,4 +1,4 @@
-module type Memory_bus = sig
+module type S = sig
   module Tx_data : sig
     type 'a t =
       { address : 'a
@@ -16,6 +16,6 @@ module type Memory_bus = sig
     [@@deriving sexp_of, hardcaml]
   end
 
-  module Tx_bus : Bus_intf.S with type data = Tx_Data.t
-  module Rx_bus : Bus_intf.S with type data = Rx_Data.t
+  module Tx_bus : Bus_intf.S with type 'a data := 'a Tx_data.t
+  module Rx_bus : Bus_intf.S with type 'a data := 'a Rx_data.t
 end

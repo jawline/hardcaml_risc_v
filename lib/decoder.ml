@@ -1,7 +1,8 @@
 open Core
+open Hardcaml
 open Signal
 
-let opcode = select t 6 0
+let opcode t = select t 6 0
 let rd t = select t 11 7
 let rs1 t = select t 19 15
 let rs2 t = select t 24 20
@@ -10,19 +11,20 @@ let funct7 t = select t 31 25
 
 (** Sign extend an immediate to ~to_ bits, filling the msbs with all ones or
     all zeros depending on the sign bit of the original value. *)
-let sign_extend ~to_ t =
+let sign_extend ~width t =
   let sign_bit = msb t in
-  let rest = drop_top t 1 in
-  let extended_bits = to_ - width t in
-  concat_msb [ mux2 to_ (ones extended_bits) (zero extended_bits); t ]
+  let extended_bits = width - Signal.width t in
+  concat_msb [ mux2 sign_bit (ones extended_bits) (zero extended_bits); t ]
 ;;
 
-(** u-immediates are 20-bit immediates encoded at the top of the instruction *)
-let u_immediate ~width t = concat_msb [ sel_top t 12; zero (width - 12) ]
+(** u-immediates are 20-bit immediates encoded at the top of the instruction.
+    When decoded, the 20 bits fill the upper 20 bits of the register and the
+    remaining bits are filled with zeros. *)
+let u_immediate ~width t = concat_msb [ sel_top t 20; zero (width - 20) ]
 
 (** Sign extended 12-bit immediate stored in the upper 12 bits of the
     instruction. *)
-let i_immediate ~width t = sel_top t 12 |> sign_extend ~to_:width
+let i_immediate ~width t = sel_top t 12 |> sign_extend ~width
 
 (** 12-bit unsigned immediate in the upper 12 bits of the instruction. *)
 let csr ~width t = uresize (sel_top t 12) width

@@ -1,15 +1,12 @@
 open Hardcaml
 
-module Make (M : sig
-  module Data : Interface.S
-end) =
-struct
-  type data = M.Data.t
+module Make (M : Interface.S) = struct
+  type 'a data = 'a M.t
 
   module Tx = struct
     type 'a t =
       { valid : 'a
-      ; data : 'a data
+      ; data : 'a M.t
       }
     [@@deriving sexp_of, hardcaml]
   end

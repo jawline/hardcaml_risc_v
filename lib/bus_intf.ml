@@ -1,5 +1,5 @@
-module type Bus = sig
-  type data
+module type S = sig
+  type 'a data
 
   module Tx : sig
     type 'a t =

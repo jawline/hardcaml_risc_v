@@ -1,7 +1,7 @@
 module Make (M : sig
-  val address_width : int
-  val data_bus_width : int
-end) =
+    val address_width : int
+    val data_bus_width : int
+  end) =
 struct
   module Tx_data = struct
     type 'a t =
