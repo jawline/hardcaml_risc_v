@@ -1,29 +1,56 @@
-module Op_imm = struct
-  let addi = 0b000
-  let slli = 0b001
-  let slti = 0b010
-  let xori = 0b100
-  let sltiu = 0b011
-  let ori = 0b110
-  let andi = 0b111
+open Core
 
-  (** Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
-  let srli_or_srai = 0b101
+module Op_imm = struct
+  type t =
+    | Addi
+    | Slli
+    | Slti
+    | Xori
+    | Sltiu
+    | Ori
+    | Andi
+    | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
+      Srli_or_srai
+
+  let of_int_exn i =
+    match i with
+    | 0b000 -> Addi
+    | 0b001 -> Slli
+    | 0b010 -> Slti
+    | 0b100 -> Xori
+    | 0b011 -> Sltiu
+    | 0b110 -> Ori
+    | 0b111 -> Andi
+    | 0b101 -> Srli_or_srai
+    | _ -> raise_s [%message "BUG: Funct3 should be 3 bits wide"]
+  ;;
 end
 
 module Op = struct
-  (** These seem identical to the op_imm versions but I'll leave it for clarity in use. *)
-  let add_or_sub = 0b000
+  type t =
+    | (* These seem identical to the op_imm versions but I'll leave it for clarity in use. *)
+      Add_or_sub
+    | Sll
+    | Slt
+    | Xor
+    | Sltu
+    | Or
+    | And
+    | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
+      Srl_or_sra
 
-  let sll = 0b001
-  let slt = 0b010
-  let xor = 0b100
-  let sltu = 0b011
-  let or_ = 0b110
-  let and_ = 0b111
-
-  (** Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
-  let srl_or_sra = 0b101
+  let of_int_exn i =
+    match i with
+    | 0b000 -> Add_or_sub
+    | 0b001 -> Sll
+    | 0b010 -> Slt
+    | 0b100 -> Xor
+    | 0b011 -> Sltu
+    | 0b110 -> Or
+    | 0b111 -> And
+    | 0b101 -> Srl_or_sra
+    | _ -> raise_s [%message "BUG: Funct3 should be 3 bits wide"]
+  ;;
 end
 
 module Branch = struct
