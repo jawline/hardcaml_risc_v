@@ -48,6 +48,7 @@ struct
     { Selected_register.value = mux slot registers.general }
   ;;
 
+  (* TODO: Register 0 is always zero, enforce that here. *)
   let assign_register (registers : _ Registers.t) slot new_value =
     { Registers.pc = registers.pc
     ; general =

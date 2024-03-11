@@ -34,8 +34,16 @@ struct
             let error = funct7 >=:. 1 in
             mux2 (select funct7 0 0) (rs1 -: rs2) (rs1 +: rs2), error
           | Sll ->
-            (* TODO: log_shift by > 32 is always zero, it might be better to special case that. *)
-            log_shift sll rs1 rs2, zero 1
+            (* If > 32, set the register to zero. *)
+            (* TODO: This is very slow, consider just a LUT instead. *)
+            let rd =
+              let shifted = log_shift sll rs1 (uresize rs2 5) in
+              mux2 (rs2 >:. 31) (zero 32) shifted
+            in
+            rd, zero 1
+          | Xor -> rs1 ^: rs2, zero 1
+          | Or -> rs1 |: rs2, zero 1
+          | And -> rs1 &: rs2, zero 1
           | _ ->
             print_s [%message "BUG: Unimplemented"];
             of_int ~width:32 0, zero 1)
