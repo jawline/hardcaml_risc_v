@@ -25,6 +25,8 @@ struct
           | Funct3.Op.Add_or_sub ->
             let error = funct7 >=:. 1 in
             mux2 (select funct7 0 0) (rs1 -: rs2) (rs1 +: rs2), error
+          | Slt -> rs1 <+ rs2, zero 1
+          | Sltu -> rs1 <: rs2, zero 1
           | Sll ->
             (* If > 32, set the register to zero. *)
             (* TODO: This is very slow, consider just a LUT instead. *)
@@ -36,9 +38,17 @@ struct
           | Xor -> rs1 ^: rs2, zero 1
           | Or -> rs1 |: rs2, zero 1
           | And -> rs1 &: rs2, zero 1
-          | _ ->
-            print_s [%message "BUG: Unimplemented"];
-            of_int ~width:32 0, zero 1)
+          | Srl_or_sra ->
+            let error = funct7 >=:. 1 in
+            (* TODO: Not sure if this is correct for SRA *)
+            let sra =
+              mux2
+                (rs2 >:. 31)
+                (mux2 (msb rs1) (ones 32) (zero 32))
+                (log_shift sra rs1 (uresize rs2 5))
+            in
+            let srl = mux2 (rs2 >:. 31) (zero 32) (log_shift srl rs1 (uresize rs2 5)) in
+            mux2 (select funct7 0 0) sra srl, error)
         8
     in
     let operations, errors = List.unzip operations_and_errors in
