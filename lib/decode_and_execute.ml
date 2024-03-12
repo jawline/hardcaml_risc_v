@@ -10,6 +10,7 @@ module Make
 struct
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
   module Op = Op.Make (Hart_config) (Memory) (Decoded_instruction)
+  module Op_imm = Op_imm.Make (Hart_config) (Memory) (Decoded_instruction)
 
   module I = struct
     type 'a t =
@@ -63,6 +64,17 @@ struct
 
   let increment_pc (registers : _ Registers.t) =
     { registers with pc = registers.pc +:. 4 }
+  ;;
+
+  let op_imm_instructions ~registers scope (decoded_instruction : _ Decoded_instruction.t)
+    =
+    let { Op_imm.O.rd = new_rd; error } =
+      Op_imm.hierarchical ~instance:"op_imm" scope decoded_instruction
+    in
+    let new_registers =
+      assign_register registers decoded_instruction.rd new_rd |> increment_pc
+    in
+    new_registers, error
   ;;
 
   let op_instructions ~registers scope (decoded_instruction : _ Decoded_instruction.t) =

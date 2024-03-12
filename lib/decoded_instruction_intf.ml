@@ -6,6 +6,8 @@ module type S = sig
     ; rs1 : 'a
     ; rs2 : 'a
     ; rd : 'a
+    ; i_immediate : 'a
+    ; j_immediate : 'a
     }
   [@@deriving sexp_of, hardcaml]
 end
