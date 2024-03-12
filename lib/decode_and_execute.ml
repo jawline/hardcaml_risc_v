@@ -8,11 +8,14 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Registers : Registers_intf.S) =
 struct
-  module Op = Op.Make (Hart_config) (Memory) (Registers)
+  module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
+  module Op = Op.Make (Hart_config) (Memory) (Decoded_instruction)
 
   module I = struct
     type 'a t =
-      { memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
+      { clock : 'a
+      ; clear : 'a
+      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
            [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
@@ -62,41 +65,56 @@ struct
     { registers with pc = registers.pc +:. 4 }
   ;;
 
-  let op_instructions scope (registers : _ Registers.t) (instruction : Signal.t) =
+  let op_instructions ~registers scope (decoded_instruction : _ Decoded_instruction.t) =
     (* TODO: Staging the muxes nto and out of registers might make this slightly cheaper *)
-    let rs1 : _ Selected_register.t =
-      select_register registers (Decoder.rs1 instruction)
-    in
-    let rs2 : _ Selected_register.t =
-      select_register registers (Decoder.rs2 instruction)
-    in
-    let funct3 = Decoder.funct3 instruction in
-    let funct7 = Decoder.funct7 instruction in
     let { Op.O.rd = new_rd; error } =
-      Op.hierarchical
-        ~instance:"op"
-        scope
-        { Op.I.rs1 = rs1.value; rs2 = rs2.value; funct3; funct7 }
+      Op.hierarchical ~instance:"op" scope decoded_instruction
     in
     let new_registers =
-      assign_register registers (Decoder.rd instruction) new_rd |> increment_pc
+      assign_register registers decoded_instruction.rd new_rd |> increment_pc
     in
     new_registers, error
   ;;
 
+  module State = struct
+    type t =
+      | Decoding
+      | Executing
+    [@@deriving sexp_of, compare, enumerate]
+  end
+
   let create scope (i : _ I.t) =
+    let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
     let finished = Variable.wire ~default:(zero 1) in
     let new_registers = Registers.Of_always.wire zero in
     let is_error = Variable.wire ~default:(zero 1) in
-    let op_instruction, op_error = op_instructions scope i.registers i.instruction in
+    let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec in
+    let op_instruction, op_error =
+      op_instructions
+        ~registers:i.registers
+        scope
+        (Decoded_instruction.Of_always.value decoded_instruction)
+    in
+    let current_state = State_machine.create (module State) reg_spec in
     compile
       [ when_
           i.enable
-          [ when_
-              (Decoder.opcode i.instruction ==:. Opcodes.op)
-              [ Registers.Of_always.assign new_registers op_instruction
-              ; is_error <-- op_error
-              ; finished <--. 1
+          [ current_state.switch
+              [ ( State.Decoding
+                , [ Decoded_instruction.Of_always.assign
+                      decoded_instruction
+                      (Decoded_instruction.of_instruction i.instruction i.registers)
+                  ; current_state.set_next Executing
+                  ] )
+              ; ( State.Executing
+                , [ when_
+                      (Decoder.opcode i.instruction ==:. Opcodes.op)
+                      [ Registers.Of_always.assign new_registers op_instruction
+                      ; is_error <-- op_error
+                      ; finished <--. 1
+                      ; current_state.set_next Decoding
+                      ]
+                  ] )
               ]
           ]
       ];

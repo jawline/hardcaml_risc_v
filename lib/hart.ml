@@ -67,7 +67,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       Decode_and_execute.hierarchical
         ~instance:"decode_and_execute"
         scope
-        { Decode_and_execute.I.memory_controller_to_hart = i.memory_controller_to_hart
+        { Decode_and_execute.I.clock = i.clock
+        ; clear = i.clear
+        ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
         ; enable = current_state.is State.Decode_and_execute
         ; instruction = fetched_instruction.value

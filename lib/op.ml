@@ -5,17 +5,9 @@ open Signal
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
-    (Registers : Registers_intf.S) =
+    (Decoded_instruction : Decoded_instruction_intf.S) =
 struct
-  module I = struct
-    type 'a t =
-      { funct3 : 'a [@bits 3]
-      ; funct7 : 'a [@bits 7]
-      ; rs1 : 'a [@bits Register_width.bits Hart_config.register_width]
-      ; rs2 : 'a [@bits Register_width.bits Hart_config.register_width]
-      }
-    [@@deriving sexp_of, hardcaml]
-  end
+  module I = Decoded_instruction
 
   module O = struct
     type 'a t =
@@ -25,7 +17,7 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create _scope ({ funct3; funct7; rs1; rs2 } : _ I.t) =
+  let create _scope ({ funct3; funct7; rs1; rs2; _ } : _ Decoded_instruction.t) =
     let operations_and_errors =
       List.init
         ~f:(fun funct3 ->
