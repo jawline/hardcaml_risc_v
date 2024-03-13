@@ -54,12 +54,25 @@ module Op = struct
 end
 
 module Branch = struct
-  let beq = 0b000
-  let bne = 0b001
-  let blt = 0b100
-  let bge = 0b101
-  let bltu = 0b110
-  let bgeu = 0b111
+  type t =
+    | Beq
+    | Bne
+    | Blt
+    | Bge
+    | Bltu
+    | Bgeu
+    | Invalid
+
+  let of_int_exn i =
+    match i with
+    | 0b000 -> Beq
+    | 0b001 -> Bne
+    | 0b100 -> Blt
+    | 0b101 -> Bge
+    | 0b110 -> Bltu
+    | 0b111 -> Bgeu
+    | _ -> Invalid
+  ;;
 end
 
 module Load = struct
