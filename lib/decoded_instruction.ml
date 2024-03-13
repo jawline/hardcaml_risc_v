@@ -15,6 +15,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; rd : 'a [@bits 5]
     ; i_immediate : 'a [@bits register_width]
     ; j_immediate : 'a [@bits register_width]
+    ; u_immediate : 'a [@bits register_width]
     }
   [@@deriving sexp_of, hardcaml]
 
@@ -29,6 +30,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; rd = Decoder.rd instruction
     ; i_immediate = Decoder.i_immediate ~width:register_width instruction
     ; j_immediate = Decoder.j_immediate ~width:register_width instruction
+    ; u_immediate = Decoder.u_immediate ~width:register_width instruction
     }
   ;;
 end

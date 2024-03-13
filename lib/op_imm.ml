@@ -17,7 +17,7 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create _scope ({ funct3; rs1; i_immediate; _ } : _ Decoded_instruction.t) =
+  let create _scope ({ funct3; funct7; rs1; i_immediate; _ } : _ Decoded_instruction.t) =
     let operations_and_errors =
       List.init
         ~f:(fun funct3 ->
@@ -28,12 +28,13 @@ struct
           | Andi -> rs1 &: i_immediate, zero 1
           | Ori -> rs1 |: i_immediate, zero 1
           | Xori -> rs1 ^: i_immediate, zero 1
-          | Slli ->
-            print_s [%message "BUG: TODO"];
-            zero 32, zero 1
+          | Slli -> Util.sll rs1 i_immediate, zero 1
           | Srli_or_srai ->
-            print_s [%message "BUG: TODO"];
-            zero 32, zero 1)
+            let error = funct7 >=:. 1 in
+            (* TODO: Not sure if this is correct for SRA *)
+            let sra = Util.sra rs1 i_immediate in
+            let srl = Util.srl rs1 i_immediate in
+            mux2 (select funct7 0 0) sra srl, error)
         8
     in
     let operations, errors = List.unzip operations_and_errors in

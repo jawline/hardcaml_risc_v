@@ -16,6 +16,9 @@ struct
       }
     [@@deriving sexp_of, hardcaml]
   end
+  
+  (* TODO: Op and op imm are the same except rs2 is swapped out for
+   * i_immediate. Just parameterize the instance instead. *)
 
   let create _scope ({ funct3; funct7; rs1; rs2; _ } : _ Decoded_instruction.t) =
     let operations_and_errors =
@@ -30,10 +33,7 @@ struct
           | Sll ->
             (* If > 32, set the register to zero. *)
             (* TODO: This is very slow, consider just a LUT instead. *)
-            let rd =
-              let shifted = log_shift sll rs1 (uresize rs2 5) in
-              mux2 (rs2 >:. 31) (zero 32) shifted
-            in
+            let rd = Util.sll rs1 rs2 in
             rd, zero 1
           | Xor -> rs1 ^: rs2, zero 1
           | Or -> rs1 |: rs2, zero 1
@@ -41,13 +41,8 @@ struct
           | Srl_or_sra ->
             let error = funct7 >=:. 1 in
             (* TODO: Not sure if this is correct for SRA *)
-            let sra =
-              mux2
-                (rs2 >:. 31)
-                (mux2 (msb rs1) (ones 32) (zero 32))
-                (log_shift sra rs1 (uresize rs2 5))
-            in
-            let srl = mux2 (rs2 >:. 31) (zero 32) (log_shift srl rs1 (uresize rs2 5)) in
+            let sra = Util.sra rs1 rs2 in
+            let srl = Util.srl rs1 rs2 in
             mux2 (select funct7 0 0) sra srl, error)
         8
     in
