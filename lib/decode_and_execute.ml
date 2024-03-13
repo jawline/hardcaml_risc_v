@@ -44,30 +44,6 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  (** To make sure we actually select the register rather than make a mistake and
-      use the signal in the instruction mint a new type to carry the signal *)
-  module Selected_register = struct
-    type 'a t = { value : 'a }
-  end
-
-  let select_register (registers : _ Registers.t) slot =
-    { Selected_register.value = mux slot registers.general }
-  ;;
-
-  (* TODO: Register 0 is always zero, enforce that here. *)
-  let assign_register ~new_pc (registers : _ Registers.t) slot new_value =
-    { Registers.pc = new_pc
-    ; general =
-        List.mapi
-          ~f:(fun index current_value -> mux2 (slot ==:. index) new_value current_value)
-          registers.general
-    }
-  ;;
-
-  let increment_pc (registers : _ Registers.t) =
-    { registers with pc = registers.pc +:. 4 }
-  ;;
-
   let op_imm_instructions
     ~(registers : _ Registers.t)
     scope
@@ -94,20 +70,8 @@ struct
     { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
 
-  (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
-      * value from the msb with zeros for the lower 12. *)
-  let lui_instruction
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    =
-    { Transaction.new_rd = decoded_instruction.u_immediate
-    ; error = zero 1
-    ; new_pc = registers.pc +:. 4
-    }
-  ;;
-
-  (* JAL (jump and link) adds the signed J-immediate value to the current PC
-     after storing the current PC + 4 in the destination register. *)
+  (** JAL (jump and link) adds the signed J-immediate value to the current PC
+      after storing the current PC + 4 in the destination register. *)
   let jal_instruction
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
@@ -117,11 +81,11 @@ struct
     { Transaction.new_rd = registers.pc +:. 4; new_pc; error }
   ;;
 
-  (* JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
-     sets the LSB of that result to zero (e.g, result = result & (!1)), and
-     finally sets the PC to this new result.  rd is set to the original PC + 4
-     (the start of the next instruction).  Regiser 0 can be used to discard the
-     result. *)
+  (** JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
+      sets the LSB of that result to zero (e.g, result = result & (!1)), and
+      finally sets the PC to this new result.  rd is set to the original PC + 4
+      (the start of the next instruction).  Regiser 0 can be used to discard the
+      result. *)
   let jalr_instruction
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
@@ -134,13 +98,30 @@ struct
     { Transaction.new_pc; error; new_rd = registers.pc +:. 4 }
   ;;
 
-  module State = struct
-    type t =
-      | Decoding
-      | Executing
-      | Committing
-    [@@deriving sexp_of, compare, enumerate]
-  end
+  (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
+      value from the msb with zeros for the lower 12. *)
+  let lui_instruction
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    =
+    { Transaction.new_rd = registers.pc +:. 4
+    ; error = zero 1
+    ; new_pc = decoded_instruction.u_immediate
+    }
+  ;;
+
+  (** Add upper immediate to PC. Similar to LUI but adds the loaded immediate to
+      current the program counter and places it in RD. This can be used to compute
+      addresses for JALR instructions. *)
+  let auipc_instruction
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    =
+    { Transaction.new_rd = registers.pc +:. 4
+    ; error = zero 1
+    ; new_pc = registers.pc +: decoded_instruction.u_immediate
+    }
+  ;;
 
   module Table_entry = struct
     type 'a t =
@@ -171,8 +152,19 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.lui
         (lui_instruction ~registers decoded_instruction)
+    ; Table_entry.create
+        ~opcode:Opcodes.auipc
+        (auipc_instruction ~registers decoded_instruction)
     ]
   ;;
+
+  module State = struct
+    type t =
+      | Decoding
+      | Executing
+      | Committing
+    [@@deriving sexp_of, compare, enumerate]
+  end
 
   let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
@@ -189,6 +181,16 @@ struct
     let transaction = Transaction.Of_always.reg reg_spec in
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
+    (* TODO: Register 0 is always zero, enforce that here. *)
+    let commit_transaction ~new_pc ~new_rd =
+      { Registers.pc = new_pc
+      ; general =
+          List.mapi
+            ~f:(fun index current_value ->
+              mux2 (decoded_instruction.rd.value ==:. index) new_rd current_value)
+            i.registers.general
+      }
+    in
     compile
       [ when_
           i.enable
@@ -216,11 +218,9 @@ struct
                   ; finished <--. 1
                   ; Registers.Of_always.assign
                       new_registers
-                      (assign_register
+                      (commit_transaction
                          ~new_pc:transaction.new_pc.value
-                         i.registers
-                         decoded_instruction.rd.value
-                         transaction.new_rd.value)
+                         ~new_rd:transaction.new_rd.value)
                   ] )
               ]
           ]
