@@ -78,7 +78,6 @@ struct
   ;;
 
   let op_instructions ~registers scope (decoded_instruction : _ Decoded_instruction.t) =
-    (* TODO: Staging the muxes nto and out of registers might make this slightly cheaper *)
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical ~instance:"op" scope decoded_instruction
     in
@@ -95,18 +94,39 @@ struct
     [@@deriving sexp_of, compare, enumerate]
   end
 
+  module Table_entry = struct
+    type 'a t =
+      { opcode : int
+      ; new_registers : 'a Registers.t
+      ; error : 'a
+      }
+
+    let create ~opcode (new_registers, error) = { opcode; new_registers; error }
+  end
+
+  let instruction_table ~registers ~decoded_instruction scope =
+    [ Table_entry.create
+        ~opcode:Opcodes.op
+        (op_instructions ~registers scope decoded_instruction)
+    ; Table_entry.create
+        ~opcode:Opcodes.op_imm
+        (op_imm_instructions ~registers scope decoded_instruction)
+    ]
+  ;;
+
   let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
     let finished = Variable.wire ~default:(zero 1) in
     let new_registers = Registers.Of_always.wire zero in
     let is_error = Variable.wire ~default:(zero 1) in
     let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec in
-    let op_instruction, op_error =
-      op_instructions
+    let instruction_table =
+      instruction_table
+        ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
         ~registers:i.registers
         scope
-        (Decoded_instruction.Of_always.value decoded_instruction)
     in
+    (* TODO: Staging the muxes nto and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
     compile
       [ when_
@@ -119,14 +139,18 @@ struct
                   ; current_state.set_next Executing
                   ] )
               ; ( State.Executing
-                , [ when_
-                      (Decoder.opcode i.instruction ==:. Opcodes.op)
-                      [ Registers.Of_always.assign new_registers op_instruction
-                      ; is_error <-- op_error
-                      ; finished <--. 1
-                      ; current_state.set_next Decoding
-                      ]
-                  ] )
+                , List.map
+                    ~f:
+                      (fun
+                        { Table_entry.opcode; new_registers = opcode_registers; error } ->
+                      when_
+                        (decoded_instruction.opcode.value ==:. opcode)
+                        [ Registers.Of_always.assign new_registers opcode_registers
+                        ; is_error <-- error
+                        ; finished <--. 1
+                        ; current_state.set_next Decoding
+                        ])
+                    instruction_table )
               ]
           ]
       ];

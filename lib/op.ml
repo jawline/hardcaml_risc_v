@@ -11,7 +11,7 @@ struct
 
   module O = struct
     type 'a t =
-      { rd : 'a [@bits Register_width.bits Hart_config.register_width]
+      { rd : 'a [@bits Register_width.bits Hart_config.register_width] [@rtlname "new_rd"]
       ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
@@ -25,8 +25,8 @@ struct
           | Funct3.Op.Add_or_sub ->
             let error = funct7 >=:. 1 in
             mux2 (select funct7 0 0) (rs1 -: rs2) (rs1 +: rs2), error
-          | Slt -> rs1 <+ rs2, zero 1
-          | Sltu -> rs1 <: rs2, zero 1
+          | Slt -> uresize (rs1 <+ rs2) 32, zero 1
+          | Sltu -> uresize (rs1 <: rs2) 32, zero 1
           | Sll ->
             (* If > 32, set the register to zero. *)
             (* TODO: This is very slow, consider just a LUT instead. *)
