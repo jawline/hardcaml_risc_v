@@ -9,6 +9,7 @@ module Make
     (Registers : Registers_intf.S) =
 struct
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
+  module Transaction = Transaction.Make (Hart_config)
   module Op = Op.Make (Hart_config) (Memory) (Decoded_instruction)
   module Op_imm = Op_imm.Make (Hart_config) (Memory) (Decoded_instruction)
 
@@ -55,8 +56,8 @@ struct
   ;;
 
   (* TODO: Register 0 is always zero, enforce that here. *)
-  let assign_register (registers : _ Registers.t) slot new_value =
-    { Registers.pc = registers.pc
+  let assign_register ~new_pc (registers : _ Registers.t) slot new_value =
+    { Registers.pc = new_pc
     ; general =
         List.mapi
           ~f:(fun index current_value -> mux2 (slot ==:. index) new_value current_value)
@@ -68,31 +69,38 @@ struct
     { registers with pc = registers.pc +:. 4 }
   ;;
 
-  let op_imm_instructions ~registers scope (decoded_instruction : _ Decoded_instruction.t)
+  let op_imm_instructions
+    ~(registers : _ Registers.t)
+    scope
+    (decoded_instruction : _ Decoded_instruction.t)
     =
     let { Op_imm.O.rd = new_rd; error } =
       Op_imm.hierarchical ~instance:"op_imm" scope decoded_instruction
     in
-    let new_registers =
-      assign_register registers decoded_instruction.rd new_rd |> increment_pc
-    in
-    new_registers, error
+    { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
 
-  let op_instructions ~registers scope (decoded_instruction : _ Decoded_instruction.t) =
+  let op_instructions
+    ~(registers : _ Registers.t)
+    scope
+    (decoded_instruction : _ Decoded_instruction.t)
+    =
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical ~instance:"op" scope decoded_instruction
     in
-    let new_registers =
-      assign_register registers decoded_instruction.rd new_rd |> increment_pc
-    in
-    new_registers, error
+    { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
 
   (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
-   * value from the msb with zeros for the lower 12. *)
-  let lui_instruction ~registers (decoded_instruction : _ Decoded_instruction.t) =
-    assign_register registers decoded_instruction.rd decoded_instruction.u_immediate |> increment_pc, zero 1
+      * value from the msb with zeros for the lower 12. *)
+  let lui_instruction
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    =
+    { Transaction.new_rd = decoded_instruction.u_immediate
+    ; error = zero 1
+    ; new_pc = registers.pc +:. 4
+    }
   ;;
 
   (* JAL (jump and link) adds the signed J-immediate value to the current PC
@@ -103,11 +111,7 @@ struct
     =
     let new_pc = registers.pc +: decoded_instruction.j_immediate in
     let error = new_pc &:. 0b11 <>:. 0 in
-    ( assign_register
-        { registers with pc = new_pc }
-        decoded_instruction.rd
-        (registers.pc +:. 4)
-    , error )
+    { Transaction.new_rd = registers.pc +:. 4; new_pc; error }
   ;;
 
   (* JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
@@ -124,28 +128,28 @@ struct
       &: ~:(of_int ~width:register_width 1)
     in
     let error = new_pc &:. 0b11 <>:. 0 in
-    ( assign_register
-        { registers with pc = new_pc }
-        decoded_instruction.rd
-        (registers.pc +:. 4)
-    , error )
+    { Transaction.new_pc; error; new_rd = registers.pc +:. 4 }
   ;;
 
   module State = struct
     type t =
       | Decoding
       | Executing
+      | Committing
     [@@deriving sexp_of, compare, enumerate]
   end
 
   module Table_entry = struct
     type 'a t =
       { opcode : int
-      ; new_registers : 'a Registers.t
+      ; new_pc : 'a
+      ; new_rd : 'a
       ; error : 'a
       }
 
-    let create ~opcode (new_registers, error) = { opcode; new_registers; error }
+    let create ~opcode { Transaction.new_pc; new_rd; error } =
+      { opcode; new_pc; new_rd; error }
+    ;;
   end
 
   let instruction_table ~registers ~decoded_instruction scope =
@@ -179,6 +183,7 @@ struct
         ~registers:i.registers
         scope
     in
+    let transaction = Transaction.Of_always.reg reg_spec in
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
     compile
@@ -193,17 +198,27 @@ struct
                   ] )
               ; ( State.Executing
                 , List.map
-                    ~f:
-                      (fun
-                        { Table_entry.opcode; new_registers = opcode_registers; error } ->
+                    ~f:(fun { Table_entry.opcode; new_pc; new_rd; error } ->
                       when_
                         (decoded_instruction.opcode.value ==:. opcode)
-                        [ Registers.Of_always.assign new_registers opcode_registers
-                        ; is_error <-- error
-                        ; finished <--. 1
-                        ; current_state.set_next Decoding
+                        [ Transaction.Of_always.assign
+                            transaction
+                            { new_pc; new_rd; error }
+                        ; current_state.set_next Committing
                         ])
                     instruction_table )
+              ; ( Committing
+                , [ current_state.set_next Decoding
+                  ; is_error <-- transaction.error.value
+                  ; finished <--. 1
+                  ; Registers.Of_always.assign
+                      new_registers
+                      (assign_register
+                         ~new_pc:transaction.new_pc.value
+                         i.registers
+                         decoded_instruction.rd.value
+                         transaction.new_rd.value)
+                  ] )
               ]
           ]
       ];

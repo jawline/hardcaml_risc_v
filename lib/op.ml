@@ -16,7 +16,7 @@ struct
       }
     [@@deriving sexp_of, hardcaml]
   end
-  
+
   (* TODO: Op and op imm are the same except rs2 is swapped out for
    * i_immediate. Just parameterize the instance instead. *)
 
