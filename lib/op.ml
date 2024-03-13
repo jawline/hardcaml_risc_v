@@ -7,42 +7,49 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Decoded_instruction : Decoded_instruction_intf.S) =
 struct
-  module I = Decoded_instruction
+  let register_width = Register_width.bits Hart_config.register_width
+
+  module I = struct
+    type 'a t =
+      { funct3 : 'a [@bits 3]
+      ; funct7 : 'a [@bits 7]
+      ; lhs : 'a [@bits register_width]
+      ; rhs : 'a [@bits register_width]
+      }
+    [@@deriving sexp_of, hardcaml]
+  end
 
   module O = struct
     type 'a t =
-      { rd : 'a [@bits Register_width.bits Hart_config.register_width] [@rtlname "new_rd"]
+      { rd : 'a [@bits register_width] [@rtlname "new_rd"]
       ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
 
-  (* TODO: Op and op imm are the same except rs2 is swapped out for
-   * i_immediate. Just parameterize the instance instead. *)
-
-  let create _scope ({ funct3; funct7; rs1; rs2; _ } : _ Decoded_instruction.t) =
+  let create _scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =
     let operations_and_errors =
       List.init
         ~f:(fun funct3 ->
           match Funct3.Op.of_int_exn funct3 with
           | Funct3.Op.Add_or_sub ->
             let error = funct7 >=:. 1 in
-            mux2 (select funct7 0 0) (rs1 -: rs2) (rs1 +: rs2), error
-          | Slt -> uresize (rs1 <+ rs2) 32, zero 1
-          | Sltu -> uresize (rs1 <: rs2) 32, zero 1
+            mux2 (select funct7 0 0) (lhs -: rhs) (lhs +: rhs), error
+          | Slt -> uresize (lhs <+ rhs) 32, zero 1
+          | Sltu -> uresize (lhs <: rhs) 32, zero 1
           | Sll ->
             (* If > 32, set the register to zero. *)
             (* TODO: This is very slow, consider just a LUT instead. *)
-            let rd = Util.sll rs1 rs2 in
+            let rd = Util.sll lhs rhs in
             rd, zero 1
-          | Xor -> rs1 ^: rs2, zero 1
-          | Or -> rs1 |: rs2, zero 1
-          | And -> rs1 &: rs2, zero 1
+          | Xor -> lhs ^: rhs, zero 1
+          | Or -> lhs |: rhs, zero 1
+          | And -> lhs &: rhs, zero 1
           | Srl_or_sra ->
             let error = funct7 >=:. 1 in
             (* TODO: Not sure if this is correct for SRA *)
-            let sra = Util.sra rs1 rs2 in
-            let srl = Util.srl rs1 rs2 in
+            let sra = Util.sra lhs rhs in
+            let srl = Util.srl lhs rhs in
             mux2 (select funct7 0 0) sra srl, error)
         8
     in

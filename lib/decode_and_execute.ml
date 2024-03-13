@@ -72,10 +72,14 @@ struct
   let op_imm_instructions
     ~(registers : _ Registers.t)
     scope
-    (decoded_instruction : _ Decoded_instruction.t)
+    ({ funct3; funct7; rs1; i_immediate; _ } : _ Decoded_instruction.t)
     =
-    let { Op_imm.O.rd = new_rd; error } =
-      Op_imm.hierarchical ~instance:"op_imm" scope decoded_instruction
+    let { Op.O.rd = new_rd; error } =
+      (* TODO: A mux could allow us to use the same mux for both *)
+      Op.hierarchical
+        ~instance:"op_imm"
+        scope
+        { Op.I.funct3; funct7; lhs = rs1; rhs = i_immediate }
     in
     { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
@@ -83,10 +87,10 @@ struct
   let op_instructions
     ~(registers : _ Registers.t)
     scope
-    (decoded_instruction : _ Decoded_instruction.t)
+    ({ funct3; funct7; rs1; rs2; _ } : _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
-      Op.hierarchical ~instance:"op" scope decoded_instruction
+      Op.hierarchical ~instance:"op" scope { Op.I.funct3; funct7; lhs = rs1; rhs = rs2 }
     in
     { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
