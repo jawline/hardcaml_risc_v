@@ -92,7 +92,7 @@ struct
   (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
    * value from the msb with zeros for the lower 12. *)
   let lui_instruction ~registers (decoded_instruction : _ Decoded_instruction.t) =
-    assign_register registers decoded_instruction.rd decoded_instruction.u_immediate, zero 1
+    assign_register registers decoded_instruction.rd decoded_instruction.u_immediate |> increment_pc, zero 1
   ;;
 
   (* JAL (jump and link) adds the signed J-immediate value to the current PC
