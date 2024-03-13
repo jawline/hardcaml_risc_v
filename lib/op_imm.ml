@@ -24,7 +24,7 @@ struct
           match Funct3.Op_imm.of_int_exn funct3 with
           | Funct3.Op_imm.Addi -> rs1 +: i_immediate, zero 1
           | Slti -> uresize (rs1 <+ i_immediate) 32, zero 1
-          | Sltiu -> uresize (rs1 <: i_immediate) 32 , zero 1
+          | Sltiu -> uresize (rs1 <: i_immediate) 32, zero 1
           | Andi -> rs1 &: i_immediate, zero 1
           | Ori -> rs1 |: i_immediate, zero 1
           | Xori -> rs1 ^: i_immediate, zero 1

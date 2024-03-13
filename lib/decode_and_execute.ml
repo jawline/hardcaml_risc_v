@@ -12,6 +12,8 @@ struct
   module Op = Op.Make (Hart_config) (Memory) (Decoded_instruction)
   module Op_imm = Op_imm.Make (Hart_config) (Memory) (Decoded_instruction)
 
+  let register_width = Register_width.bits Hart_config.register_width
+
   module I = struct
     type 'a t =
       { clock : 'a
@@ -23,7 +25,7 @@ struct
       ; enable : 'a
       ; instruction : 'a
            (* TODO: This is assuming Rv32i, I guess in practice this should be the length of the longest instruction we support? *)
-           [@bits 32]
+           [@bits register_width]
       ; registers : 'a Registers.t [@rtlprefix "input_registers"]
       }
     [@@deriving sexp_of, hardcaml]
@@ -87,6 +89,42 @@ struct
     new_registers, error
   ;;
 
+  (* JAL (jump and link) adds the signed J-immediate value to the current PC
+     after storing the current PC + 4 in the destination register. *)
+  let jal_instruction
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    =
+    let new_pc = registers.pc +: decoded_instruction.j_immediate in
+    let error = new_pc &:. 0b11 <>:. 0 in
+    ( assign_register
+        { registers with pc = new_pc }
+        decoded_instruction.rd
+        (registers.pc +:. 4)
+    , error )
+  ;;
+
+  (* JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
+     sets the LSB of that result to zero (e.g, result = result & (!1)), and
+     finally sets the PC to this new result.  rd is set to the original PC + 4
+     (the start of the next instruction).  Regiser 0 can be used to discard the
+     result. *)
+  let jalr_instruction
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    =
+    let new_pc =
+      decoded_instruction.rs1 +: decoded_instruction.j_immediate
+      &: ~:(of_int ~width:register_width 1)
+    in
+    let error = new_pc &:. 0b11 <>:. 0 in
+    ( assign_register
+        { registers with pc = new_pc }
+        decoded_instruction.rd
+        (registers.pc +:. 4)
+    , error )
+  ;;
+
   module State = struct
     type t =
       | Decoding
@@ -111,6 +149,12 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.op_imm
         (op_imm_instructions ~registers scope decoded_instruction)
+    ; Table_entry.create
+        ~opcode:Opcodes.jal
+        (jal_instruction ~registers decoded_instruction)
+    ; Table_entry.create
+        ~opcode:Opcodes.jalr
+        (jalr_instruction ~registers decoded_instruction)
     ]
   ;;
 
@@ -126,7 +170,7 @@ struct
         ~registers:i.registers
         scope
     in
-    (* TODO: Staging the muxes nto and out of registers might make this slightly cheaper *)
+    (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
     compile
       [ when_
