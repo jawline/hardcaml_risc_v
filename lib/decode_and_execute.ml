@@ -23,9 +23,7 @@ struct
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
       ; enable : 'a
-      ; instruction : 'a
-           (* TODO: This is assuming Rv32i, I guess in practice this should be the length of the longest instruction we support? *)
-           [@bits register_width]
+      ; instruction : 'a [@bits register_width]
       ; registers : 'a Registers.t [@rtlprefix "input_registers"]
       }
     [@@deriving sexp_of, hardcaml]
@@ -51,6 +49,8 @@ struct
     =
     let { Op.O.rd = new_rd; error } =
       (* TODO: A mux could allow us to use the same mux for both *)
+      (* TODO: The mux could be on the decode cycle into decoded
+         instruction and used by both. *)
       Op.hierarchical
         ~instance:"op_imm"
         scope
