@@ -168,8 +168,7 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.auipc
         (auipc_instruction ~registers decoded_instruction)
-    ; Table_entry.create ~opcode:Opcodes.fence
-        (fence ~registers decoded_instruction)
+    ; Table_entry.create ~opcode:Opcodes.fence (fence ~registers decoded_instruction)
     ]
   ;;
 

@@ -13,6 +13,14 @@ struct
     if M.data_bus_width % 8 <> 0 then raise_s [%message "BUG: data bus must be in bytes"]
   ;;
 
+  let () =
+    if M.num_bytes % data_bus_width <> 0
+    then
+      raise_s
+        [%message
+          "BUG: cannot request num_bytes that is not a multiple of data_bus_width"]
+  ;;
+
   include Memory_bus.Make (M)
 
   let data_bus_in_bytes = M.data_bus_width / 8
@@ -83,7 +91,7 @@ struct
     let memory =
       Ram.create
         ~collision_mode:Read_before_write
-        ~size:(M.num_bytes * 8)
+        ~size:(M.num_bytes / M.data_bus_width)
         ~write_ports:
           [| { write_enable = is_operation_and_is_legal &: is_write
              ; write_address = real_address
