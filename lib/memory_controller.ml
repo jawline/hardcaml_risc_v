@@ -14,7 +14,7 @@ struct
   ;;
 
   let () =
-    if M.num_bytes % data_bus_width <> 0
+    if M.num_bytes % M.data_bus_width <> 0
     then
       raise_s
         [%message
