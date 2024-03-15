@@ -56,7 +56,7 @@ struct
         scope
         { Op.I.funct3; funct7; lhs = rs1; rhs = i_immediate }
     in
-    { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
+    { Transaction.set_rd = one 1; new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
 
   let op_instructions
@@ -67,7 +67,7 @@ struct
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical ~instance:"op" scope { Op.I.funct3; funct7; lhs = rs1; rhs = rs2 }
     in
-    { Transaction.new_rd; error; new_pc = registers.pc +:. 4 }
+    { Transaction.set_rd = one 1; new_rd; error; new_pc = registers.pc +:. 4 }
   ;;
 
   (** JAL (jump and link) adds the signed J-immediate value to the current PC
@@ -78,7 +78,7 @@ struct
     =
     let new_pc = registers.pc +: decoded_instruction.j_immediate in
     let error = new_pc &:. 0b11 <>:. 0 in
-    { Transaction.new_rd = registers.pc +:. 4; new_pc; error }
+    { Transaction.set_rd = one 1; new_rd = registers.pc +:. 4; new_pc; error }
   ;;
 
   (** JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
@@ -95,7 +95,7 @@ struct
       &: ~:(of_int ~width:register_width 1)
     in
     let error = new_pc &:. 0b11 <>:. 0 in
-    { Transaction.new_pc; error; new_rd = registers.pc +:. 4 }
+    { Transaction.set_rd = one 1; new_pc; error; new_rd = registers.pc +:. 4 }
   ;;
 
   (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
@@ -104,7 +104,8 @@ struct
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Transaction.new_rd = registers.pc +:. 4
+    { Transaction.set_rd = one 1
+    ; new_rd = registers.pc +:. 4
     ; error = zero 1
     ; new_pc = decoded_instruction.u_immediate
     }
@@ -117,9 +118,20 @@ struct
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Transaction.new_rd = registers.pc +:. 4
+    { Transaction.set_rd = one 1
+    ; new_rd = registers.pc +:. 4
     ; error = zero 1
     ; new_pc = registers.pc +: decoded_instruction.u_immediate
+    }
+  ;;
+
+  let fence ~(registers : _ Registers.t) (_decoded_instruction : _ Decoded_instruction.t) =
+    (* TODO: Currently all memory transactions are atomic so I'm not sure if I
+     * need to implement this. Figure it out. *)
+    { Transaction.set_rd = one 1
+    ; new_rd = zero register_width
+    ; error = zero 1
+    ; new_pc = registers.pc +:. 4
     }
   ;;
 
@@ -127,12 +139,13 @@ struct
     type 'a t =
       { opcode : int
       ; new_pc : 'a
+      ; set_rd : 'a
       ; new_rd : 'a
       ; error : 'a
       }
 
-    let create ~opcode { Transaction.new_pc; new_rd; error } =
-      { opcode; new_pc; new_rd; error }
+    let create ~opcode { Transaction.new_pc; set_rd; new_rd; error } =
+      { opcode; new_pc; set_rd; new_rd; error }
     ;;
   end
 
@@ -155,6 +168,8 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.auipc
         (auipc_instruction ~registers decoded_instruction)
+    ; Table_entry.create ~opcode:Opcodes.fence
+        (fence ~registers decoded_instruction)
     ]
   ;;
 
@@ -168,9 +183,6 @@ struct
 
   let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
-    let finished = Variable.wire ~default:(zero 1) in
-    let new_registers = Registers.Of_always.wire zero in
-    let is_error = Variable.wire ~default:(zero 1) in
     let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec in
     let instruction_table =
       instruction_table
@@ -182,12 +194,15 @@ struct
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
     (* TODO: Register 0 is always zero, enforce that here. *)
-    let commit_transaction ~new_pc ~new_rd =
+    let commit_transaction ~new_pc ~set_rd ~new_rd =
       { Registers.pc = new_pc
       ; general =
           List.mapi
             ~f:(fun index current_value ->
-              mux2 (decoded_instruction.rd.value ==:. index) new_rd current_value)
+              mux2
+                (set_rd &: (decoded_instruction.rd.value ==:. index))
+                new_rd
+                current_value)
             i.registers.general
       }
     in
@@ -203,33 +218,29 @@ struct
                   ] )
               ; ( State.Executing
                 , List.map
-                    ~f:(fun { Table_entry.opcode; new_pc; new_rd; error } ->
+                    ~f:(fun { Table_entry.opcode; new_pc; set_rd; new_rd; error } ->
                       when_
                         (decoded_instruction.opcode.value ==:. opcode)
                         [ Transaction.Of_always.assign
                             transaction
-                            { new_pc; new_rd; error }
+                            { new_pc; set_rd; new_rd; error }
                         ; current_state.set_next Committing
                         ])
                     instruction_table )
-              ; ( Committing
-                , [ current_state.set_next Decoding
-                  ; is_error <-- transaction.error.value
-                  ; finished <--. 1
-                  ; Registers.Of_always.assign
-                      new_registers
-                      (commit_transaction
-                         ~new_pc:transaction.new_pc.value
-                         ~new_rd:transaction.new_rd.value)
-                  ] )
+                (* TODO: Trap when no opcode matches *)
+              ; Committing, [ current_state.set_next Decoding ]
               ]
           ]
       ];
     { O.memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
-    ; finished = finished.value
-    ; new_registers = Registers.Of_always.value new_registers
-    ; error = is_error.value
+    ; finished = current_state.is Committing
+    ; new_registers =
+        commit_transaction
+          ~new_pc:transaction.new_pc.value
+          ~set_rd:transaction.set_rd.value
+          ~new_rd:transaction.new_rd.value
+    ; error = transaction.error.value
     }
   ;;
 
