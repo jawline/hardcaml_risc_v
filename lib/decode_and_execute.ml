@@ -11,6 +11,7 @@ struct
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
   module Transaction = Transaction.Make (Hart_config)
   module Op = Op.Make (Hart_config) (Memory) (Decoded_instruction)
+  module Branch = Branch.Make (Hart_config) (Memory) (Decoded_instruction)
 
   let register_width = Register_width.bits Hart_config.register_width
 
@@ -125,6 +126,28 @@ struct
     }
   ;;
 
+  (** The branch table either compares rs1 and rs2 based on funct3 and then
+      either adds a b immediate to the PC or skips to the next instruction
+      based on the result. *)
+  let branch_instruction
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    scope
+    =
+    let { Branch.O.new_pc; error } =
+      Branch.hierarchical
+        ~instance:"branch"
+        scope
+        { Branch.I.funct3 = decoded_instruction.funct3
+        ; lhs = decoded_instruction.rs1
+        ; rhs = decoded_instruction.rs2
+        ; b_immediate = decoded_instruction.b_immediate
+        ; pc = registers.pc
+        }
+    in
+    { Transaction.set_rd = zero 1; new_rd = zero register_width; error; new_pc }
+  ;;
+
   let fence ~(registers : _ Registers.t) (_decoded_instruction : _ Decoded_instruction.t) =
     (* TODO: Currently all memory transactions are atomic so I'm not sure if I
      * need to implement this. Figure it out. *)
@@ -169,6 +192,9 @@ struct
         ~opcode:Opcodes.auipc
         (auipc_instruction ~registers decoded_instruction)
     ; Table_entry.create ~opcode:Opcodes.fence (fence ~registers decoded_instruction)
+    ; Table_entry.create
+        ~opcode:Opcodes.branch
+        (branch_instruction ~registers decoded_instruction scope)
     ]
   ;;
 

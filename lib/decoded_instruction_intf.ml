@@ -9,6 +9,7 @@ module type S = sig
     ; i_immediate : 'a
     ; j_immediate : 'a
     ; u_immediate : 'a
+    ; b_immediate : 'a
     }
   [@@deriving sexp_of, hardcaml]
 end
