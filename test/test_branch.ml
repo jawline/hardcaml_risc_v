@@ -46,10 +46,10 @@ let%expect_test "branch tests" =
   [%expect {| ((pc 2000) (error false)) |}];
   test ~pc:500 ~lhs:500 ~rhs:55 ~funct3:1 ~b_immediate:1500 sim;
   print outputs;
-  [%expect {| ((pc 504) (error false)) |}];
+  [%expect {| ((pc 2000) (error false)) |}];
   test ~pc:500 ~lhs:500 ~rhs:500 ~funct3:1 ~b_immediate:1500 sim;
   print outputs;
-  [%expect {| ((pc 2000) (error false)) |}]
+  [%expect {| ((pc 504) (error false)) |}]
 ;;
 
 (* TODO: Test the other branches, but this shows the sketch works. *)
