@@ -2,11 +2,7 @@ open! Core
 open Hardcaml
 open Signal
 
-module Make
-    (Hart_config : Hart_config_intf.S)
-    (Memory : Memory_bus_intf.S)
-    (Decoded_instruction : Decoded_instruction_intf.S) =
-struct
+module Make (Hart_config : Hart_config_intf.S) = struct
   let register_width = Register_width.bits Hart_config.register_width
 
   module I = struct

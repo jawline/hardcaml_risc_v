@@ -2,11 +2,7 @@ open! Core
 open Hardcaml
 open Signal
 
-module Make
-    (Hart_config : Hart_config_intf.S)
-    (Memory : Memory_bus_intf.S)
-    (Decoded_instruction : Decoded_instruction_intf.S) =
-struct
+module Make (Hart_config : Hart_config_intf.S) = struct
   let register_width = Register_width.bits Hart_config.register_width
 
   module I = struct
@@ -28,7 +24,7 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create _scope ({ I.pc; funct3; lhs; rhs; b_immediate } : _ I.t) =
+  let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; b_immediate } : _ I.t) =
     let branch_when ~f = mux2 (f lhs rhs) (pc +: b_immediate) (pc +:. 4), zero 1 in
     let operations_and_errors =
       List.init

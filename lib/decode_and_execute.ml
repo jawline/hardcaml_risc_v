@@ -10,8 +10,8 @@ module Make
 struct
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
   module Transaction = Transaction.Make (Hart_config)
-  module Op = Op.Make (Hart_config) (Memory) (Decoded_instruction)
-  module Branch = Branch.Make (Hart_config) (Memory) (Decoded_instruction)
+  module Op = Op.Make (Hart_config)
+  module Branch = Branch.Make (Hart_config)
 
   let register_width = Register_width.bits Hart_config.register_width
 
