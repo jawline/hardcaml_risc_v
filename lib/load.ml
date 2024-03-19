@@ -7,7 +7,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   module I = struct
     type 'a t =
-      { pc : 'a [@bits register_width]
+      { funct3 : 'a [@bits 3]
       ; source : 'a [@bits register_width]
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
            [@rtlprefix "memory_controller_to_hart"]
@@ -21,6 +21,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     type 'a t =
       { new_rd : 'a [@bits register_width] [@rtlname "new_rd"]
       ; error : 'a
+      ; finished : 'a
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
            [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
@@ -31,7 +32,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let create
     (_scope : Scope.t)
-    ({ I.pc = _
+    ({ I.funct3 = _
      ; source = _
      ; memory_controller_to_hart = _
      ; hart_to_memory_controller = _

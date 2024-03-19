@@ -20,9 +20,7 @@ let print (outputs : _ Op.O.t) =
   let open Bits in
   print_s
     [%message
-      ""
-        ~rd:(!(outputs.rd) |> to_int : int)
-        ~error:(!(outputs.error) |> to_bool : bool)]
+      "" ~rd:(!(outputs.rd) |> to_int : int) ~error:(!(outputs.error) |> to_bool : bool)]
 ;;
 
 let test ~lhs ~rhs ~funct3 ~funct7 sim =
@@ -103,4 +101,3 @@ let%expect_test "branch tests" =
     Funct 7 = 1
     ((rd 2) (error false)) |}]
 ;;
-
