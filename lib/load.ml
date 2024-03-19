@@ -31,7 +31,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let create
     (_scope : Scope.t)
-    ({ I.pc = _ ; source = _; memory_controller_to_hart = _; hart_to_memory_controller = _ } :
+    ({ I.pc = _
+     ; source = _
+     ; memory_controller_to_hart = _
+     ; hart_to_memory_controller = _
+     } :
       _ I.t)
     =
     assert false

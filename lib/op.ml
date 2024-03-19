@@ -29,7 +29,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
         ~f:(fun funct3 ->
           match Funct3.Op.of_int_exn funct3 with
           | Funct3.Op.Add_or_sub ->
-            let error = funct7 >=:. 1 in
+            let error = funct7 >:. 1 in
             mux2 (select funct7 0 0) (lhs -: rhs) (lhs +: rhs), error
           | Slt -> uresize (lhs <+ rhs) 32, zero 1
           | Sltu -> uresize (lhs <: rhs) 32, zero 1
@@ -42,7 +42,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
           | Or -> lhs |: rhs, zero 1
           | And -> lhs &: rhs, zero 1
           | Srl_or_sra ->
-            let error = funct7 >=:. 1 in
+            let error = funct7 >:. 1 in
             (* TODO: Not sure if this is correct for SRA *)
             let sra = Util.sra lhs rhs in
             let srl = Util.srl lhs rhs in

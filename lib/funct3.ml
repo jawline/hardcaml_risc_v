@@ -1,6 +1,8 @@
 open Core
 
 module Op_imm = struct
+  (* TODO: A dedicated path for op_imm is not necessary since it's the
+     same table as Op *)
   type t =
     | Addi
     | Slli
@@ -28,7 +30,8 @@ end
 
 module Op = struct
   type t =
-    | (* These seem identical to the op_imm versions but I'll leave it for clarity in use. *)
+    | (* These seem identical to the op_imm versions but I'll leave it for
+         clarity in use. *)
       Add_or_sub
     | Sll
     | Slt
@@ -38,6 +41,18 @@ module Op = struct
     | And
     | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
       Srl_or_sra
+
+  let to_int t =
+    match t with
+    | Add_or_sub -> 0b000
+    | Sll -> 0b001
+    | Slt -> 0b010
+    | Xor -> 0b100
+    | Sltu -> 0b011
+    | Or -> 0b110
+    | And -> 0b111
+    | Srl_or_sra -> 0b101
+  ;;
 
   let of_int_exn i =
     match i with
@@ -62,6 +77,17 @@ module Branch = struct
     | Bltu
     | Bgeu
     | Invalid
+
+  let to_int t =
+    match t with
+    | Beq -> 0b000
+    | Bne -> 0b001
+    | Blt -> 0b100
+    | Bge -> 0b101
+    | Bltu -> 0b110
+    | Bgeu -> 0b111
+    | Invalid -> raise_s [%message "BUG: No single representation"]
+  ;;
 
   let of_int_exn i =
     match i with
