@@ -9,3 +9,18 @@ let mux_shift ~f ~filler signal by_signal =
 let srl = mux_shift ~f:srl ~filler:(zero 32)
 let sll = mux_shift ~f:sll ~filler:(zero 32)
 let sra = mux_shift ~f:sra ~filler:(ones 32)
+
+module type Switchable = sig
+  type t
+
+  val of_int : int -> t option
+  val all : t list
+end
+
+let switch (type a) (module M : Switchable with type t = a) ~f ~if_not_found signal =
+  let open M in
+  mux_init
+    ~f:(fun i -> of_int i |> Option.map ~f |> Option.value ~default:if_not_found)
+    signal
+    (Int.pow 2 (width signal))
+;;

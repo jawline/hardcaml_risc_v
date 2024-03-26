@@ -102,11 +102,30 @@ module Branch = struct
 end
 
 module Load = struct
-  let lb = 0b000
-  let lh = 0b001
-  let lw = 0b010
-  let lbu = 0b100
-  let lhu = 0b101
+  type t =
+    | Lb
+    | Lh
+    | Lw
+    | Lbu
+    | Lhu
+  [@@deriving enumerate]
+
+  let to_int = function
+    | Lb -> 0b000
+    | Lh -> 0b001
+    | Lw -> 0b010
+    | Lbu -> 0b100
+    | Lhu -> 0b101
+  ;;
+
+  let of_int = function
+    | 0b000 -> Some Lb
+    | 0b001 -> Some Lh
+    | 0b010 -> Some Lw
+    | 0b100 -> Some Lbu
+    | 0b101 -> Some Lhu
+    | _ -> None
+  ;;
 end
 
 module Store = struct

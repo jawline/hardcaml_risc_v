@@ -73,10 +73,16 @@ struct
   let create _scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let which_ch =
-      reg_fb ~width:8 ~f:(Signal.mod_counter ~max:(M.num_channels - 1)) reg_spec
+      if M.num_channels = 0
+      then empty
+      else reg_fb ~width:8 ~f:(mod_counter ~max:(M.num_channels - 1)) reg_spec
     in
     let last_ch = reg reg_spec which_ch in
-    let which_ch_to_controller = Tx_bus.Tx.Of_signal.mux which_ch i.ch_to_controller in
+    let which_ch_to_controller =
+      if M.num_channels = 1
+      then List.hd_exn i.ch_to_controller
+      else Tx_bus.Tx.Of_signal.mux which_ch i.ch_to_controller
+    in
     let unaligned_bits = (M.data_bus_width / 8) - 1 in
     (* We truncate the address by unaligned bits to get the address in words. *)
     let real_address = sll which_ch_to_controller.data.address unaligned_bits in
