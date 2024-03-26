@@ -42,7 +42,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   end
 
   let create
-    (_scope : Scope.t)
+    (scope : Scope.t)
     ({ I.clock
      ; clear
      ; enable
@@ -56,12 +56,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     (* TODO: We currently disallow loads that are not aligned on a {load width}
        boundary. We could support this by loading a second word and muxing the
        result at the cost of an extra load cycle.  *)
+    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let current_state = State_machine.create (module State) reg_spec in
+    ignore (current_state.current -- "current_state" : Signal.t);
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      source &: ~:(of_int ~width:register_width 0b11)
+      source &: ~:(of_int ~width:register_width 0b11) -- "aligned_address"
     in
     let unaligned_bits =
       Util.switch
@@ -72,12 +74,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           | Lh | Lhu -> uresize source 2 &:. 0b1
           | Lb | Lbu -> zero 2)
         funct3
+      -- "unaligned_bits"
     in
-    let is_unaligned = unaligned_bits <>:. 0 in
+    let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
     let funct3_is_error =
       Util.switch (module Funct3.Load) ~if_not_found:(one 1) ~f:(fun _ -> zero 1) funct3
+      -- "funct3_is_error"
     in
-    let inputs_are_error = is_unaligned |: funct3_is_error in
+    let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
     compile
       [ current_state.switch
           [ ( State.Waiting_for_memory_controller

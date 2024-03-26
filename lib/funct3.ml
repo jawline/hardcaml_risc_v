@@ -41,6 +41,7 @@ module Op = struct
     | And
     | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
       Srl_or_sra
+  [@@deriving enumerate]
 
   let to_int t =
     match t with
@@ -54,17 +55,17 @@ module Op = struct
     | Srl_or_sra -> 0b101
   ;;
 
-  let of_int_exn i =
+  let of_int i =
     match i with
-    | 0b000 -> Add_or_sub
-    | 0b001 -> Sll
-    | 0b010 -> Slt
-    | 0b100 -> Xor
-    | 0b011 -> Sltu
-    | 0b110 -> Or
-    | 0b111 -> And
-    | 0b101 -> Srl_or_sra
-    | _ -> raise_s [%message "BUG: Funct3 should be 3 bits wide"]
+    | 0b000 -> Some Add_or_sub
+    | 0b001 -> Some Sll
+    | 0b010 -> Some Slt
+    | 0b100 -> Some Xor
+    | 0b011 -> Some Sltu
+    | 0b110 -> Some Or
+    | 0b111 -> Some And
+    | 0b101 -> Some Srl_or_sra
+    | _ -> None
   ;;
 end
 
@@ -76,7 +77,7 @@ module Branch = struct
     | Bge
     | Bltu
     | Bgeu
-    | Invalid
+  [@@deriving enumerate]
 
   let to_int t =
     match t with
@@ -86,18 +87,17 @@ module Branch = struct
     | Bge -> 0b101
     | Bltu -> 0b110
     | Bgeu -> 0b111
-    | Invalid -> raise_s [%message "BUG: No single representation"]
   ;;
 
-  let of_int_exn i =
+  let of_int i =
     match i with
-    | 0b000 -> Beq
-    | 0b001 -> Bne
-    | 0b100 -> Blt
-    | 0b101 -> Bge
-    | 0b110 -> Bltu
-    | 0b111 -> Bgeu
-    | _ -> Invalid
+    | 0b000 -> Some Beq
+    | 0b001 -> Some Bne
+    | 0b100 -> Some Blt
+    | 0b101 -> Some Bge
+    | 0b110 -> Some Bltu
+    | 0b111 -> Some Bgeu
+    | _ -> None
   ;;
 end
 

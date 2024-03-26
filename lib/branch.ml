@@ -26,21 +26,20 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; b_immediate } : _ I.t) =
     let branch_when ~f = mux2 (f lhs rhs) (pc +: b_immediate) (pc +:. 4), zero 1 in
-    let operations_and_errors =
-      List.init
-        ~f:(fun funct3 ->
-          match Funct3.Branch.of_int_exn funct3 with
+    let new_pc, error =
+      Util.switch2
+        (module Funct3.Branch)
+        ~if_not_found:(zero register_width, one 1)
+        ~f:(function
           | Funct3.Branch.Beq -> branch_when ~f:( ==: )
           | Bne -> branch_when ~f:( <>: )
           | Blt -> branch_when ~f:( <+ )
           | Bge -> branch_when ~f:( >=+ )
           | Bltu -> branch_when ~f:( <: )
-          | Bgeu -> branch_when ~f:( >=: )
-          | _ -> zero register_width, one 1)
-        8
+          | Bgeu -> branch_when ~f:( >=: ))
+        funct3
     in
-    let operations, errors = List.unzip operations_and_errors in
-    { O.new_pc = mux funct3 operations; error = mux funct3 errors }
+    { O.new_pc; error }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =

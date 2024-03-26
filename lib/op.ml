@@ -24,10 +24,11 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   end
 
   let create _scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =
-    let operations_and_errors =
-      List.init
-        ~f:(fun funct3 ->
-          match Funct3.Op.of_int_exn funct3 with
+    let rd, error =
+      Util.switch2
+        (module Funct3.Op)
+        ~if_not_found:(zero register_width, one 1)
+        ~f:(function
           | Funct3.Op.Add_or_sub ->
             let error = funct7 >:. 1 in
             mux2 (select funct7 0 0) (lhs -: rhs) (lhs +: rhs), error
@@ -47,10 +48,9 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             let sra = Util.sra lhs rhs in
             let srl = Util.srl lhs rhs in
             mux2 (select funct7 0 0) sra srl, error)
-        8
+        funct3
     in
-    let operations, errors = List.unzip operations_and_errors in
-    { O.rd = mux funct3 operations; error = mux funct3 errors }
+    { O.rd; error }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
