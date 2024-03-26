@@ -1,32 +1,4 @@
-open Core
-
-module Op_imm = struct
-  (* TODO: A dedicated path for op_imm is not necessary since it's the
-     same table as Op *)
-  type t =
-    | Addi
-    | Slli
-    | Slti
-    | Xori
-    | Sltiu
-    | Ori
-    | Andi
-    | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
-      Srli_or_srai
-
-  let of_int_exn i =
-    match i with
-    | 0b000 -> Addi
-    | 0b001 -> Slli
-    | 0b010 -> Slti
-    | 0b100 -> Xori
-    | 0b011 -> Sltiu
-    | 0b110 -> Ori
-    | 0b111 -> Andi
-    | 0b101 -> Srli_or_srai
-    | _ -> raise_s [%message "BUG: Funct3 should be 3 bits wide"]
-  ;;
-end
+open! Core
 
 module Op = struct
   type t =
