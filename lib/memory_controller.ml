@@ -100,6 +100,7 @@ struct
     let is_write = which_ch_to_controller.data.write -- "is_write_operation" in
     let memory =
       Ram.create
+        ~name:"main_memory_bram"
         ~collision_mode:Read_before_write
         ~size:desired_bytes_in_words
         ~write_ports:
@@ -119,7 +120,7 @@ struct
           |]
         ()
     in
-    let read_data = memory.(0) in
+    let read_data = memory.(0) -- "ram$read_data" in
     { O.ch_to_controller =
         List.init
           ~f:(fun channel ->

@@ -11,7 +11,7 @@ module Hart_config = struct
 end
 
 module Memory_controller = Memory_controller.Make (struct
-    let num_bytes = 4096
+    let num_bytes = 128
     let num_channels = 1
     let address_width = 32
     let data_bus_width = 32
@@ -103,6 +103,13 @@ let create_sim () =
 ;;
 
 let test ~source ~funct3 sim =
+  (* Initialize the main memory to some known values for testing. *)
+  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+  Array.iteri
+    ~f:(fun i mut ->
+      printf "%i %i\n" i (Bits.Mutable.width mut);
+      Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:32 i) ~dst:mut)
+    initial_ram;
   let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
   inputs.enable := of_int ~width:1 1;
@@ -121,14 +128,46 @@ let%expect_test "lw" =
   let sim = create_sim () in
   let waveform, sim = Waveform.create sim in
   (try test ~source:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
-  | _ ->
-    print_s [%message "BUG: Timed out or exception"]);
-    Waveform.expect
-      ~serialize_to:"/tmp/test_load"
-      ~display_width:150
-      ~display_height:100
-      waveform;
-  [%expect {|
+   | _ -> print_s [%message "BUG: Timed out or exception"]);
+  Waveform.expect
+    ~serialize_to:"/tmp/test_load"
+    ~display_width:150
+    ~display_height:100
+    waveform;
+  [%expect
+    {|
+    0 32
+    1 32
+    2 32
+    3 32
+    4 32
+    5 32
+    6 32
+    7 32
+    8 32
+    9 32
+    10 32
+    11 32
+    12 32
+    13 32
+    14 32
+    15 32
+    16 32
+    17 32
+    18 32
+    19 32
+    20 32
+    21 32
+    22 32
+    23 32
+    24 32
+    25 32
+    26 32
+    27 32
+    28 32
+    29 32
+    30 32
+    31 32
     (outputs
      ((new_rd 00000000000000000000000000000000) (error 0) (finished 1)
       (controller_to_hart
@@ -217,6 +256,9 @@ let%expect_test "lw" =
     │load$unaligned_bit││ 0                                                                                                                              │
     │                  ││────────                                                                                                                        │
     │                  ││────────                                                                                                                        │
+    │main_memory_bram  ││ 000000.                                                                                                                        │
+    │                  ││────────                                                                                                                        │
+    │                  ││────────                                                                                                                        │
     │memory_controller$││ 000000.                                                                                                                        │
     │                  ││────────                                                                                                                        │
     │memory_controller$││────────                                                                                                                        │
@@ -231,9 +273,6 @@ let%expect_test "lw" =
     │memory_controller$││                                                                                                                                │
     │                  ││────────                                                                                                                        │
     │memory_controller$││                                                                                                                                │
-    │                  ││────────                                                                                                                        │
-    │memory_controller$││────────                                                                                                                        │
-    │                  ││                                                                                                                                │
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    17d20d261a35916cec139c9d90a88acb |}]
+    9bbd6fde8d19cffe18a6cc053c3a3e6e |}]
 ;;
