@@ -82,10 +82,11 @@ struct
       then List.hd_exn i.ch_to_controller
       else Tx_bus.Tx.Of_signal.mux which_ch i.ch_to_controller
     in
-    let unaligned_bits = (M.data_bus_width / 8) - 1 in
+    let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
+    printf "%i\n" unaligned_bits;
     (* We truncate the address by unaligned bits to get the address in words. *)
     let real_address =
-      sll which_ch_to_controller.data.address unaligned_bits -- "real_address"
+      srl which_ch_to_controller.data.address unaligned_bits -- "real_address"
     in
     let is_operation = which_ch_to_controller.valid -- "is_operation" in
     let illegal_operation =
@@ -98,6 +99,11 @@ struct
       (is_operation &: ~:illegal_operation) -- "is_operation_and_is_legal"
     in
     let is_write = which_ch_to_controller.data.write -- "is_write_operation" in
+    let was_read =
+      (* We set valid high on the next cycle if we were doing a
+         read to indicate the data is ready. *)
+      is_operation_and_is_legal &: ~:is_write |> reg reg_spec
+    in
     let memory =
       Ram.create
         ~name:"main_memory_bram"
@@ -135,7 +141,7 @@ struct
             Rx_bus.Tx.Of_signal.mux
               (last_ch ==:. channel)
               [ Rx_bus.Tx.Of_signal.of_int 0
-              ; { Rx_bus.Tx.valid = vdd; data = { error = was_error; read_data } }
+              ; { Rx_bus.Tx.valid = was_read; data = { error = was_error; read_data } }
               ])
           M.num_channels
     }
