@@ -9,9 +9,10 @@ module Make
     (Registers : Registers_intf.S) =
 struct
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
-  module Transaction = Transaction.Make (Hart_config)
+  module Transaction = Transaction.Make (Hart_config) (Memory)
   module Op = Op.Make (Hart_config)
   module Branch = Branch.Make (Hart_config)
+  module Load = Load.Make (Hart_config) (Memory)
 
   let register_width = Register_width.bits Hart_config.register_width
 
@@ -57,7 +58,14 @@ struct
         scope
         { Op.I.funct3; funct7; lhs = rs1; rhs = i_immediate }
     in
-    { Transaction.set_rd = one 1; new_rd; error; new_pc = registers.pc +:. 4 }
+    { Transaction.finished = vdd
+    ; set_rd = vdd
+    ; new_rd
+    ; error
+    ; new_pc = registers.pc +:. 4
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
   ;;
 
   let op_instructions
@@ -68,7 +76,14 @@ struct
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical ~instance:"op" scope { Op.I.funct3; funct7; lhs = rs1; rhs = rs2 }
     in
-    { Transaction.set_rd = one 1; new_rd; error; new_pc = registers.pc +:. 4 }
+    { Transaction.finished = vdd
+    ; set_rd = vdd
+    ; new_rd
+    ; error
+    ; new_pc = registers.pc +:. 4
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
   ;;
 
   (** JAL (jump and link) adds the signed J-immediate value to the current PC
@@ -79,7 +94,14 @@ struct
     =
     let new_pc = registers.pc +: decoded_instruction.j_immediate in
     let error = new_pc &:. 0b11 <>:. 0 in
-    { Transaction.set_rd = one 1; new_rd = registers.pc +:. 4; new_pc; error }
+    { Transaction.finished = vdd
+    ; set_rd = vdd
+    ; new_rd = registers.pc +:. 4
+    ; new_pc
+    ; error
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
   ;;
 
   (** JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
@@ -96,7 +118,14 @@ struct
       &: ~:(of_int ~width:register_width 1)
     in
     let error = new_pc &:. 0b11 <>:. 0 in
-    { Transaction.set_rd = one 1; new_pc; error; new_rd = registers.pc +:. 4 }
+    { Transaction.finished = vdd
+    ; set_rd = one 1
+    ; new_pc
+    ; error
+    ; new_rd = registers.pc +:. 4
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
   ;;
 
   (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
@@ -105,10 +134,13 @@ struct
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Transaction.set_rd = one 1
+    { Transaction.finished = vdd
+    ; set_rd = vdd
     ; new_rd = registers.pc +:. 4
     ; error = zero 1
     ; new_pc = decoded_instruction.u_immediate
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     }
   ;;
 
@@ -119,10 +151,13 @@ struct
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Transaction.set_rd = one 1
+    { Transaction.finished = vdd
+    ; set_rd = vdd
     ; new_rd = registers.pc +:. 4
     ; error = zero 1
     ; new_pc = registers.pc +: decoded_instruction.u_immediate
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     }
   ;;
 
@@ -145,34 +180,114 @@ struct
         ; pc = registers.pc
         }
     in
-    { Transaction.set_rd = zero 1; new_rd = zero register_width; error; new_pc }
+    { Transaction.finished = vdd
+    ; set_rd = gnd
+    ; new_rd = zero register_width
+    ; error
+    ; new_pc
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
   ;;
 
   let fence ~(registers : _ Registers.t) (_decoded_instruction : _ Decoded_instruction.t) =
     (* TODO: Currently all memory transactions are atomic so I'm not sure if I
      * need to implement this. Figure it out. *)
-    { Transaction.set_rd = one 1
+    { Transaction.finished = vdd
+    ; set_rd = vdd
     ; new_rd = zero register_width
     ; error = zero 1
     ; new_pc = registers.pc +:. 4
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
+  ;;
+
+  (** The load table loads a value from [rs1] and places it in rd *)
+  let load_instruction
+    ~clock
+    ~clear
+    ~memory_controller_to_hart
+    ~hart_to_memory_controller
+    ~registers:_
+    (decoded_instruction : _ Decoded_instruction.t)
+    scope
+    =
+    let { Load.O.finished
+        ; new_rd
+        ; error
+        ; memory_controller_to_hart
+        ; hart_to_memory_controller
+        }
+      =
+      Load.hierarchical
+        ~instance:"load"
+        scope
+        { Load.I.clock
+        ; clear
+        ; enable = (* We need to guard the Load instruction since it's internal
+        state machine might try to load data and get stuck otherwise. *)
+        decoded_instruction.opcode ==:. (Opcodes.load)
+        ; funct3 = decoded_instruction.funct3
+        ; source = decoded_instruction.rs1
+        ; memory_controller_to_hart
+        ; hart_to_memory_controller
+        }
+    in
+    { Transaction.finished
+    ; set_rd = gnd
+    ; new_rd
+    ; error
+    ; new_pc = zero register_width
+    ; memory_controller_to_hart
+    ; hart_to_memory_controller
     }
   ;;
 
   module Table_entry = struct
     type 'a t =
       { opcode : int
+      ; finished : 'a
       ; new_pc : 'a
       ; set_rd : 'a
       ; new_rd : 'a
       ; error : 'a
+      ; memory_controller_to_hart : Memory.Rx_bus.Rx.Of_signal.t
+      ; hart_to_memory_controller : Memory.Tx_bus.Tx.Of_signal.t
       }
 
-    let create ~opcode { Transaction.new_pc; set_rd; new_rd; error } =
-      { opcode; new_pc; set_rd; new_rd; error }
+    let create
+      ~opcode
+      { Transaction.finished
+      ; new_pc
+      ; set_rd
+      ; new_rd
+      ; error
+      ; memory_controller_to_hart
+      ; hart_to_memory_controller
+      }
+      =
+      { finished
+      ; opcode
+      ; new_pc
+      ; set_rd
+      ; new_rd
+      ; error
+      ; memory_controller_to_hart
+      ; hart_to_memory_controller
+      }
     ;;
   end
 
-  let instruction_table ~registers ~decoded_instruction scope =
+  let instruction_table
+    ~clock
+    ~clear
+    ~memory_controller_to_hart
+    ~hart_to_memory_controller
+    ~registers
+    ~decoded_instruction
+    scope
+    =
     [ Table_entry.create
         ~opcode:Opcodes.op
         (op_instructions ~registers scope decoded_instruction)
@@ -195,6 +310,16 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.branch
         (branch_instruction ~registers decoded_instruction scope)
+    ; Table_entry.create
+        ~opcode:Opcodes.load
+        (load_instruction
+           ~clock
+           ~clear
+           ~memory_controller_to_hart
+           ~hart_to_memory_controller
+           ~registers
+           decoded_instruction
+           scope)
     ]
   ;;
 
@@ -208,9 +333,15 @@ struct
 
   let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
+    let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
+    let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec in
     let instruction_table =
       instruction_table
+        ~clock:i.clock
+        ~clear:i.clear
+        ~memory_controller_to_hart:i.memory_controller_to_hart
+        ~hart_to_memory_controller:i.hart_to_memory_controller
         ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
         ~registers:i.registers
         scope
@@ -243,12 +374,39 @@ struct
                   ] )
               ; ( State.Executing
                 , List.map
-                    ~f:(fun { Table_entry.opcode; new_pc; set_rd; new_rd; error } ->
+                    ~f:
+                      (fun
+                        { Table_entry.finished
+                        ; opcode
+                        ; new_pc
+                        ; set_rd
+                        ; new_rd
+                        ; error
+                        ; hart_to_memory_controller = op_to_mem_ctrl
+                        ; memory_controller_to_hart = mem_ctrl_to_op
+                        }
+                      ->
                       when_
-                        (decoded_instruction.opcode.value ==:. opcode)
-                        [ Transaction.Of_always.assign
+                        (decoded_instruction.opcode.value ==:. opcode &: finished)
+                        [ Memory.Rx_bus.Rx.Of_always.assign
+                            memory_controller_to_hart
+                            mem_ctrl_to_op
+                        ; Memory.Tx_bus.Tx.Of_always.assign
+                            hart_to_memory_controller
+                            op_to_mem_ctrl
+                        ; Transaction.Of_always.assign
                             transaction
-                            { new_pc; set_rd; new_rd; error }
+                            { finished = vdd
+                            ; new_pc
+                            ; set_rd
+                            ; new_rd
+                            ; error
+                            ; (* TODO: Remove these from transaction and pass them alongside instead. *)
+                              memory_controller_to_hart =
+                                Memory.Rx_bus.Rx.Of_signal.of_int 0
+                            ; hart_to_memory_controller =
+                                Memory.Tx_bus.Tx.Of_signal.of_int 0
+                            }
                         ; current_state.set_next Committing
                         ])
                     instruction_table )
@@ -257,8 +415,10 @@ struct
               ]
           ]
       ];
-    { O.memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
-    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    { O.memory_controller_to_hart =
+        Memory.Rx_bus.Rx.Of_always.value memory_controller_to_hart
+    ; hart_to_memory_controller =
+        Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     ; finished = current_state.is Committing
     ; new_registers =
         commit_transaction
