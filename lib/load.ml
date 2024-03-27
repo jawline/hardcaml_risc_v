@@ -109,15 +109,15 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ]
       ];
     { O.new_rd =
-        (let alignment_bits = source &:. 0b11 in
-         let full_word = memory_controller_to_hart.data.read_data in
+        (let alignment_bits = (source &:. 0b11) -- "alignment_bits" in
+         let full_word = memory_controller_to_hart.data.read_data -- "full_word" in
          let half_word =
            mux2
              (alignment_bits ==:. 0)
-             (sel_top full_word (register_width / 2))
-             (sel_bottom full_word (register_width / 2))
+             (sel_top full_word 16)
+             (sel_bottom full_word 16) --  "half_word"
          in
-         let byte = mux alignment_bits (split_msb ~part_width:8 full_word) in
+         let byte = mux alignment_bits (split_msb ~part_width:8 full_word) -- "byte" in
          Util.switch
            (module Funct3.Load)
            ~if_not_found:(zero register_width)
