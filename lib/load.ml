@@ -14,9 +14,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; funct3 : 'a [@bits 3]
       ; source : 'a [@bits register_width]
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart"]
+           [@rtlprefix "memory_controller_to_hart$"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller"]
+           [@rtlprefix "hart_to_memory_controller$"]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -27,9 +27,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; error : 'a
       ; finished : 'a
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
-           [@rtlprefix "memory_controller_to_hart"]
+           [@rtlprefix "memory_controller_to_hart$"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller"]
+           [@rtlprefix "hart_to_memory_controller$"]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -86,7 +86,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       [ current_state.switch
           [ ( State.Waiting_for_memory_controller
             , [ when_
-                  (enable &: memory_controller_ready &: ~:inputs_are_error)
+                  (enable &: ~:inputs_are_error)
                   [ Memory.Tx_bus.Tx.Of_always.assign
                       hart_to_memory_controller
                       { valid = one 1
@@ -96,7 +96,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                           ; write_data = zero 32
                           }
                       }
-                  ; current_state.set_next Waiting_for_load
+                  ; when_
+                      memory_controller_ready
+                      [ current_state.set_next Waiting_for_load ]
                   ]
               ] )
           ; ( Waiting_for_load

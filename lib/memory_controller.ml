@@ -70,14 +70,13 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create _scope (i : _ I.t) =
+  let create scope (i : _ I.t) =
+    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let which_ch =
-      if M.num_channels = 0
-      then empty
-      else reg_fb ~width:8 ~f:(mod_counter ~max:(M.num_channels - 1)) reg_spec
+      reg_fb ~width:8 ~f:(mod_counter ~max:(M.num_channels - 1)) reg_spec -- "which_ch"
     in
-    let last_ch = reg reg_spec which_ch in
+    let last_ch = reg reg_spec which_ch -- "last_ch " in
     let which_ch_to_controller =
       if M.num_channels = 1
       then List.hd_exn i.ch_to_controller
@@ -85,30 +84,36 @@ struct
     in
     let unaligned_bits = (M.data_bus_width / 8) - 1 in
     (* We truncate the address by unaligned bits to get the address in words. *)
-    let real_address = sll which_ch_to_controller.data.address unaligned_bits in
-    let is_operation = which_ch_to_controller.valid in
+    let real_address =
+      sll which_ch_to_controller.data.address unaligned_bits -- "real_address"
+    in
+    let is_operation = which_ch_to_controller.valid -- "is_operation" in
     let illegal_operation =
       let is_unaligned = which_ch_to_controller.data.address &:. unaligned_bits <>:. 0 in
       let is_out_of_range = real_address >:. desired_bytes_in_words in
-      is_operation &: (is_unaligned |: is_out_of_range)
+      (is_operation &: (is_unaligned |: is_out_of_range)) -- "illegal_operation"
     in
-    let was_error = reg reg_spec illegal_operation in
-    let is_operation_and_is_legal = is_operation &: ~:illegal_operation in
-    let is_write = which_ch_to_controller.data.write in
+    let was_error = reg reg_spec illegal_operation -- "was_error" in
+    let is_operation_and_is_legal =
+      (is_operation &: ~:illegal_operation) -- "is_operation_and_is_legal"
+    in
+    let is_write = which_ch_to_controller.data.write -- "is_write_operation" in
     let memory =
       Ram.create
         ~collision_mode:Read_before_write
         ~size:desired_bytes_in_words
         ~write_ports:
-          [| { write_enable = is_operation_and_is_legal &: is_write
-             ; write_address = real_address
-             ; write_data = which_ch_to_controller.data.write_data
+          [| { write_enable =
+                 (is_operation_and_is_legal &: is_write) -- "ram$write_enable"
+             ; write_address = real_address -- "ram$write_address"
+             ; write_data = which_ch_to_controller.data.write_data -- "ram$write_data"
              ; write_clock = i.clock
              }
           |]
         ~read_ports:
-          [| { read_enable = is_operation_and_is_legal &: ~:is_write
-             ; read_address = real_address
+          [| { read_enable =
+                 (is_operation_and_is_legal &: ~:is_write) -- "ram$read_enable"
+             ; read_address = real_address -- "ram$read_address"
              ; read_clock = i.clock
              }
           |]
@@ -128,8 +133,8 @@ struct
           ~f:(fun channel ->
             Rx_bus.Tx.Of_signal.mux
               (last_ch ==:. channel)
-              [ { Rx_bus.Tx.valid = vdd; data = { error = was_error; read_data } }
-              ; Rx_bus.Tx.Of_signal.of_int 0
+              [ Rx_bus.Tx.Of_signal.of_int 0
+              ; { Rx_bus.Tx.valid = vdd; data = { error = was_error; read_data } }
               ])
           M.num_channels
     }
