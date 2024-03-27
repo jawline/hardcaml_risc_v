@@ -162,7 +162,6 @@ let%expect_test "lw" =
         (hart_to_memory_controller ((ready 0))))) |}];
   (try test ~source:12 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
-   
   [%expect
     {|
       (outputs
@@ -171,8 +170,7 @@ let%expect_test "lw" =
          ((valid 1)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 0))))) |}];
-
-   (* Unaligned loads, we expect these to fail *)
+  (* Unaligned loads, we expect these to fail *)
   (try test ~source:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
@@ -233,7 +231,6 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 0))))) |}];
-
   Waveform.expect
     ~serialize_to:"/tmp/test_load"
     ~display_width:150
@@ -344,17 +341,17 @@ let%expect_test "lw" =
     21154fda54884b78bab251eedac2ae99 |}]
 ;;
 
-
-
 let%expect_test "lh" =
   let sim = create_sim () in
   (* Initialize the main memory to some known values for testing. *)
   let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
   Array.iteri
-    ~f:(fun i mut -> 
-            let i = i * 2 in
-            let test_value = Bits.concat_msb [ Bits.of_int ~width:16 (i + 1)  ; Bits.of_int ~width:16 (i + 2) ] in
-            Bits.Mutable.copy_bits ~src:test_value ~dst:mut)
+    ~f:(fun i mut ->
+      let i = i * 2 in
+      let test_value =
+        Bits.concat_msb [ Bits.of_int ~width:16 (i + 1); Bits.of_int ~width:16 (i + 2) ]
+      in
+      Bits.Mutable.copy_bits ~src:test_value ~dst:mut)
     initial_ram;
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
@@ -369,8 +366,6 @@ let%expect_test "lh" =
          ((valid 1)
           (data ((error 0) (read_data 00000000000000010000000000000010)))))
         (hart_to_memory_controller ((ready 0))))) |}];
-
-
   (try test ~source:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
@@ -391,7 +386,6 @@ let%expect_test "lh" =
          ((valid 1)
           (data ((error 0) (read_data 00000000000000110000000000000100)))))
         (hart_to_memory_controller ((ready 0))))) |}];
-
   (try test ~source:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
@@ -402,8 +396,7 @@ let%expect_test "lh" =
          ((valid 1)
           (data ((error 0) (read_data 00000000000000110000000000000100)))))
         (hart_to_memory_controller ((ready 0))))) |}];
-
-   (* Unaligned loads, we expect these to fail *)
+  (* Unaligned loads, we expect these to fail *)
   (try test ~source:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
@@ -414,7 +407,6 @@ let%expect_test "lh" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000110000000000000100)))))
         (hart_to_memory_controller ((ready 0))))) |}];
-
   Waveform.expect
     ~serialize_to:"/tmp/test_load_half"
     ~display_width:150
@@ -524,3 +516,185 @@ let%expect_test "lh" =
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
     bce5a4648860bd58351730a911d3127f |}]
 ;;
+
+let%expect_test "lb" =
+  let sim = create_sim () in
+  (* Initialize the main memory to some known values for testing. *)
+  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+  Array.iteri
+    ~f:(fun i mut ->
+      let i = i * 4 in
+      let test_value =
+        Bits.concat_msb
+          [ Bits.of_int ~width:8 (i + 1)
+          ; Bits.of_int ~width:8 (i + 2)
+          ; Bits.of_int ~width:8 (i + 3)
+          ; Bits.of_int ~width:8 (i + 4)
+          ]
+      in
+      Bits.Mutable.copy_bits ~src:test_value ~dst:mut)
+    initial_ram;
+  let waveform, sim = Waveform.create sim in
+  (* Aligned loads, we expect these to succeed. *)
+  (try test ~source:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+   | _ -> print_s [%message "BUG: Timed out or exception"]);
+  [%expect
+    {|
+      2
+      (outputs
+       ((new_rd 00000000000000000000000000000001) (error 0) (finished 1)
+        (controller_to_hart
+         ((valid 1)
+          (data ((error 0) (read_data 00000001000000100000001100000100)))))
+        (hart_to_memory_controller ((ready 0))))) |}];
+  (try test ~source:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+   | _ -> print_s [%message "BUG: Timed out or exception"]);
+  [%expect
+    {|
+      (outputs
+       ((new_rd 00000000000000000000000000000010) (error 0) (finished 1)
+        (controller_to_hart
+         ((valid 1)
+          (data ((error 0) (read_data 00000001000000100000001100000100)))))
+        (hart_to_memory_controller ((ready 0))))) |}];
+  (try test ~source:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+   | _ -> print_s [%message "BUG: Timed out or exception"]);
+  [%expect
+    {|
+      (outputs
+       ((new_rd 00000000000000000000000000000011) (error 0) (finished 1)
+        (controller_to_hart
+         ((valid 1)
+          (data ((error 0) (read_data 00000001000000100000001100000100)))))
+        (hart_to_memory_controller ((ready 0))))) |}];
+  (try test ~source:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+   | _ -> print_s [%message "BUG: Timed out or exception"]);
+  [%expect
+    {|
+      (outputs
+       ((new_rd 00000000000000000000000000000100) (error 0) (finished 1)
+        (controller_to_hart
+         ((valid 1)
+          (data ((error 0) (read_data 00000001000000100000001100000100)))))
+        (hart_to_memory_controller ((ready 0))))) |}];
+  (try test ~source:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+   | _ -> print_s [%message "BUG: Timed out or exception"]);
+  [%expect
+    {|
+      (outputs
+       ((new_rd 00000000000000000000000000000101) (error 0) (finished 1)
+        (controller_to_hart
+         ((valid 1)
+          (data ((error 0) (read_data 00000101000001100000011100001000)))))
+        (hart_to_memory_controller ((ready 0))))) |}];
+  Waveform.expect
+    ~serialize_to:"/tmp/test_load_byte"
+    ~display_width:150
+    ~display_height:100
+    waveform;
+  [%expect
+    {|
+    ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │clock             ││┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   │
+    │                  ││    └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───│
+    │clear             ││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │enable            ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────┬───────                                                                        │
+    │funct3            ││ 0                                              │1                                                                              │
+    │                  ││────────────────────────────────────────────────┴───────                                                                        │
+    │                  ││────────────────┬───────┬───────┬───────┬───────┬───────                                                                        │
+    │source            ││ 00000000       │000000.│000000.│000000.│000000.│000000.                                                                        │
+    │                  ││────────────────┴───────┴───────┴───────┴───────┴───────                                                                        │
+    │controller_to_hart││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────┬───────────────────────────────────────┬───────                                                                        │
+    │controller_to_hart││ 000000.│01020304                               │050607.                                                                        │
+    │                  ││────────┴───────────────────────────────────────┴───────                                                                        │
+    │controller_to_hart││        ┌───────────────────────────────────────────────                                                                        │
+    │                  ││────────┘                                                                                                                       │
+    │error             ││                                                ┌───────                                                                        │
+    │                  ││────────────────────────────────────────────────┘                                                                               │
+    │finished          ││        ┌───────────────────────────────────────────────                                                                        │
+    │                  ││────────┘                                                                                                                       │
+    │hart_to_controller││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────┬───────┬───────┬───────┬───────┬───────┬───────                                                                        │
+    │new_rd            ││ 000000.│000000.│000000.│000000.│000000.│000000.│000007.                                                                        │
+    │                  ││────────┴───────┴───────┴───────┴───────┴───────┴───────                                                                        │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │load$aligned_addre││ FFFFFFFC                                                                                                                       │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────────────┬───────┬───────┬───────┬───────┬───────                                                                        │
+    │load$alignment_bit││ 00000000       │000000.│000000.│000000.│000000.│000000.                                                                        │
+    │                  ││────────────────┴───────┴───────┴───────┴───────┴───────                                                                        │
+    │                  ││────────┬───────┬───────┬───────┬───────┬───────┬───────                                                                        │
+    │load$byte         ││ 00     │01     │02     │03     │04     │01     │06                                                                             │
+    │                  ││────────┴───────┴───────┴───────┴───────┴───────┴───────                                                                        │
+    │load$current_state││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────┬───────────────────────────────────────┬───────                                                                        │
+    │load$full_word    ││ 000000.│01020304                               │050607.                                                                        │
+    │                  ││────────┴───────────────────────────────────────┴───────                                                                        │
+    │load$funct3_is_err││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────┬───────┬───────────────────────┬───────┬───────                                                                        │
+    │load$half_word    ││ 0000   │0102   │0304                   │0102   │0708                                                                           │
+    │                  ││────────┴───────┴───────────────────────┴───────┴───────                                                                        │
+    │load$i$clear      ││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │load$i$clock      ││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │load$i$enable     ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────┬───────                                                                        │
+    │load$i$funct3     ││ 0                                              │1                                                                              │
+    │                  ││────────────────────────────────────────────────┴───────                                                                        │
+    │load$i$hart_to_mem││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │load$i$memory_cont││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────┬───────────────────────────────────────┬───────                                                                        │
+    │load$i$memory_cont││ 000000.│01020304                               │050607.                                                                        │
+    │                  ││────────┴───────────────────────────────────────┴───────                                                                        │
+    │load$i$memory_cont││        ┌───────────────────────────────────────────────                                                                        │
+    │                  ││────────┘                                                                                                                       │
+    │                  ││────────────────┬───────┬───────┬───────┬───────┬───────                                                                        │
+    │load$i$source     ││ 00000000       │000000.│000000.│000000.│000000.│000000.                                                                        │
+    │                  ││────────────────┴───────┴───────┴───────┴───────┴───────                                                                        │
+    │load$inputs_are_er││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │load$is_unaligned ││                                                ┌───────                                                                        │
+    │                  ││────────────────────────────────────────────────┘                                                                               │
+    │load$o$error      ││                                                ┌───────                                                                        │
+    │                  ││────────────────────────────────────────────────┘                                                                               │
+    │load$o$finished   ││        ┌───────────────────────────────────────────────                                                                        │
+    │                  ││────────┘                                                                                                                       │
+    │                  ││────────────────────────────────────────┬───────┬───────                                                                        │
+    │load$o$hart_to_mem││ 00000000                               │000000.│000000.                                                                        │
+    │                  ││────────────────────────────────────────┴───────┴───────                                                                        │
+    │load$o$hart_to_mem││────────────────────────────────────────────────┐                                                                               │
+    │                  ││                                                └───────                                                                        │
+    │load$o$hart_to_mem││                                                                                                                                │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │load$o$hart_to_mem││ 00000000                                                                                                                       │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────┬───────┬───────┬───────┬───────┬───────┬───────                                                                        │
+    │load$o$new_rd     ││ 000000.│000000.│000000.│000000.│000000.│000000.│000007.                                                                        │
+    │                  ││────────┴───────┴───────┴───────┴───────┴───────┴───────                                                                        │
+    │                  ││────────────────────────────────────────────────┬───────                                                                        │
+    │load$unaligned_bit││ 0                                              │1                                                                              │
+    │                  ││────────────────────────────────────────────────┴───────                                                                        │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │main_memory_bram  ││ 00000000                                                                                                                       │
+    │                  ││────────────────────────────────────────────────────────                                                                        │
+    │                  ││────────────────────────────────────────┬───────┬───────                                                                        │
+    │memory_controller$││ 00000000                               │000000.│000000.                                                                        │
+    │                  ││────────────────────────────────────────┴───────┴───────                                                                        │
+    └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+    bce8e2c0c001d387a43175450d4a9e67 |}]
+;;
+
+(* TODO: Sign extension tests *)
