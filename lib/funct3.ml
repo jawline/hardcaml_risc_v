@@ -101,9 +101,23 @@ module Load = struct
 end
 
 module Store = struct
-  let sb = 0b000
-  let sh = 0b001
-  let sw = 0b010
+  type t =
+    | Sb
+    | Sh
+    | Sw
+
+  let to_int = function
+    | Sb -> 0b000
+    | Sh -> 0b001
+    | Sw -> 0b010
+  ;;
+
+  let of_int = function
+    | 0b000 -> Some Sb
+    | 0b001 -> Some Sh
+    | 0b010 -> Some Sw
+    | _ -> None
+  ;;
 end
 
 module System = struct

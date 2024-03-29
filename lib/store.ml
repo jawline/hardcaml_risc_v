@@ -1,4 +1,4 @@
-(** Store implements SW, SH and SB as well as unsigned variants. It implements
+(** Store implements SW, SH and SB. It implements
     a state machine that first collects the current state of the word around
     and address, then writes the new desired word at the align address to a
     register, then waits for the memory controller to write that word out.
