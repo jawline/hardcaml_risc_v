@@ -1,6 +1,9 @@
-(** The Load opcode implements LW, LH, LB and non sign extended variants LHU and LBU.
-    We currently disallow non-width aligned loads (e.g, shorts at index 1 and words
-    at indices 1, 2, 3). *)
+(** Store implements SW, SH and SB as well as unsigned variants. It implements
+    a state machine that first collects the current state of the word around
+    and address, then writes the new desired word at the align address to a
+    register, then waits for the memory controller to write that word out.
+
+    We do not support unaligned writes. *)
 open! Core
 
 open Hardcaml
@@ -40,8 +43,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   module State = struct
     type t =
-      | Waiting_for_memory_controller
+      | Preparing_load
       | Waiting_for_load
+      | Waiting_for_store
     [@@deriving sexp, enumerate, compare]
   end
 
@@ -57,9 +61,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
      } :
       _ I.t)
     =
-    (* TODO: We currently disallow loads that are not aligned on a {load width}
-       boundary. We could support this by loading a second word and muxing the
-       result at the cost of an extra load cycle.  *)
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let current_state = State_machine.create (module State) reg_spec in
@@ -86,9 +87,17 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       -- "funct3_is_error"
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
+    let loaded_value = assert false in
+    let word_to_write =
+      (* The word to write back to memory during
+         Waiting_for_store.  If we are writing a full word, this is set on cycle 0,
+         otherwise we need to do a load from the memory controller and concat it
+         with the desire write to produce the word to write back. *)
+      Variable.reg ~width:register_width reg_spec
+    in
     compile
       [ current_state.switch
-          [ ( State.Waiting_for_memory_controller
+          [ ( State.Preparing_load
             , [ when_
                   (enable &: ~:inputs_are_error)
                   [ Memory.Tx_bus.Tx.Of_always.assign
@@ -108,28 +117,12 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ; ( Waiting_for_load
             , [ when_
                   memory_controller_to_hart.valid
-                  [ current_state.set_next Waiting_for_memory_controller ]
+                  [ current_state.set_next Waiting_for_store ]
               ] )
+          ; Waiting_for_store, assert false
           ]
       ];
-    { O.new_rd =
-        (let alignment_bits = (source &:. 0b11) -- "alignment_bits" in
-         let full_word = memory_controller_to_hart.data.read_data -- "full_word" in
-         let half_word =
-           mux2 (alignment_bits ==:. 0) (sel_top full_word 16) (sel_bottom full_word 16)
-           -- "half_word"
-         in
-         let byte = mux alignment_bits (split_msb ~part_width:8 full_word) -- "byte" in
-         Util.switch
-           (module Funct3.Load)
-           ~if_not_found:(zero register_width)
-           ~f:(function
-             | Funct3.Load.Lw -> memory_controller_to_hart.data.read_data
-             | Lh -> Decoder.sign_extend ~width:register_width half_word
-             | Lhu -> uresize half_word register_width
-             | Lb -> Decoder.sign_extend ~width:register_width byte
-             | Lbu -> uresize byte register_width)
-           funct3)
+    { O.new_rd = assert false
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
     ; finished = is_unaligned |: memory_controller_to_hart.valid
     ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = one 1 }
@@ -140,6 +133,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Load" ~instance create input
+    H.hierarchical ~scope ~name:"Store" ~instance create input
   ;;
 end
