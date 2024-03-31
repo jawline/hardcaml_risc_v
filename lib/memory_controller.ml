@@ -99,10 +99,10 @@ struct
       (is_operation &: ~:illegal_operation) -- "is_operation_and_is_legal"
     in
     let is_write = which_ch_to_controller.data.write -- "is_write_operation" in
-    let was_read =
-      (* We set valid high on the next cycle if we were doing a
-         read to indicate the data is ready. *)
-      is_operation_and_is_legal &: ~:is_write |> reg reg_spec
+    let was_operation =
+      (* We set valid to high when a read / write is completed. This will be on
+         the next cycle from acknowledgement. *)
+      is_operation_and_is_legal |> reg reg_spec
     in
     let memory =
       Ram.create
@@ -133,7 +133,7 @@ struct
             (* Set ready for the channel we're considering in round robin. *)
             Tx_bus.Rx.Of_signal.mux
               (which_ch ==:. channel)
-              [ Tx_bus.Rx.Of_signal.of_int 1; Tx_bus.Rx.Of_signal.of_int 0 ])
+              [  Tx_bus.Rx.Of_signal.of_int 0 ; Tx_bus.Rx.Of_signal.of_int 1 ])
           M.num_channels
     ; controller_to_ch =
         List.init
@@ -141,7 +141,9 @@ struct
             Rx_bus.Tx.Of_signal.mux
               (last_ch ==:. channel)
               [ Rx_bus.Tx.Of_signal.of_int 0
-              ; { Rx_bus.Tx.valid = was_read; data = { error = was_error; read_data } }
+              ; { Rx_bus.Tx.valid = was_operation
+                ; data = { error = was_error; read_data }
+                }
               ])
           M.num_channels
     }
