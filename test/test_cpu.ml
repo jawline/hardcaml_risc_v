@@ -146,6 +146,7 @@ let%expect_test "add" =
           (general
            (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
      100093 409093 00 00 00 00 00 00 |}];
+  (* TODO: Test the negative cases *)
   test
     ~instructions:
       [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:10
@@ -161,6 +162,37 @@ let%expect_test "add" =
           (general
            (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
      a00093 50a113 f0a193 00 00 00 00 00 |}];
+  test
+    ~instructions:
+      [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:10
+      ; op_imm ~funct3:Funct3.Op.Sltu ~rs1:1 ~rd:2 ~immediate:5
+      ; op_imm ~funct3:Funct3.Op.Sltu ~rs1:1 ~rd:3 ~immediate:15
+      ]
+    sim;
+  [%expect
+    {|
+     (outputs
+      ((registers
+        (((pc 12)
+          (general
+           (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
+     a00093 50b113 f0b193 00 00 00 00 00 |}];
+test
+    ~instructions:
+      [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:16
+      ; op_imm ~funct3:Funct3.Op.Srl_or_sra ~rs1:1 ~rd:2 ~immediate:4
+      ; op_imm ~funct3:Funct3.Op.Srl_or_sra ~rs1:1 ~rd:3 ~immediate:3
+      ]
+    sim;
+  [%expect
+    {|
+     (outputs
+      ((registers
+        (((pc 12)
+          (general
+           (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
+     1000093 40d113 30d193 00 00 00 00 00 |}];
+
   Waveform.expect
     ~serialize_to:"/tmp/test_cpu"
     ~display_width:150
@@ -268,5 +300,5 @@ let%expect_test "add" =
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    d9fd7378a538ea9a2bd223fa492b3d1a |}]
+    d7c3d6fe8a83790d65f3ec8161d4b506 |}]
 ;;
