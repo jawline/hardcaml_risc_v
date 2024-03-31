@@ -31,8 +31,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   module O = struct
     type 'a t =
-      { new_rd : 'a [@bits register_width] [@rtlname "new_rd"]
-      ; error : 'a
+      {  error : 'a
       ; finished : 'a
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
            [@rtlprefix "memory_controller_to_hart$"]
@@ -51,7 +50,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     [@@deriving sexp, enumerate, compare]
   end
 
-  let combine_old_and_new_word funct3 address old_word new_word =
+  let combine_old_and_new_word ~funct3 ~destination ~old_word ~new_word =
     mux_init
       ~f:(fun alignment ->
         Util.switch
@@ -85,7 +84,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               concat_msb
                 (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
           funct3)
-      (uresize address (Int.floor_log2 (register_width / 8)))
+      (uresize destination (Int.floor_log2 (register_width / 8)))
       (Int.floor_log2 (register_width / 8))
   ;;
 
@@ -176,10 +175,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                           (* Here we supply the
                              unaligned destination as it is used to decide how to
                              rewrite the word. *)
-                          destination
-                          funct3
-                          memory_controller_to_hart.data.read_data
-                          value
+                          ~funct3
+                          ~destination
+                          ~old_word:memory_controller_to_hart.data.read_data
+                          ~new_word:value
                   ; current_state.set_next Waiting_for_store
                   ]
               ] )
@@ -195,17 +194,18 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   }
               ; when_ memory_controller_ready [ current_state.set_next Waiting_for_store ]
               ] )
-          ; ( Waiting_for_load
+          ; ( Waiting_for_store
             , [ when_
                   memory_controller_to_hart.valid
                   [ current_state.set_next Preparing_load ]
               ] )
           ]
       ];
-    { O.new_rd = assert false
-    ; error = memory_controller_to_hart.data.error |: inputs_are_error
+    { O.error = memory_controller_to_hart.data.error |: inputs_are_error
     ; finished =
-        (* We are finished either once the memory controller responds with a write finished signal OR immediately with error if we are unaligned. *)
+        (* We are finished either once the memory controller responds with a
+           write finished signal OR immediately with error if we are unaligned.
+           *)
         is_unaligned
         |: (memory_controller_to_hart.valid &: current_state.is Preparing_store)
     ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = one 1 }
