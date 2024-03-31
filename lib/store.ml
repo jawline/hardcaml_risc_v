@@ -53,7 +53,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   end
 
   let combine_old_and_new_word ~funct3 ~destination ~old_word ~new_word scope =
-
     let ( -- ) = Scope.naming scope in
     mux_init
       ~f:(fun alignment ->
@@ -73,15 +72,16 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                  anyway. *)
               if alignment % 2 <> 0
               then zero register_width
-              else ((
-                      printf "%i -> %i\n" alignment (alignment / 2);
-                let alignment = alignment / 2 in
-                let write_word = sel_bottom new_word 16 in
-                let parts = split_msb ~part_width:16 old_word in
-                concat_msb
-                  (List.take parts alignment 
-                   @ [ write_word ]
-                   @ List.drop parts (alignment + 1))) -- [%string "sb_%{alignment#Int}"])
+              else
+                (printf "%i -> %i\n" alignment (alignment / 2);
+                 let alignment = alignment / 2 in
+                 let write_word = sel_bottom new_word 16 in
+                 let parts = split_msb ~part_width:16 old_word in
+                 concat_msb
+                   (List.take parts alignment
+                    @ [ write_word ]
+                    @ List.drop parts (alignment + 1)))
+                -- [%string "sb_%{alignment#Int}"]
             | Sb ->
               (* We don't have any alignment requirements for byte writes. *)
               let byte = sel_bottom new_word 8 in
@@ -89,8 +89,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               concat_msb
                 (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
           funct3)
-      ((uresize destination (Int.floor_log2 (register_width / 8))) -- "unaligned_portion")
-      ((register_width / 8))
+      (uresize destination (Int.floor_log2 (register_width / 8)) -- "unaligned_portion")
+      (register_width / 8)
   ;;
 
   let create

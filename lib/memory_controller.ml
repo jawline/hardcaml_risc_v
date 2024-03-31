@@ -133,7 +133,7 @@ struct
             (* Set ready for the channel we're considering in round robin. *)
             Tx_bus.Rx.Of_signal.mux
               (which_ch ==:. channel)
-              [  Tx_bus.Rx.Of_signal.of_int 0 ; Tx_bus.Rx.Of_signal.of_int 1 ])
+              [ Tx_bus.Rx.Of_signal.of_int 0; Tx_bus.Rx.Of_signal.of_int 1 ])
           M.num_channels
     ; controller_to_ch =
         List.init
