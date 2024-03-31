@@ -57,7 +57,7 @@ let test ?(clear_registers = true) ~instructions sim =
       Cyclesim.cycle sim;
       loop_for (cycles - 1))
   in
-  loop_for 20;
+  loop_for 50;
   let outputs = Cpu.O.map ~f:(fun t -> Bits.to_int !t) outputs in
   print_s [%message (outputs : int Cpu.O.t)];
   print_ram sim
@@ -146,6 +146,21 @@ let%expect_test "add" =
           (general
            (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
      100093 409093 00 00 00 00 00 00 |}];
+  test
+    ~instructions:
+      [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:10
+      ; op_imm ~funct3:Funct3.Op.Slt ~rs1:1 ~rd:2 ~immediate:5
+      ; op_imm ~funct3:Funct3.Op.Slt ~rs1:1 ~rd:3 ~immediate:15
+      ]
+    sim;
+  [%expect
+    {|
+     (outputs
+      ((registers
+        (((pc 12)
+          (general
+           (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
+     a00093 50a113 f0a193 00 00 00 00 00 |}];
   Waveform.expect
     ~serialize_to:"/tmp/test_cpu"
     ~display_width:150
@@ -253,5 +268,5 @@ let%expect_test "add" =
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    4e8ae1fa76cc90128d23c022c88254c7 |}]
+    d9fd7378a538ea9a2bd223fa492b3d1a |}]
 ;;
