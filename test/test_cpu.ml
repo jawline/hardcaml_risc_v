@@ -79,10 +79,11 @@ let op_imm ~funct3 ~rs1 ~rd ~immediate =
 let%expect_test "add" =
   let sim = create_sim () in
   let waveform, sim = Waveform.create sim in
-   test
-     ~instructions:[ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550 ]
-     sim; 
-  [%expect {|
+  test
+    ~instructions:[ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550 ]
+    sim;
+  [%expect
+    {|
     (outputs
      ((registers
        (((pc 4)
@@ -103,7 +104,7 @@ let%expect_test "add" =
           (general
            (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
      504093 a0c093 00 00 00 00 00 00 |}];
-test
+  test
     ~instructions:
       [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0b1111
       ; op_imm ~funct3:Funct3.Op.And ~rs1:1 ~rd:1 ~immediate:0b11
@@ -117,7 +118,20 @@ test
           (general
            (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
      f00093 30f093 00 00 00 00 00 00 |}];
-
+  test
+    ~instructions:
+      [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0b101010
+      ; op_imm ~funct3:Funct3.Op.Or ~rs1:1 ~rd:1 ~immediate:0b010101
+      ]
+    sim;
+  [%expect
+    {|
+     (outputs
+      ((registers
+        (((pc 8)
+          (general
+           (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))))))
+     2a00093 150e093 00 00 00 00 00 00 |}];
   Waveform.expect
     ~serialize_to:"/tmp/test_cpu"
     ~display_width:150
@@ -225,5 +239,5 @@ test
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    16b674fbe0ce1cfd11420e6a85502685 |}]
+    d17bd139220cf37f0f76bb37bb3dcf5e |}]
 ;;
