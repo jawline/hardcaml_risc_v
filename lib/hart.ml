@@ -45,7 +45,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let registers = Registers.Of_always.reg reg_spec in
+    (* Register 0 is hardwired to zero so we don't actually store it *)
+    let registers = Registers.For_writeback.Of_always.reg reg_spec in
     let current_state = State_machine.create (module State) ~enable:vdd reg_spec in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
@@ -73,7 +74,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         ; hart_to_memory_controller = i.hart_to_memory_controller
         ; enable = current_state.is State.Decode_and_execute
         ; instruction = fetched_instruction.value
-        ; registers = Registers.Of_always.value registers
+        ; registers =
+            Registers.For_writeback.Of_always.value registers
+            |> Registers.For_writeback.to_registers
         }
     in
     compile
@@ -91,7 +94,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               ] )
           ; ( Decode_and_execute
             , [ current_state.set_next Fetching
-              ; registers.pc <-- registers.pc.value +:. 4
               ; Memory.Rx_bus.Rx.Of_always.assign
                   memory_controller_to_hart
                   decode_and_execute.memory_controller_to_hart
@@ -100,7 +102,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   decode_and_execute.hart_to_memory_controller
               ; when_
                   decode_and_execute.finished
-                  [ Registers.Of_always.assign registers decode_and_execute.new_registers
+                  [ Registers.For_writeback.Of_always.assign
+                      registers
+                      decode_and_execute.new_registers
                   ]
               ] )
           ]
@@ -109,7 +113,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         Memory.Rx_bus.Rx.Of_always.value memory_controller_to_hart
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
-    ; registers = Registers.Of_always.value registers
+    ; registers =
+        Registers.For_writeback.Of_always.value registers
+        |> Registers.For_writeback.to_registers
     ; error = error.value
     }
   ;;

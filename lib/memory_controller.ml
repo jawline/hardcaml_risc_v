@@ -83,7 +83,6 @@ struct
       else Tx_bus.Tx.Of_signal.mux which_ch i.ch_to_controller
     in
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
-    printf "%i\n" unaligned_bits;
     (* We truncate the address by unaligned bits to get the address in words. *)
     let real_address =
       srl which_ch_to_controller.data.address unaligned_bits -- "real_address"

@@ -133,7 +133,6 @@ let%expect_test "lw" =
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
-      2
       (outputs
        ((new_rd 00000000000000000000000000000001) (error 0) (finished 0)
         (controller_to_hart
@@ -359,7 +358,6 @@ let%expect_test "lh" =
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
-      2
       (outputs
        ((new_rd 00000000000000000000000000000001) (error 0) (finished 0)
         (controller_to_hart
@@ -540,7 +538,6 @@ let%expect_test "lb" =
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
-      2
       (outputs
        ((new_rd 00000000000000000000000000000001) (error 0) (finished 0)
         (controller_to_hart

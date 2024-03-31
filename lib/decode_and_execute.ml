@@ -40,7 +40,7 @@ struct
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller"]
       ; finished : 'a
-      ; new_registers : 'a Registers.t [@rtlprefix "output_registers"]
+      ; new_registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers"]
       ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
@@ -55,7 +55,8 @@ struct
       (* TODO: A mux could allow us to use the same Op for both *)
       (* TODO: The mux could be on the decode cycle into decoded
          instruction and used by both. *)
-      Op.hierarchical
+      Op.hierarchical (* There is no SUBI since a signed addi is sufficient. *)
+        ~enable_subtract:false
         ~instance:"op_imm"
         scope
         { Op.I.funct3; funct7; lhs = rs1; rhs = i_immediate }
@@ -78,7 +79,11 @@ struct
     ({ funct3; funct7; rs1; rs2; _ } : _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
-      Op.hierarchical ~instance:"op" scope { Op.I.funct3; funct7; lhs = rs1; rhs = rs2 }
+      Op.hierarchical
+        ~instance:"op"
+        ~enable_subtract:true
+        scope
+        { Op.I.funct3; funct7; lhs = rs1; rhs = rs2 }
     in
     { Opcode_output.transaction =
         { Transaction.finished = vdd
@@ -281,7 +286,7 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             decoded_instruction.opcode ==:. Opcodes.store
         ; funct3 = decoded_instruction.funct3
-        ; destination = decoded_instruction.rd
+        ; destination = decoded_instruction.rd_value
         ; value = decoded_instruction.rs1
         ; memory_controller_to_hart
         ; hart_to_memory_controller
@@ -373,6 +378,17 @@ struct
            ~registers
            decoded_instruction
            scope)
+    ; Table_entry.create
+        ~opcode:Opcodes.store
+        (store_instruction
+           ~clock
+           ~clear
+           ~memory_controller_to_hart
+           ~hart_to_memory_controller
+           ~registers
+           decoded_instruction
+           scope)
+      (* TODO: System *)
     ]
   ;;
 
@@ -388,6 +404,7 @@ struct
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
+    let new_registers = Registers.For_writeback.Of_always.wire zero in
     let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec in
     let instruction_table =
       instruction_table
@@ -402,18 +419,12 @@ struct
     let transaction = Transaction.Of_always.reg reg_spec in
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
-    (* TODO: Register 0 is always zero, enforce that here. *)
     let commit_transaction ~new_pc ~set_rd ~new_rd =
-      { Registers.pc = new_pc
-      ; general =
-          List.mapi
-            ~f:(fun index current_value ->
-              mux2
-                (set_rd &: (decoded_instruction.rd.value ==:. index))
-                new_rd
-                current_value)
-            i.registers.general
-      }
+      Registers.set_pc i.registers new_pc
+      |> Registers.assign_when
+           ~when_:set_rd
+           ~index_signal:decoded_instruction.rd.value
+           ~value_signal:new_rd
     in
     compile
       [ when_
@@ -422,7 +433,7 @@ struct
               [ ( State.Decoding
                 , [ Decoded_instruction.Of_always.assign
                       decoded_instruction
-                      (Decoded_instruction.of_instruction i.instruction i.registers)
+                      (Decoded_instruction.of_instruction i.instruction i.registers scope)
                   ; current_state.set_next Executing
                   ] )
               ; ( State.Executing
@@ -454,7 +465,16 @@ struct
                         ])
                     instruction_table )
                 (* TODO: Trap when no opcode matches *)
-              ; Committing, [ current_state.set_next Decoding ]
+              ; ( Committing
+                , [ Registers.For_writeback.Of_always.assign
+                      new_registers
+                      (commit_transaction
+                         ~new_pc:transaction.new_pc.value
+                         ~set_rd:transaction.set_rd.value
+                         ~new_rd:transaction.new_rd.value
+                       |> Registers.For_writeback.of_registers)
+                  ; current_state.set_next Decoding
+                  ] )
               ]
           ]
       ];
@@ -463,11 +483,7 @@ struct
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     ; finished = current_state.is Committing
-    ; new_registers =
-        commit_transaction
-          ~new_pc:transaction.new_pc.value
-          ~set_rd:transaction.set_rd.value
-          ~new_rd:transaction.new_rd.value
+    ; new_registers = Registers.For_writeback.Of_always.value new_registers
     ; error = transaction.error.value
     }
   ;;

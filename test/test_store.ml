@@ -150,9 +150,6 @@ let%expect_test "lw" =
   test ~destination:0 ~value:0xDEADBEEF ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
   [%expect
     {|
-     0 -> 0
-     2 -> 1
-     2
      (outputs
       ((error 0) (finished 0)
        (controller_to_hart

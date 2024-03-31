@@ -13,7 +13,7 @@ module Op = Op.Make (Hart_config)
 
 let create_sim () =
   let module Sim = Cyclesim.With_interface (Op.I) (Op.O) in
-  Sim.create (Op.create (Scope.create ()))
+  Sim.create (Op.create ~enable_subtract:true (Scope.create ()))
 ;;
 
 let print (outputs : _ Op.O.t) =
@@ -48,9 +48,9 @@ let%expect_test "branch tests" =
   [%expect
     {|
       Funct 7 = 0
-      ((rd 20) (error false))
+      ((rd 14) (error false))
       Funct 7 = 1
-      ((rd 14) (error false)) |}];
+      ((rd 20) (error false)) |}];
   simple_test ~funct3:(Funct3.Op.to_int Sll) sim;
   [%expect
     {|

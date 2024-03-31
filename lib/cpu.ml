@@ -2,6 +2,7 @@ open! Core
 open Hardcaml
 open Signal
 open Always
+(* TODO: Add an enable? *)
 
 module Make
     (Hart_config : Hart_config_intf.S)

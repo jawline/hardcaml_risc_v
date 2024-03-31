@@ -13,6 +13,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; rs2 : 'a [@bits register_width]
     (** Rd just points to the rd slot rather than containing the register *)
     ; rd : 'a [@bits 5]
+    ; rd_value : 'a [@bits register_width]
     ; i_immediate : 'a [@bits register_width]
     ; j_immediate : 'a [@bits register_width]
     ; u_immediate : 'a [@bits register_width]
@@ -22,14 +23,17 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
-  let of_instruction instruction registers =
+  let of_instruction instruction registers scope =
+    let ( -- ) = Scope.naming scope in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction
     ; funct7 = Decoder.funct7 instruction
     ; rs1 = select_register registers (Decoder.rs1 instruction)
     ; rs2 = select_register registers (Decoder.rs2 instruction)
     ; rd = Decoder.rd instruction
-    ; i_immediate = Decoder.i_immediate ~width:register_width instruction
+    ; rd_value = select_register registers (Decoder.rd instruction)
+    ; i_immediate =
+        Decoder.i_immediate ~width:register_width instruction -- "decoded_i_immediate"
     ; j_immediate = Decoder.j_immediate ~width:register_width instruction
     ; u_immediate = Decoder.u_immediate ~width:register_width instruction
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction

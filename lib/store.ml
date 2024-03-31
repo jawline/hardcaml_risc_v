@@ -11,6 +11,8 @@ open! Signal
 open Always
 
 (* TODO: Move the actual memory write to the write back step in the pipeline so we can terminate it. *)
+(* TODO: Memory controller could take a byte enable when writing and manage any
+   read before write behaviour itself. *)
 
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
   let register_width = Register_width.bits Hart_config.register_width
@@ -73,8 +75,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               if alignment % 2 <> 0
               then zero register_width
               else
-                (printf "%i -> %i\n" alignment (alignment / 2);
-                 let alignment = alignment / 2 in
+                (let alignment = alignment / 2 in
                  let write_word = sel_bottom new_word 16 in
                  let parts = split_msb ~part_width:16 old_word in
                  concat_msb
