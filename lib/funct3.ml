@@ -105,6 +105,7 @@ module Store = struct
     | Sb
     | Sh
     | Sw
+  [@@deriving enumerate]
 
   let to_int = function
     | Sb -> 0b000

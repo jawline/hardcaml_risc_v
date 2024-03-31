@@ -51,6 +51,44 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     [@@deriving sexp, enumerate, compare]
   end
 
+  let combine_old_and_new_word funct3 address old_word new_word =
+    mux_init
+      ~f:(fun alignment ->
+        Util.switch
+          (module Funct3.Store)
+          ~if_not_found:
+            ((* In practice, this arm should be impossible *) zero register_width)
+          ~f:(function
+            | Funct3.Store.Sw ->
+              (* In practice, this isn't possible as we do not do the load step
+                 with aligned words and do not support unaligned words. *)
+              zero register_width
+            | Sh ->
+              (* We do not support stores for half words that
+                 aren't aligned against the memory bus. The error flag would
+                 have already been set so we would never use these signals
+                 anyway. *)
+              if alignment % 1 <> 0
+              then zero register_width
+              else (
+                let write_word = sel_bottom new_word 16 in
+                let parts = split_msb ~part_width:16 old_word in
+                let alignment = alignment / 2 in
+                concat_msb
+                  (List.take parts alignment
+                   @ [ write_word ]
+                   @ List.drop parts (alignment + 1)))
+            | Sb ->
+              (* We don't have any alignment requirements for byte writes. *)
+              let byte = sel_bottom new_word 8 in
+              let parts = split_msb ~part_width:8 old_word in
+              concat_msb
+                (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
+          funct3)
+      (uresize address (Int.floor_log2 (register_width / 8)))
+      (Int.floor_log2 (register_width / 8))
+  ;;
+
   let create
     (scope : Scope.t)
     ({ I.clock
@@ -77,19 +115,19 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     in
     let unaligned_bits =
       Util.switch
-        (module Funct3.Load)
+        (module Funct3.Store)
         ~if_not_found:(zero 2)
         ~f:(function
-          | Funct3.Load.Lw -> uresize destination 2 &:. 0b11
-          | Lh | Lhu -> uresize destination 2 &:. 0b1
-          | Lb | Lbu -> zero 2)
+          | Funct3.Store.Sw -> uresize destination 2 &:. 0b11
+          | Sh -> uresize destination 2 &:. 0b1
+          | Sb -> zero 2)
         funct3
       -- "unaligned_bits"
     in
-    let is_load_word = Util.is (module Funct3.Load) funct3 Funct3.Load.Lw in
+    let is_load_word = Util.is (module Funct3.Store) funct3 Funct3.Store.Sw in
     let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
     let funct3_is_error =
-      Util.switch (module Funct3.Load) ~if_not_found:(one 1) ~f:(fun _ -> zero 1) funct3
+      Util.switch (module Funct3.Store) ~if_not_found:(one 1) ~f:(fun _ -> zero 1) funct3
       -- "funct3_is_error"
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
@@ -134,8 +172,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
             , [ when_
                   memory_controller_to_hart.valid
                   [ word_to_write
-                    <-- (* TODO: This should mux out the changed word from the loaded word and then or it with new one shifted by the alignment. *)
-                    assert false
+                    <-- combine_old_and_new_word
+                          (* Here we supply the
+                             unaligned destination as it is used to decide how to
+                             rewrite the word. *)
+                          destination
+                          funct3
+                          memory_controller_to_hart.data.read_data
+                          value
                   ; current_state.set_next Waiting_for_store
                   ]
               ] )
@@ -151,12 +195,12 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   }
               ; when_ memory_controller_ready [ current_state.set_next Waiting_for_store ]
               ] )
+          ; ( Waiting_for_load
+            , [ when_
+                  memory_controller_to_hart.valid
+                  [ current_state.set_next Preparing_load ]
+              ] )
           ]
-      ; ( Waiting_for_load
-        , [ when_
-              memory_controller_to_hart.valid
-              [ current_state.set_next Preparing_load ]
-          ] )
       ];
     { O.new_rd = assert false
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
