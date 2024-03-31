@@ -14,6 +14,7 @@ struct
   module Op = Op.Make (Hart_config)
   module Branch = Branch.Make (Hart_config)
   module Load = Load.Make (Hart_config) (Memory)
+  module Store = Store.Make (Hart_config) (Memory)
 
   let register_width = Register_width.bits Hart_config.register_width
 
@@ -226,7 +227,7 @@ struct
     ~clear
     ~memory_controller_to_hart
     ~hart_to_memory_controller
-    ~registers:_
+    ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
@@ -253,11 +254,45 @@ struct
         }
     in
     { Opcode_output.transaction =
+        { Transaction.finished; set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
+    ; memory_controller_to_hart
+    ; hart_to_memory_controller
+    }
+  ;;
+
+  (** The store table loads a value from [rs1] and writes it to address rd *)
+  let store_instruction
+    ~clock
+    ~clear
+    ~memory_controller_to_hart
+    ~hart_to_memory_controller
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    scope
+    =
+    let { Store.O.finished; error; memory_controller_to_hart; hart_to_memory_controller } =
+      Store.hierarchical
+        ~instance:"store"
+        scope
+        { Store.I.clock
+        ; clear
+        ; enable =
+            (* We need to guard the Store instruction since it's internal
+               state machine might try to load data and get stuck otherwise. *)
+            decoded_instruction.opcode ==:. Opcodes.store
+        ; funct3 = decoded_instruction.funct3
+        ; destination = decoded_instruction.rd
+        ; value = decoded_instruction.rs1
+        ; memory_controller_to_hart
+        ; hart_to_memory_controller
+        }
+    in
+    { Opcode_output.transaction =
         { Transaction.finished
         ; set_rd = gnd
-        ; new_rd
+        ; new_rd = zero register_width
         ; error
-        ; new_pc = zero register_width
+        ; new_pc = registers.pc +:. 4
         }
     ; memory_controller_to_hart
     ; hart_to_memory_controller
