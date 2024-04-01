@@ -1,0 +1,2 @@
+(test
+ (name test_hardcaml_uart_controller))
