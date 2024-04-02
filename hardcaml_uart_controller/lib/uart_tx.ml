@@ -50,7 +50,7 @@ struct
   let switch_cycle spec =
     let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
     (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
-       mod_counter ~max:switching_frequency t))
+       mod_counter ~max:(switching_frequency - 1) t))
       spec
     ==:. 0
   ;;
@@ -117,6 +117,7 @@ struct
             , [ when_
                   switch_cycle
                   [ which_stop_bit <-- which_stop_bit.value +:. 1
+                  ; current_output <--. 1
                   ; when_
                       (which_stop_bit.value ==:. Config.stop_bits)
                       [ current_state.set_next Waiting_for_data_in ]
