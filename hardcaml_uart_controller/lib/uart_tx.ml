@@ -13,6 +13,8 @@ open Always
 module Make (Config : sig
     val clock_frequency : int
     val baud_rate : int
+    val include_parity_bit : bool
+    val stop_bits : int
   end) =
 struct
   let switching_frequency = Config.clock_frequency / Config.baud_rate
@@ -41,8 +43,7 @@ struct
       | Waiting_for_start_bit
       | Waiting_for_data_bits
       | Waiting_for_parity_bit
-      | Waiting_for_end_bit_one
-      | Waiting_for_end_bit_two
+      | Waiting_for_stop_bits
     [@@deriving sexp, enumerate, compare]
   end
 
@@ -64,6 +65,7 @@ struct
     let data_to_write = Variable.reg ~width:(width data_in) reg_spec_no_clear in
     let which_data_bits = Variable.reg ~width:3 reg_spec_no_clear in
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
+    let which_stop_bit = Variable.reg ~width:2 reg_spec_no_clear in
     let next_data_bit =
       mux_init
         ~f:(fun index_signal -> select data_to_write.value index_signal index_signal)
@@ -75,6 +77,9 @@ struct
       [ current_state.switch
           [ ( State.Waiting_for_data_in
             , [ current_output <--. 1
+              ; parity_bit <--. 0
+              ; which_stop_bit <--. 0
+              ; which_data_bits <--. 0
               ; when_
                   data_in_enable
                   [ data_to_write <-- data_in
@@ -84,8 +89,7 @@ struct
           ; ( State.Waiting_for_start_bit
             , [ when_
                   switch_cycle
-                  [ which_data_bits <--. 0
-                  ; current_state.set_next State.Waiting_for_data_bits
+                  [ current_state.set_next State.Waiting_for_data_bits
                   ; current_output <--. 0
                   ]
               ] )
@@ -97,30 +101,26 @@ struct
                   ; which_data_bits <-- which_data_bits.value +:. 1
                   ; when_
                       (which_data_bits.value ==:. 7)
-                      [ current_state.set_next Waiting_for_parity_bit ]
+                      (if Config.include_parity_bit
+                       then [ current_state.set_next Waiting_for_parity_bit ]
+                       else [ current_state.set_next Waiting_for_stop_bits ])
                   ]
               ] )
           ; ( State.Waiting_for_parity_bit
             , [ when_
                   switch_cycle
                   [ current_output <-- parity_bit.value
-                  ; current_state.set_next Waiting_for_end_bit_one
+                  ; current_state.set_next Waiting_for_stop_bits
                   ]
               ] )
-          ; ( State.Waiting_for_end_bit_one
+          ; ( State.Waiting_for_stop_bits
             , [ when_
                   switch_cycle
-                  [ current_output <-- ~:(parity_bit.value)
-                  ; if_
-                      (parity_bit.value ==:. 0)
+                  [ which_stop_bit <-- which_stop_bit.value +:. 1
+                  ; when_
+                      (which_stop_bit.value ==:. Config.stop_bits)
                       [ current_state.set_next Waiting_for_data_in ]
-                      [ current_state.set_next Waiting_for_end_bit_two ]
                   ]
-              ] )
-          ; ( State.Waiting_for_end_bit_two
-            , [ when_
-                  switch_cycle
-                  [ current_output <--. 1; current_state.set_next Waiting_for_data_in ]
               ] )
           ]
       ];
