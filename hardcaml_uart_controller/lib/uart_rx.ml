@@ -119,6 +119,7 @@ struct
                       (which_stop_bit.value ==:. Config.stop_bits)
                       [ data_out_valid
                         <-- (~:(stop_bit_not_stable.value) &: parity_bit_matches)
+                      ; data_out <-- data.value
                       ; current_state.set_next Waiting_for_start_bit
                       ]
                   ]

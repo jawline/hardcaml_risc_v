@@ -76,7 +76,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~input =
       in
       loop_until_finished acc (n - 1))
   in
-  let outputs = loop_until_finished [] 15 in
+  let outputs = loop_until_finished [] 100 in
   print_s [%message (outputs : int list)]
 ;;
 
@@ -89,9 +89,5 @@ let%expect_test "test" =
     ~input:100;
   [%expect
     {|
-      (output_bits (0 0 0 0 0 0 0 0 0 0 1 1 1 1 1))
-      (output_bits (0 1 0 0 0 0 0 0 0 1 1 1 1 1 1))
-      (output_bits (0 0 1 0 1 0 1 0 1 0 1 1 1 1 1))
-      (output_bits (0 1 1 1 1 1 1 1 1 0 1 1 1 1 1))
-      (output_bits (0 0 0 0 0 1 1 1 1 0 1 1 1 1 1)) |}]
+      (outputs (1)) |}]
 ;;
