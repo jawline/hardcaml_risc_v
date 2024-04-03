@@ -23,10 +23,10 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~switch_ever
   let sim = create_sim () in
   let inputs : _ Uart_tx.I.t = Cyclesim.inputs sim in
   let outputs : _ Uart_tx.O.t = Cyclesim.outputs sim in
-  inputs.data_in_enable := of_int ~width:1 1;
+  inputs.data_in_valid := of_int ~width:1 1;
   inputs.data_in := of_int ~width:8 input;
   Cyclesim.cycle sim;
-  inputs.data_in_enable := of_int ~width:1 0;
+  inputs.data_in_valid := of_int ~width:1 0;
   let rec loop_until_finished acc n =
     if n = 0
     then List.rev acc
@@ -39,7 +39,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~switch_ever
           wait_for (n - 1))
       in
       wait_for switch_every;
-      loop_until_finished (Bits.to_int !(outputs.uart_tx_out) :: acc) (n - 1))
+      loop_until_finished (Bits.to_int !(outputs.uart_tx) :: acc) (n - 1))
   in
   let output_bits = loop_until_finished [] 15 in
   print_s [%message (output_bits : int list)]

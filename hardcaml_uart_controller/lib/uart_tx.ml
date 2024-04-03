@@ -23,7 +23,7 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; data_in_enable : 'a
+      ; data_in_valid : 'a
       ; data_in : 'a [@bits 8]
       }
     [@@deriving sexp_of, hardcaml]
@@ -31,7 +31,7 @@ struct
 
   module O = struct
     type 'a t =
-      { uart_tx_out : 'a
+      { uart_tx : 'a
       ; data_in_ready : 'a
       }
     [@@deriving sexp_of, hardcaml]
@@ -55,7 +55,7 @@ struct
     ==:. 0
   ;;
 
-  let create (scope : Scope.t) ({ I.clock; clear; data_in_enable; data_in } : _ I.t) =
+  let create (scope : Scope.t) ({ I.clock; clear; data_in_valid; data_in } : _ I.t) =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
@@ -81,7 +81,7 @@ struct
               ; which_stop_bit <--. 0
               ; which_data_bits <--. 0
               ; when_
-                  data_in_enable
+                  data_in_valid
                   [ data_to_write <-- data_in
                   ; current_state.set_next Waiting_for_start_bit
                   ]
@@ -125,7 +125,7 @@ struct
               ] )
           ]
       ];
-    { O.uart_tx_out = current_output.value
+    { O.uart_tx = current_output.value
     ; data_in_ready = current_state.is State.Waiting_for_data_in
     }
   ;;
