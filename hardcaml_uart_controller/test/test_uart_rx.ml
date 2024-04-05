@@ -1,9 +1,12 @@
 open! Core
 open Hardcaml
+open Hardcaml_waveterm
 open Hardcaml_uart_controller
 open! Bits
 
-let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~input =
+let debug = true
+
+let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~input =
   let module Config = struct
     (* This should trigger a switch every other cycle. *)
     let clock_frequency = clock_frequency
@@ -58,6 +61,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~input =
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   in
   let sim = create_sim () in
+  let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
   inputs.data_in_valid := of_int ~width:1 1;
@@ -77,17 +81,20 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~input =
       loop_until_finished acc (n - 1))
   in
   let outputs = loop_until_finished [] 100 in
-  print_s [%message (outputs : int list)]
+  print_s [%message (outputs : int list)];
+  if debug
+  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
+  else ()
 ;;
 
 let%expect_test "test" =
   test
+    ~name:"/tmp/one_stop_bit_no_parity"
     ~clock_frequency:200
-    ~baud_rate:100
+    ~baud_rate:200
     ~include_parity_bit:false
     ~stop_bits:1
-    ~input:100;
-  [%expect
-    {|
+    ~input:0b1001;
+  [%expect {|
       (outputs (1)) |}]
 ;;
