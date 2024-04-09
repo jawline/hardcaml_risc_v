@@ -63,23 +63,25 @@ struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
-    let current_output = Variable.reg ~width:1 reg_spec_no_clear in
+    (* When we are transmitting we hold our output at the value stored in a
+       register. *)
+    let current_output_reg = Variable.reg ~width:1 reg_spec_no_clear in
+    let current_output_wire = Variable.wire ~default:(zero 1) in
     let switch_cycle = switch_cycle reg_spec_no_clear -- "switch_cycle" in
     let data_to_write = Variable.reg ~width:(width data_in) reg_spec_no_clear in
     let which_data_bits = Variable.reg ~width:3 reg_spec_no_clear in
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let which_stop_bit = Variable.reg ~width:2 reg_spec_no_clear in
     let next_data_bit =
-      mux_init
-        ~f:(fun index_signal -> select data_to_write.value index_signal index_signal)
+      mux
         which_data_bits.value
-        8
+        (split_lsb ~part_width:1 data_to_write.value) -- "next_data_bit"
     in
     ignore (current_state.current -- "current_state" : Signal.t);
     compile
       [ current_state.switch
           [ ( State.Waiting_for_data_in
-            , [ current_output <--. 1
+            , [ current_output_wire <--. 1
               ; parity_bit <--. 0
               ; which_stop_bit <--. 0
               ; which_data_bits <--. 0
@@ -90,16 +92,24 @@ struct
                   ]
               ] )
           ; ( State.Waiting_for_start_bit
-            , [ when_
+            , [ 
+                    
+               current_output_wire <-- current_output_reg.value
+                    ; when_
                   switch_cycle
                   [ current_state.set_next State.Waiting_for_data_bits
-                  ; current_output <--. 0
+                  ; current_output_reg <--. 0
+                  ; current_output_wire <--. 0
                   ]
               ] )
           ; ( State.Waiting_for_data_bits
-            , [ when_
+            , [ 
+                    
+                    current_output_wire <-- current_output_reg.value ; 
+                    when_
                   switch_cycle
-                  [ current_output <-- next_data_bit
+                  [ current_output_reg <-- next_data_bit
+                  ; current_output_wire <-- next_data_bit
                   ; parity_bit <-- parity_bit.value +: next_data_bit
                   ; which_data_bits <-- which_data_bits.value +:. 1
                   ; when_
@@ -112,15 +122,25 @@ struct
           ; ( State.Waiting_for_parity_bit
             , [ when_
                   switch_cycle
-                  [ current_output <-- parity_bit.value
+                  [ current_output_reg <-- parity_bit.value
                   ; current_state.set_next Waiting_for_stop_bits
                   ]
+              ; current_output_wire <-- current_output_reg.value
               ] )
           ; ( State.Waiting_for_stop_bits
-            , [ when_
+            , [
+                   
+               current_output_wire <-- current_output_reg.value
+                ;
+
+                    when_
                   switch_cycle
                   [ which_stop_bit <-- which_stop_bit.value +:. 1
-                  ; current_output <--. 1
+                  ; current_output_reg <--. 1
+                  ; (* While unlikely in practice, if the baud rate is equal to
+                  clock rate then just setting the register would be wrong as
+                  it would only reflect the change on the next cycle. *)
+                  current_output_wire <--. 1
                   ; when_
                       (which_stop_bit.value ==:. Config.stop_bits)
                       [ current_state.set_next Waiting_for_data_in ]
@@ -128,7 +148,7 @@ struct
               ] )
           ]
       ];
-    { O.uart_tx = current_output.value
+    { O.uart_tx = current_output_wire.value
     ; data_in_ready = current_state.is State.Waiting_for_data_in
     }
   ;;
