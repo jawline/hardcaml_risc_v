@@ -29,6 +29,8 @@ struct
     type 'a t =
       { data_out_valid : 'a
       ; data_out : 'a [@bits 8]
+      ; parity_error : 'a
+      ; stop_bit_unstable : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -43,12 +45,14 @@ struct
   end
 
   let switch_cycle spec =
-          if switching_frequency = 1 then vdd else (
-    let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
-    (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
-       mod_counter ~max:(switching_frequency - 1) t))
-      spec
-    ==:. 0)
+    if switching_frequency = 1
+    then vdd
+    else (
+      let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
+      (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
+         mod_counter ~max:(switching_frequency - 1) t))
+        spec
+      ==:. 0)
   ;;
 
   let create (scope : Scope.t) ({ I.clock; clear; uart_rx } : _ I.t) =
@@ -67,7 +71,8 @@ struct
           let bits = split_lsb ~part_width:1 data.value in
           concat_lsb (List.take bits index @ [ uart_rx ] @ List.drop bits (index + 1)))
         which_data_bit.value
-        8 -- "data_with_new_bit"
+        8
+      -- "data_with_new_bit"
     in
     (* The parity bit should always = the RX parity bit if Config.include_parity_bit is set *)
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
@@ -80,6 +85,7 @@ struct
     let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in
     ignore (current_state.current -- "current_state" : Signal.t);
     let data_out_valid = Variable.wire ~default:(zero 1) in
+    let parity_error = Variable.wire ~default:(zero 1) in
     compile
       [ current_state.switch
           [ ( State.Waiting_for_start_bit
@@ -99,9 +105,12 @@ struct
                   [ parity_bit <-- parity_bit.value +: uart_rx
                   ; data <-- data_with_new_data_bit
                   ; which_data_bit <-- which_data_bit.value +:. 1
-                  ; when_ ((which_data_bit.value -- "which_data_bit") ==:. 7) [ (if Config.include_parity_bit
-                     then current_state.set_next Waiting_for_parity_bit
-                     else current_state.set_next Waiting_for_stop_bits) ] 
+                  ; when_
+                      (which_data_bit.value -- "which_data_bit" ==:. 7)
+                      [ (if Config.include_parity_bit
+                         then current_state.set_next Waiting_for_parity_bit
+                         else current_state.set_next Waiting_for_stop_bits)
+                      ]
                   ]
               ] )
           ; ( State.Waiting_for_parity_bit
@@ -120,13 +129,18 @@ struct
                       (which_stop_bit.value ==:. Config.stop_bits)
                       [ data_out_valid
                         <-- (~:(stop_bit_not_stable.value) &: parity_bit_matches)
+                      ; parity_error <-- ~:parity_bit_matches
                       ; current_state.set_next Waiting_for_start_bit
                       ]
                   ]
               ] )
           ]
       ];
-    { O.data_out_valid = data_out_valid.value; data_out = data.value }
+    { O.data_out_valid = data_out_valid.value
+    ; parity_error = parity_error.value
+    ; stop_bit_unstable = stop_bit_not_stable.value
+    ; data_out = data.value
+    }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =

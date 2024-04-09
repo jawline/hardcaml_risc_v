@@ -48,12 +48,14 @@ struct
   end
 
   let switch_cycle spec =
-          if switching_frequency = 1 then vdd else (
-    let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
-    (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
-       mod_counter ~max:(switching_frequency - 1) t))
-      spec
-    ==:. 0)
+    if switching_frequency = 1
+    then vdd
+    else (
+      let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
+      (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
+         mod_counter ~max:(switching_frequency - 1) t))
+        spec
+      ==:. 0)
   ;;
 
   let create (scope : Scope.t) ({ I.clock; clear; data_in_valid; data_in } : _ I.t) =
