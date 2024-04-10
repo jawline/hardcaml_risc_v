@@ -79,7 +79,9 @@ struct
     let rx_parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let parity_bit_matches =
       if Config.include_parity_bit
-      then (parity_bit.value  -- "calculated_parity_bit") ==: (rx_parity_bit.value -- "rx_parity_bit")
+      then
+        parity_bit.value -- "calculated_parity_bit"
+        ==: rx_parity_bit.value -- "rx_parity_bit"
       else one 1
     in
     let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in

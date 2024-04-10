@@ -58,7 +58,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         { data_out_valid : 'a
         ; data_out : 'a [@bits 8]
         ; last : 'a
-        ; parity_error : 'a ; stop_bit_unstable : 'a
+        ; parity_error : 'a
+        ; stop_bit_unstable : 'a
         }
       [@@deriving sexp_of, hardcaml]
     end
@@ -70,7 +71,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error ; stop_bit_unstable  } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
@@ -87,7 +88,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           ; out = { ready = one 1 }
           }
       in
-      { O.data_out_valid = out.valid; data_out = out.data.data; last = out.data.last ; parity_error ; stop_bit_unstable }
+      { O.data_out_valid = out.valid
+      ; data_out = out.data.data
+      ; last = out.data.last
+      ; parity_error
+      ; stop_bit_unstable
+      }
     ;;
   end
   in
@@ -155,9 +161,8 @@ let%expect_test "test" =
     ~include_parity_bit:true
     ~stop_bits:1
     ~packet:"Hello world";
-  [%expect{|
+  [%expect {|
     ((input_packet "Hello world") (output_packet "Hello world")) |}];
-
   test
     ~name:"/tmp/test_serial_to_packet_no_parity_a"
     ~clock_frequency:200
@@ -165,7 +170,7 @@ let%expect_test "test" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"A";
-  [%expect{|
+  [%expect {|
     ((input_packet A) (output_packet A)) |}];
   test
     ~name:"/tmp/test_serial_to_packet_parity_a"
@@ -174,6 +179,6 @@ let%expect_test "test" =
     ~include_parity_bit:true
     ~stop_bits:1
     ~packet:"A";
-  [%expect{|
+  [%expect {|
     ((input_packet A) (output_packet A)) |}]
 ;;

@@ -117,13 +117,11 @@ struct
                   ]
               ] )
           ; ( State.Waiting_for_parity_bit
-            , [ 
-                    
-               current_output_wire <-- current_output_reg.value
-                   ;  when_
+            , [ current_output_wire <-- current_output_reg.value
+              ; when_
                   switch_cycle
-                  [ current_output_reg <-- (parity_bit.value -- "parity_bit")
-                  ; current_output_wire <-- parity_bit.value 
+                  [ current_output_reg <-- parity_bit.value -- "parity_bit"
+                  ; current_output_wire <-- parity_bit.value
                   ; current_state.set_next Waiting_for_stop_bits
                   ]
               ] )
