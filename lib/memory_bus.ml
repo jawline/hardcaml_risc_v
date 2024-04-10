@@ -1,3 +1,5 @@
+open Hardcaml_stream
+
 module Make (M : sig
     val address_width : int
     val data_bus_width : int
@@ -20,6 +22,6 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  module Tx_bus = Bus.Make (Tx_data)
-  module Rx_bus = Bus.Make (Rx_data)
+  module Tx_bus = Stream.Make (Tx_data)
+  module Rx_bus = Stream.Make (Rx_data)
 end

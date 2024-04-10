@@ -73,11 +73,12 @@ struct
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let which_stop_bit = Variable.reg ~width:2 reg_spec_no_clear in
     let next_data_bit =
-      mux
-        which_data_bits.value
-        (split_lsb ~part_width:1 data_to_write.value) -- "next_data_bit"
+      mux which_data_bits.value (split_lsb ~part_width:1 data_to_write.value)
+      -- "next_data_bit"
     in
     ignore (current_state.current -- "current_state" : Signal.t);
+    (* TODO: Get rid of the current output wire and just delay tx by a cycle
+       with a reg to simplify the code. *)
     compile
       [ current_state.switch
           [ ( State.Waiting_for_data_in
@@ -92,10 +93,8 @@ struct
                   ]
               ] )
           ; ( State.Waiting_for_start_bit
-            , [ 
-                    
-               current_output_wire <-- current_output_reg.value
-                    ; when_
+            , [ current_output_wire <-- current_output_reg.value
+              ; when_
                   switch_cycle
                   [ current_state.set_next State.Waiting_for_data_bits
                   ; current_output_reg <--. 0
@@ -103,10 +102,8 @@ struct
                   ]
               ] )
           ; ( State.Waiting_for_data_bits
-            , [ 
-                    
-                    current_output_wire <-- current_output_reg.value ; 
-                    when_
+            , [ current_output_wire <-- current_output_reg.value
+              ; when_
                   switch_cycle
                   [ current_output_reg <-- next_data_bit
                   ; current_output_wire <-- next_data_bit
@@ -120,27 +117,26 @@ struct
                   ]
               ] )
           ; ( State.Waiting_for_parity_bit
-            , [ when_
+            , [ 
+                    
+               current_output_wire <-- current_output_reg.value
+                   ;  when_
                   switch_cycle
-                  [ current_output_reg <-- parity_bit.value
+                  [ current_output_reg <-- (parity_bit.value -- "parity_bit")
+                  ; current_output_wire <-- parity_bit.value 
                   ; current_state.set_next Waiting_for_stop_bits
                   ]
-              ; current_output_wire <-- current_output_reg.value
               ] )
           ; ( State.Waiting_for_stop_bits
-            , [
-                   
-               current_output_wire <-- current_output_reg.value
-                ;
-
-                    when_
+            , [ current_output_wire <-- current_output_reg.value
+              ; when_
                   switch_cycle
                   [ which_stop_bit <-- which_stop_bit.value +:. 1
                   ; current_output_reg <--. 1
                   ; (* While unlikely in practice, if the baud rate is equal to
-                  clock rate then just setting the register would be wrong as
-                  it would only reflect the change on the next cycle. *)
-                  current_output_wire <--. 1
+                       clock rate then just setting the register would be wrong as
+                       it would only reflect the change on the next cycle. *)
+                    current_output_wire <--. 1
                   ; when_
                       (which_stop_bit.value ==:. Config.stop_bits)
                       [ current_state.set_next Waiting_for_data_in ]

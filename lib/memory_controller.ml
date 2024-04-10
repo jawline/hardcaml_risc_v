@@ -1,5 +1,6 @@
 open Core
 open Hardcaml
+open Hardcaml_stream
 open Signal
 
 module Make (M : sig
@@ -44,8 +45,8 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  module Tx_bus = Bus.Make (Tx_data)
-  module Rx_bus = Bus.Make (Rx_data)
+  module Tx_bus = Stream.Make (Tx_data)
+  module Rx_bus = Stream.Make (Rx_data)
 
   module I = struct
     type 'a t =

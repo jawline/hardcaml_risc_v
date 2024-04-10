@@ -1,8 +1,4 @@
-(** This implements an 8-bit UART receiver at a fixed baud rate given a
-    fixed input frequency. The functor specifies whether to expect and validate
-    a parity bit and a stop bit. *)
 open! Core
-
 open Hardcaml
 open Signal
 open Always

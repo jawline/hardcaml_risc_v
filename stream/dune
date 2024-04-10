@@ -1,5 +1,5 @@
 (library
- (name hardcaml_usb_controller)
+ (name hardcaml_stream)
  (libraries hardcaml core)
  (inline_tests)
  (preprocess
