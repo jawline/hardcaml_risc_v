@@ -3,6 +3,7 @@ open Hardcaml
 open Signal
 open! Always
 
+(* TODO: Tests *)
 (* This expects packets with a leading tag byte that we use to route to one of
    several output streams. *)
 
