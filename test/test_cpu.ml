@@ -1,6 +1,7 @@
 open! Core
 open Hardcaml
 open Hardcaml_risc_v
+open Hardcaml_risc_v_hart
 open Hardcaml_waveterm
 open! Bits
 

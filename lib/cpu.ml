@@ -1,6 +1,7 @@
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
+open Hardcaml_risc_v_hart
 open Signal
 open Always
 (* TODO: Add an enable? *)
