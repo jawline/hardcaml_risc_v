@@ -1,7 +1,8 @@
 open! Core
 open Hardcaml
 open Hardcaml_waveterm
-open Risc_v_hardcaml
+open Hardcaml_risc_v
+open Hardcaml_memory_controller
 open! Bits
 
 module Hart_config = struct

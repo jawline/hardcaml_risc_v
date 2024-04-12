@@ -7,6 +7,7 @@
 open! Core
 
 open Hardcaml
+open Hardcaml_memory_controller
 open! Signal
 open Always
 

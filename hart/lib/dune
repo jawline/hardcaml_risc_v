@@ -1,5 +1,5 @@
 (library
- (name hardcaml_risc_v)
+ (name hardcaml_risc_v_hart)
  (libraries hardcaml hardcaml_stream hardcaml_memory_controller core)
  (inline_tests)
  (preprocess

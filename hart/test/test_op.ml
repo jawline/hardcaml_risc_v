@@ -1,6 +1,6 @@
 open Core
 open Hardcaml
-open Risc_v_hardcaml
+open Hardcaml_risc_v
 open Bits
 
 module Hart_config = struct

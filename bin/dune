@@ -1,4 +1,4 @@
 (executable
- (public_name risc_v_hardcaml)
+ (public_name hardcaml_risc_v)
  (name main)
- (libraries core core_unix async risc_v_hardcaml hardcaml_xilinx_reports))
+ (libraries core core_unix async hardcaml_risc_v hardcaml_xilinx_reports))

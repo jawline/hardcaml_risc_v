@@ -1,5 +1,5 @@
 open! Core
-open Risc_v_hardcaml
+open Hardcaml_risc_v
 module Synth = Hardcaml_xilinx_reports
 
 module Design =

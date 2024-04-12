@@ -1,7 +1,7 @@
 open! Core
 open Hardcaml
+open Hardcaml_risc_v
 open Hardcaml_waveterm
-open Risc_v_hardcaml
 open! Bits
 
 module Cpu =
