@@ -33,6 +33,13 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     [@@deriving sexp, enumerate, compare]
   end
 
+  let buffer_n_elements ~n (input : Signal.t With_valid.t) reg_spec =
+          let data_reg = Variable.reg ~width:(width input.data * n) reg_spec in
+          { With_valid.valid = assert false 
+          ; data = data_reg.value }
+          
+    ;;
+
   let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack } : _ I.t) =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
