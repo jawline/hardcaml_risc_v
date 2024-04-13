@@ -18,6 +18,8 @@ module type S = sig
     [@@deriving sexp_of, hardcaml]
   end
 
+  val data_bus_width : int
+
   module Tx_bus : Stream_intf.S with type 'a data := 'a Tx_data.t
   module Rx_bus : Stream_intf.S with type 'a data := 'a Rx_data.t
 end

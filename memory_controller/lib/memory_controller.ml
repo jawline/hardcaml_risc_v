@@ -16,6 +16,7 @@ struct
 
   include Memory_bus.Make (M)
 
+  let data_bus_width = M.data_bus_width
   let data_bus_in_bytes = M.data_bus_width / 8
 
   let () =

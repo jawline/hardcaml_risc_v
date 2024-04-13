@@ -1,6 +1,6 @@
 (library
  (name hardcaml_io_controller)
- (libraries hardcaml hardcaml_stream core)
+ (libraries hardcaml hardcaml_stream hardcaml_memory_controller core)
  (inline_tests)
  (preprocess
   (pps

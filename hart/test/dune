@@ -1,6 +1,12 @@
 (library
  (name hardcaml_risc_v_hart_test)
- (libraries hardcaml core async async_unix hardcaml_waveterm hardcaml_risc_v_hart)
+ (libraries
+  hardcaml
+  core
+  async
+  async_unix
+  hardcaml_waveterm
+  hardcaml_risc_v_hart)
  (inline_tests)
  (preprocess
   (pps
