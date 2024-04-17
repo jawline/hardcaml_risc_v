@@ -1,3 +1,5 @@
+open Core
+open Hardcaml
 open Hardcaml_stream
 
 module Make (M : sig
@@ -21,6 +23,11 @@ struct
       }
     [@@deriving sexp_of, hardcaml]
   end
+
+  let address_is_word_aligned address =
+    let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
+    Signal.(address &:. unaligned_bits)
+  ;;
 
   module Tx_bus = Stream.Make (Tx_data)
   module Rx_bus = Stream.Make (Rx_data)

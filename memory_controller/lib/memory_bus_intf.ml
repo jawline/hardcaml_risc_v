@@ -1,3 +1,4 @@
+open Hardcaml
 open Hardcaml_stream
 
 module type S = sig
@@ -19,6 +20,7 @@ module type S = sig
   end
 
   val data_bus_width : int
+  val address_is_word_aligned : Signal.t -> Signal.t
 
   module Tx_bus : Stream_intf.S with type 'a data := 'a Tx_data.t
   module Rx_bus : Stream_intf.S with type 'a data := 'a Rx_data.t

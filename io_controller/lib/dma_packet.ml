@@ -30,14 +30,25 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       | Reading_memory_address
       | Buffering_word
       | Writing_word
+      | Ignoring_illegal_address
     [@@deriving sexp, enumerate, compare]
   end
 
-  let buffer_n_elements ~reg_spec ~reg_spec_no_clear ~n (input : Signal.t With_valid.t) =
+  let buffer_n_elements
+    ?(reset_when = gnd)
+    ~reg_spec
+    ~reg_spec_no_clear
+    ~n
+    (input : Signal.t With_valid.t)
+    =
     let next_element =
       reg_fb
         ~width:(Int.ceil_log2 n)
-        ~f:(fun t -> mux2 input.valid (mod_counter ~max:(n - 1) t) t)
+        ~f:(fun t ->
+          mux2
+            reset_when
+            (of_int ~width:(width t) 0)
+            (mux2 input.valid (mod_counter ~max:(n - 1) t) t))
         reg_spec
     in
     let data_parts =
@@ -50,15 +61,12 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
         n
     in
     { With_valid.valid =
-        (* We are using a valid signal to indicate the state machine should
-           move forward, so we don't register it. The state
-           of the value will not be correct until the cycle after a pulse. *)
-        next_element ==:. n - 1 &: input.valid
+        next_element ==:. n - 1 &: input.valid &: ~:reset_when |> reg reg_spec_no_clear
     ; value = concat_msb data_parts
     }
   ;;
 
-  let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack } : _ I.t) =
+  let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack = _ } : _ I.t) =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
@@ -69,38 +77,82 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     (* We assume that memory address width is data width here *)
     let num_cycle_to_buffer = Memory.data_bus_width / width in_.data.data in
     let input_ready = Variable.wire ~default:(zero 1) in
-    let address =
+    let address_buffer =
       buffer_n_elements
+      (* Reset when last so we don't get stuck with a mis-sized packet. *)
+        ~reset_when:in_.data.last
         ~reg_spec
         ~reg_spec_no_clear
         ~n:num_cycle_to_buffer
         { valid = state.is Reading_memory_address &: in_.valid; value = in_.data.data }
     in
-    let next_data =
+    let data_buffer =
       buffer_n_elements
         ~reg_spec
         ~reg_spec_no_clear
         ~n:num_cycle_to_buffer
         { valid = state.is Buffering_word &: in_.valid; value = in_.data.data }
     in
+    (* TODO: We copy the memory address to current_address so we can increment
+       it as we write. It's a little bit wasteful to have two registers where
+       one won't be used at once - consider refactoring down the line. *)
+    let current_address =
+      Variable.reg ~width:(width address_buffer.value) reg_spec_no_clear
+    in
+    let current_data = Variable.reg ~width:(width data_buffer.value) reg_spec_no_clear in
+    let was_last = Variable.reg ~width:1 reg_spec_no_clear in
     compile
       [ state.switch
           [ ( State.Reading_memory_address
             , [ input_ready <--. 1
-                (* HERE: Discard on last so we don't get stuck. We need to reset address. *)
-              ; when_ address.valid [ state.set_next Buffering_word ]
+              ; when_
+                  address_buffer.valid
+                  [ current_address <-- address_buffer.value
+                  ; if_
+                      (Memory.address_is_word_aligned address_buffer.value)
+                      [ state.set_next Writing_word ]
+                      [ state.set_next Ignoring_illegal_address ]
+                  ]
               ] )
-          ; ( State.Buffering_word
-            , [ input_ready <--. 1 (* HERE: Discard on last so we don't get stuck. *)
-              ; when_ next_data.valid [ state.set_next Writing_word ]
+          ; (* TODO: In principle, we can buffer a word while waiting for a
+               write, but that makes the state machine more complicated. *)
+            ( Buffering_word
+            , [ input_ready <--. 1
+              ; (* If in_.last we will reset to Reading_memory_address unless
+                   next_data.valid is also high in which case we will write the last
+                   word first. This causes us to loose the last bytes of an unaligned
+                   write. *)
+                was_last <-- in_.data.last
+              ; current_data <-- data_buffer.value
+              ; when_ in_.data.last [ state.set_next Reading_memory_address ]
+              ; when_ data_buffer.valid [ state.set_next Writing_word ]
               ] )
-          ; ( State.Writing_word
-            , [ (* HERE: Write word to memory address and then increment memory address before returning to buffering word. *)
-                assert false
+          ; ( Writing_word
+            , [ when_
+                  out.ready
+                  [ current_address
+                    <-- current_address.value +:. (width data_buffer.value / 8)
+                  ; state.set_next Buffering_word
+                  ]
+              ] )
+          ; ( Ignoring_illegal_address
+            , [ (* Ignore the packet *)
+                input_ready <--. 1
+              ; when_ in_.data.last [ state.set_next Reading_memory_address ]
               ] )
           ]
       ];
-    assert false
+    { O.in_ = { ready = input_ready.value }
+    ; out =
+        { valid = state.is Writing_word
+        ; data =
+            { address = current_address.value
+            ; write = vdd
+            ; write_data = current_data.value
+            }
+        }
+    ; out_ack = { ready = vdd }
+    }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
