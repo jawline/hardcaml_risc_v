@@ -62,7 +62,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     in
     { With_valid.valid =
         next_element ==:. n - 1 &: input.valid &: ~:reset_when |> reg reg_spec_no_clear
-    ; value = concat_msb data_parts
+    ; value = data_parts
     }
   ;;
 
@@ -85,6 +85,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
         ~reg_spec_no_clear
         ~n:num_cycle_to_buffer
         { valid = state.is Reading_memory_address &: in_.valid; value = in_.data.data }
+      |> With_valid.map_value ~f:concat_msb
     in
     let data_buffer =
       buffer_n_elements
@@ -92,6 +93,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
         ~reg_spec_no_clear
         ~n:num_cycle_to_buffer
         { valid = state.is Buffering_word &: in_.valid; value = in_.data.data }
+      |> With_valid.map_value ~f:concat_lsb
     in
     (* TODO: We copy the memory address to current_address so we can increment
        it as we write. It's a little bit wasteful to have two registers where
@@ -107,7 +109,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
             , [ input_ready <--. 1
               ; when_
                   address_buffer.valid
-                  [ current_address <-- address_buffer.value
+                  [ current_address <-- address_buffer.value -- "address_buffer"
                   ; if_
                       (Memory.address_is_word_aligned address_buffer.value)
                       [ state.set_next Writing_word ]
@@ -123,7 +125,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
                    word first. This causes us to loose the last bytes of an unaligned
                    write. *)
                 was_last <-- in_.data.last
-              ; current_data <-- data_buffer.value
+              ; current_data <-- data_buffer.value -- "data_buffer"
               ; when_ in_.data.last [ state.set_next Reading_memory_address ]
               ; when_ data_buffer.valid [ state.set_next Writing_word ]
               ] )
@@ -144,11 +146,11 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       ];
     { O.in_ = { ready = input_ready.value }
     ; out =
-        { valid = state.is Writing_word
+        { valid = state.is Writing_word -- "data_out_valid"
         ; data =
-            { address = current_address.value
+            { address = current_address.value -- "data_out_address"
             ; write = vdd
-            ; write_data = current_data.value
+            ; write_data = current_data.value -- "data_out"
             }
         }
     ; out_ack = { ready = vdd }

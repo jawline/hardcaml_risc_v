@@ -1,0 +1,307 @@
+open! Core
+open Hardcaml
+open Hardcaml_waveterm
+open Hardcaml_uart_controller
+open Hardcaml_io_controller
+open Hardcaml_memory_controller
+open! Bits
+
+let debug = true
+
+module Memory_controller = Memory_controller.Make (struct
+    let num_bytes = 128
+    let num_channels = 1
+    let address_width = 32
+    let data_bus_width = 32
+  end)
+
+let print_ram sim =
+  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+  Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut) ram
+  |> Array.to_list
+  |> List.map ~f:(fun t -> Bits.split_lsb ~part_width:8 t |> List.map ~f:Bits.to_int)
+  |> List.concat
+  |> List.iter ~f:(fun v -> printf "%02x " v);
+  printf "\n"
+;;
+
+let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
+  =
+  let all_inputs =
+    (* We add the magic and then the packet length before the packet *)
+    let packet = String.to_list packet in
+    let packet_len_parts =
+      Bits.of_int ~width:16 (List.length packet + 2)
+      |> split_msb ~part_width:8
+      |> List.map ~f:Bits.to_int
+    in
+    let address =
+      Bits.of_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:Bits.to_int
+    in
+    [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
+  in
+  let module Config = struct
+    (* This should trigger a switch every other cycle. *)
+    let clock_frequency = clock_frequency
+    let baud_rate = baud_rate
+    let include_parity_bit = include_parity_bit
+    let stop_bits = stop_bits
+  end
+  in
+  let module Packet =
+    Packet.Make (struct
+      let data_bus_width = 8
+    end)
+  in
+  let module Dma = Dma_packet.Make (Memory_controller) (Packet) in
+  let module Uart_tx = Uart_tx.Make (Config) in
+  let module Uart_rx = Uart_rx.Make (Config) in
+  let module Serial_to_packet =
+    Serial_to_packet.Make
+      (struct
+        let magic = 'Q'
+        let serial_input_width = 8
+        let max_packet_length_in_data_widths = 16
+      end)
+      (Packet)
+  in
+  let module Machine = struct
+    open Signal
+    open Always
+
+    module I = struct
+      type 'a t =
+        { clock : 'a
+        ; clear : 'a
+        ; data_in_valid : 'a
+        ; data_in : 'a [@bits 8]
+        }
+      [@@deriving sexp_of, hardcaml]
+    end
+
+    module O = struct
+      type 'a t =
+        { parity_error : 'a
+        ; stop_bit_unstable : 'a
+        ; out : 'a Memory_controller.Tx_bus.Rx.t
+        ; out_ack : 'a Memory_controller.Rx_bus.Tx.t
+        }
+      [@@deriving sexp_of, hardcaml]
+    end
+
+    let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
+      let { Uart_tx.O.uart_tx; _ } =
+        Uart_tx.hierarchical
+          ~instance:"tx"
+          scope
+          { Uart_tx.I.clock; clear; data_in_valid; data_in }
+      in
+      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
+        Uart_rx.hierarchical
+          ~instance:"rx"
+          scope
+          { Uart_rx.I.clock; clear; uart_rx = uart_tx }
+      in
+      let { Serial_to_packet.O.out } =
+        Serial_to_packet.hierarchical
+          ~instance:"serial_to_packet"
+          scope
+          { Serial_to_packet.I.clock
+          ; clear
+          ; in_valid = data_out_valid
+          ; in_data = data_out
+          ; out = { ready = one 1 }
+          }
+      in
+      let dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
+      let memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
+      let dma =
+        Dma.hierarchical
+          ~instance:"dma"
+          scope
+          { Dma.I.clock
+          ; clear
+          ; in_ = out
+          ; out = Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
+          ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
+          }
+      in
+      let controller =
+        Memory_controller.hierarchical
+          ~instance:"memory_controller"
+          scope
+          { Memory_controller.I.clock
+          ; clear
+          ; ch_to_controller = [ dma.out ]
+          ; controller_to_ch = [ dma.out_ack ]
+          }
+      in
+      compile
+        [ Memory_controller.Tx_bus.Rx.Of_always.assign
+            dma_to_memory_controller
+            (List.nth_exn controller.ch_to_controller 0)
+        ; Memory_controller.Rx_bus.Tx.Of_always.assign
+            memory_controller_to_dma
+            (List.nth_exn controller.controller_to_ch 0)
+        ];
+      { O.parity_error
+      ; stop_bit_unstable
+      ; (* Throw these in to avoid dead code elimination *) out =
+          Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
+      ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
+      }
+    ;;
+  end
+  in
+  let create_sim () =
+    let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
+    Sim.create
+      ~config:Cyclesim.Config.trace_all
+      (Machine.create
+         (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
+  in
+  let sim = create_sim () in
+  let waveform, sim = Waveform.create sim in
+  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
+  (* The fifo needs a clear cycle to initialize *)
+  inputs.clear := vdd;
+  Cyclesim.cycle sim;
+  Cyclesim.cycle sim;
+  Cyclesim.cycle sim;
+  inputs.clear := gnd;
+  let rec loop_for n =
+    if n = 0
+    then ()
+    else (
+      Cyclesim.cycle sim;
+      loop_for (n - 1))
+  in
+  List.iter
+    ~f:(fun input ->
+      inputs.data_in_valid := vdd;
+      inputs.data_in := of_int ~width:8 input;
+      Cyclesim.cycle sim;
+      inputs.data_in_valid := of_int ~width:1 0;
+      (* TODO: Tighter loop *)
+      loop_for 20)
+    all_inputs;
+  loop_for 100;
+  if debug
+  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform;
+  print_ram sim
+;;
+
+let%expect_test "test" =
+  test
+    ~name:"/tmp/test_dma_hello_world"
+    ~clock_frequency:200
+    ~baud_rate:200
+    ~include_parity_bit:false
+    ~stop_bits:1
+    ~address:0
+    ~packet:"Hello world";
+  [%expect
+    {|
+      ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+      │clock             ││┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   │
+      │                  ││    └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───│
+      │clear             ││────────────────────────┐                                                                                                       │
+      │                  ││                        └───────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │data_in           ││ 00                     │51                                                                                                     │
+      │                  ││────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │data_in_valid     ││                        ┌───────┐                                                                                               │
+      │                  ││────────────────────────┘       └───────────────────────────────────────────────────────────────────────────────────────────────│
+      │error             ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │parity_error      ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │read_data         ││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │ready             ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││                                                                                                                                │
+      │stop_bit_unstable ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │valid             ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$address_buffer││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$current_state ││ 0                                                                                                                              │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$data_buffer   ││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$data_out      ││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$data_out_addre││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$data_out_valid││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$i$clear       ││────────────────────────┐                                                                                                       │
+      │                  ││                        └───────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$i$clock       ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$i$data        ││ 00                                                                                                                             │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$i$last        ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$i$ready       ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││                                                                                                                                │
+      │dma$i$valid       ││────────┐                                                                                                                       │
+      │                  ││        └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$o$address     ││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$o$valid       ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$o$write       ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │dma$o$write_data  ││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │main_memory_bram  ││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││────────────────────────┐                                                                                                       │
+      │                  ││                        └───────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││ 00                                                                                                                             │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││                                                                                                                                │
+      │memory_controller$││                                                                                                                                │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││ 00000000                                                                                                                       │
+      │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+      │memory_controller$││                                                                                                                                │
+      └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+      838eaa583c2f66070edd9803e92037b3
+      00 48656c6c 6f20776f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |}]
+;;
