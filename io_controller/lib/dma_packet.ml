@@ -112,7 +112,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
                   [ current_address <-- address_buffer.value -- "address_buffer"
                   ; if_
                       (Memory.address_is_word_aligned address_buffer.value)
-                      [ state.set_next Writing_word ]
+                      [ state.set_next Buffering_word ]
                       [ state.set_next Ignoring_illegal_address ]
                   ]
               ] )
