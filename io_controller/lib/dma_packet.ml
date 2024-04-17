@@ -33,12 +33,30 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     [@@deriving sexp, enumerate, compare]
   end
 
-  let buffer_n_elements ~n (input : Signal.t With_valid.t) reg_spec =
-          let data_reg = Variable.reg ~width:(width input.data * n) reg_spec in
-          { With_valid.valid = assert false 
-          ; data = data_reg.value }
-          
-    ;;
+  let buffer_n_elements ~reg_spec ~reg_spec_no_clear ~n (input : Signal.t With_valid.t) =
+    let next_element =
+      reg_fb
+        ~width:(Int.ceil_log2 n)
+        ~f:(fun t -> mux2 input.valid (mod_counter ~max:(n - 1) t) t)
+        reg_spec
+    in
+    let data_parts =
+      List.init
+        ~f:(fun i ->
+          reg_fb
+            ~width:(width input.value)
+            ~f:(fun t -> mux2 (next_element ==:. i) input.value t)
+            reg_spec_no_clear)
+        n
+    in
+    { With_valid.valid =
+        (* We are using a valid signal to indicate the state machine should
+           move forward, so we don't register it. The state
+           of the value will not be correct until the cycle after a pulse. *)
+        next_element ==:. n - 1 &: input.valid
+    ; value = concat_msb data_parts
+    }
+  ;;
 
   let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack } : _ I.t) =
     let ( -- ) = Scope.naming scope in
@@ -48,15 +66,38 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     ignore (state.current -- "current_state" : Signal.t);
     if Memory.data_bus_width % width in_.data.data <> 0
     then raise_s [%message "BUG: Memory width must be a multiple of DMA stream input"];
-    let num_cycle_to_buffer_entire_memory_address =
-      Memory.data_bus_width / width in_.data.data
-    in
+    (* We assume that memory address width is data width here *)
+    let num_cycle_to_buffer = Memory.data_bus_width / width in_.data.data in
     let input_ready = Variable.wire ~default:(zero 1) in
+    let address =
+      buffer_n_elements
+        ~reg_spec
+        ~reg_spec_no_clear
+        ~n:num_cycle_to_buffer
+        { valid = state.is Reading_memory_address &: in_.valid; value = in_.data.data }
+    in
+    let next_data =
+      buffer_n_elements
+        ~reg_spec
+        ~reg_spec_no_clear
+        ~n:num_cycle_to_buffer
+        { valid = state.is Buffering_word &: in_.valid; value = in_.data.data }
+    in
     compile
       [ state.switch
-          [ State.Reading_memory_address, []
-          ; State.Buffering_word, []
-          ; State.Writing_word, []
+          [ ( State.Reading_memory_address
+            , [ input_ready <--. 1
+                (* HERE: Discard on last so we don't get stuck. We need to reset address. *)
+              ; when_ address.valid [ state.set_next Buffering_word ]
+              ] )
+          ; ( State.Buffering_word
+            , [ input_ready <--. 1 (* HERE: Discard on last so we don't get stuck. *)
+              ; when_ next_data.valid [ state.set_next Writing_word ]
+              ] )
+          ; ( State.Writing_word
+            , [ (* HERE: Write word to memory address and then increment memory address before returning to buffering word. *)
+                assert false
+              ] )
           ]
       ];
     assert false
