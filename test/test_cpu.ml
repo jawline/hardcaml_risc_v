@@ -17,6 +17,7 @@ module Cpu =
     end)
     (struct
       let num_harts = 1
+      let include_io_controller = Io_controller_config.No_io_controller
     end)
 
 let create_sim () =

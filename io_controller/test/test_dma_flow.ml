@@ -44,10 +44,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   in
   let module Config = struct
     (* This should trigger a switch every other cycle. *)
-    let clock_frequency = clock_frequency
-    let baud_rate = baud_rate
-    let include_parity_bit = include_parity_bit
-    let stop_bits = stop_bits
+    let config =
+      { Hardcaml_uart_controller.Config.clock_frequency
+      ; baud_rate
+      ; include_parity_bit
+      ; stop_bits
+      }
+    ;;
   end
   in
   let module Packet =

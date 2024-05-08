@@ -25,9 +25,9 @@ struct
   end
 
   let address_is_word_aligned address =
-          let open Signal in 
+    let open Signal in
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
-    (address &:. unaligned_bits) ==:. 0
+    address &:. unaligned_bits ==:. 0
   ;;
 
   module Tx_bus = Stream.Make (Tx_data)

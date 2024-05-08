@@ -1,6 +1,6 @@
 (executable
  (public_name hardcaml_risc_v)
- (name main)
+ (name top)
  (libraries
   core
   core_unix

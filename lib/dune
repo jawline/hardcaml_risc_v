@@ -4,6 +4,8 @@
   hardcaml
   hardcaml_stream
   hardcaml_memory_controller
+  hardcaml_uart_controller
+  hardcaml_io_controller
   core
   hardcaml_risc_v_hart)
  (inline_tests)

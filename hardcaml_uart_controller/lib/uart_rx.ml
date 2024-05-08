@@ -7,14 +7,8 @@ open Hardcaml
 open Signal
 open Always
 
-module Make (Config : sig
-    val clock_frequency : int
-    val baud_rate : int
-    val include_parity_bit : bool
-    val stop_bits : int
-  end) =
-struct
-  let switching_frequency = Config.clock_frequency / Config.baud_rate
+module Make (C : Config_intf.S) = struct
+  let switching_frequency = C.config.clock_frequency / C.config.baud_rate
 
   module I = struct
     type 'a t =
@@ -78,7 +72,7 @@ struct
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let rx_parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let parity_bit_matches =
-      if Config.include_parity_bit
+      if C.config.include_parity_bit
       then
         parity_bit.value -- "calculated_parity_bit"
         ==: rx_parity_bit.value -- "rx_parity_bit"
@@ -109,7 +103,7 @@ struct
                   ; which_data_bit <-- which_data_bit.value +:. 1
                   ; when_
                       (which_data_bit.value -- "which_data_bit" ==:. 7)
-                      [ (if Config.include_parity_bit
+                      [ (if C.config.include_parity_bit
                          then current_state.set_next Waiting_for_parity_bit
                          else current_state.set_next Waiting_for_stop_bits)
                       ]
@@ -128,7 +122,7 @@ struct
                   [ which_stop_bit <-- which_stop_bit.value +:. 1
                   ; when_ (uart_rx ==:. 0) [ stop_bit_not_stable <--. 1 ]
                   ; when_
-                      (which_stop_bit.value ==:. Config.stop_bits)
+                      (which_stop_bit.value ==:. C.config.stop_bits)
                       [ data_out_valid
                         <-- (~:(stop_bit_not_stable.value) &: parity_bit_matches)
                       ; parity_error <-- ~:parity_bit_matches

@@ -10,14 +10,8 @@ open Hardcaml
 open Signal
 open Always
 
-module Make (Config : sig
-    val clock_frequency : int
-    val baud_rate : int
-    val include_parity_bit : bool
-    val stop_bits : int
-  end) =
-struct
-  let switching_frequency = Config.clock_frequency / Config.baud_rate
+module Make (C : Config_intf.S) = struct
+  let switching_frequency = C.config.clock_frequency / C.config.baud_rate
 
   module I = struct
     type 'a t =
@@ -111,7 +105,7 @@ struct
                   ; which_data_bits <-- which_data_bits.value +:. 1
                   ; when_
                       (which_data_bits.value ==:. 7)
-                      (if Config.include_parity_bit
+                      (if C.config.include_parity_bit
                        then [ current_state.set_next Waiting_for_parity_bit ]
                        else [ current_state.set_next Waiting_for_stop_bits ])
                   ]
@@ -136,7 +130,7 @@ struct
                        it would only reflect the change on the next cycle. *)
                     current_output_wire <--. 1
                   ; when_
-                      (which_stop_bit.value ==:. Config.stop_bits)
+                      (which_stop_bit.value ==:. C.config.stop_bits)
                       [ current_state.set_next Waiting_for_data_in ]
                   ]
               ] )
