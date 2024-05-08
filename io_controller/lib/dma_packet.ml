@@ -29,6 +29,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     type t =
       | Reading_memory_address
       | Buffering_word
+      | Consume_remaining_buffer
       | Writing_word
       | Ignoring_illegal_address
     [@@deriving sexp, enumerate, compare]
@@ -56,7 +57,14 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
         ~f:(fun i ->
           reg_fb
             ~width:(width input.value)
-            ~f:(fun t -> mux2 (next_element ==:. i) input.value t)
+            ~f:(fun t ->
+              (* We wipe the state of the buffer on the first cycle
+                 of a buffering round to make sure previous state doesn't leak into
+                 the next DMA request and instead its zeroed out. *)
+              mux2
+                (input.valid &: (next_element ==:. i))
+                input.value
+                (mux2 (next_element ==:. 0) (zero (width t)) t))
             reg_spec_no_clear)
         n
     in
@@ -126,8 +134,13 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
                    write. *)
                 was_last <-- in_.data.last
               ; current_data <-- data_buffer.value -- "data_buffer"
-              ; when_ in_.data.last [ state.set_next Reading_memory_address ]
+              ; when_ in_.data.last [ state.set_next Consume_remaining_buffer ]
               ; when_ data_buffer.valid [ state.set_next Writing_word ]
+              ] )
+          ; ( Consume_remaining_buffer
+            , [ (* We pause a cycle to let the in_.data.data get into the data buffer *)
+                current_data <-- data_buffer.value -- "data_buffer"
+              ; state.set_next Writing_word
               ] )
           ; ( Writing_word
             , [ when_
