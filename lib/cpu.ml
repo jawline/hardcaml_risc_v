@@ -162,20 +162,21 @@ struct
             })
         General_config.num_harts
     in
+    (* TODO: After adding the DMA controller this code has got a little ugly. Factor it out? *)
     compile
       ([ List.map
            ~f:(fun (hart, ch_to_controller_per_hart) ->
              Memory_controller.Tx_bus.Tx.Of_always.assign
                ch_to_controller_per_hart
                hart.hart_to_memory_controller)
-           (List.zip_exn harts ch_to_controller_per_hart)
+           (List.zip_exn harts (List.take ch_to_controller_per_hart General_config.num_harts))
          |> proc
        ; List.map
            ~f:(fun (hart, controller_to_ch_per_hart) ->
              Memory_controller.Rx_bus.Rx.Of_always.assign
                controller_to_ch_per_hart
                hart.memory_controller_to_hart)
-           (List.zip_exn harts controller_to_ch_per_hart)
+           (List.zip_exn harts (List.take controller_to_ch_per_hart General_config.num_harts))
          |> proc
        ]
        @
