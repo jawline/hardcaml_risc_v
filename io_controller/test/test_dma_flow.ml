@@ -188,7 +188,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       Cyclesim.cycle sim;
       inputs.data_in_valid := of_int ~width:1 0;
       (* TODO: Tighter loop *)
-      loop_for 20)
+      loop_for 11)
     all_inputs;
   loop_for 100;
   if debug
