@@ -115,7 +115,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; clear
           ; in_valid = data_out_valid
           ; in_data = data_out
-          ; out = { ready = one 1 }
+          ; out = { ready = vdd }
           }
       in
       let dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in

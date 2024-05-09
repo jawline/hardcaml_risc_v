@@ -172,6 +172,6 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"DMA" ~instance create input
+    H.hierarchical ~scope ~name:"dma" ~instance create input
   ;;
 end
