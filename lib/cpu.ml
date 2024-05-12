@@ -42,14 +42,15 @@ struct
       ; (* These are optional if include_io_controller = Uart_io. *)
         (* TODO: Remove these from the I.t when unused *)
         uart_rx : 'a
-      ; uart_tx : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
 
   module O = struct
     type 'a t =
-      { registers : 'a Hart.Registers.t list [@length General_config.num_harts] }
+      { registers : 'a Hart.Registers.t list [@length General_config.num_harts]
+      ; uart_tx : 'a
+      }
     [@@deriving sexp_of, hardcaml]
   end
 
@@ -194,7 +195,7 @@ struct
              to_ch
              (List.last_exn controller.controller_to_ch)
          ]);
-    { O.registers = List.map ~f:(fun o -> o.registers) harts }
+    { O.registers = List.map ~f:(fun o -> o.registers) harts; uart_tx = gnd }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
