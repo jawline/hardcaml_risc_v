@@ -86,16 +86,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 8)
       (general (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     504093 a0c093 00 00 00 00 00 00
-
-     =========================================================================
-     ((pc 8)
-      (general (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     504093 a0c093 00 00 00 93000000 226000 00 |}];
+     504093 a0c093 00 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0b1111
@@ -104,16 +97,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 8)
       (general (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     f00093 30f093 00 00 00 00 00 00
-
-     =========================================================================
-     ((pc 8)
-      (general (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     f00093 30f093 00 00 00 93000000 226000 00 |}];
+     f00093 30f093 00 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0b101010
@@ -122,16 +108,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 8)
       (general (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     2a00093 150e093 00 00 00 00 00 00
-
-     =========================================================================
-     ((pc 8)
-      (general (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     2a00093 150e093 00 00 00 93000000 226000 00 |}];
+     2a00093 150e093 00 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0b1
@@ -140,16 +119,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 8)
       (general (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     100093 409093 00 00 00 00 00 00
-
-     =========================================================================
-     ((pc 8)
-      (general (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     100093 409093 00 00 00 93000000 226000 00 |}];
+     100093 409093 00 00 00 00 00 00 |}];
     (* TODO: Test the negative cases *)
     test
       ~instructions:
@@ -160,16 +132,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 12)
       (general (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     a00093 50a113 f0a193 00 00 00 00 00
-
-     =========================================================================
-     ((pc 12)
-      (general (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     a00093 50a113 f0a193 00 00 93000000 226000 00 |}];
+     a00093 50a113 f0a193 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:10
@@ -179,16 +144,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 12)
       (general (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     a00093 50b113 f0b193 00 00 00 00 00
-
-     =========================================================================
-     ((pc 12)
-      (general (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     a00093 50b113 f0b193 00 00 93000000 226000 00 |}];
+     a00093 50b113 f0b193 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:16
@@ -198,16 +156,9 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
      ((pc 12)
       (general (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     1000093 40d113 30d193 00 00 00 00 00
-
-     =========================================================================
-     ((pc 12)
-      (general (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     1000093 40d113 30d193 00 00 93000000 226000 00 |}];
+     1000093 40d113 30d193 00 00 00 00 00 |}];
     (* Test x0 is hardwired to zero. *)
     test
       ~instructions:[ op_imm ~funct3:Funct3.Op.Add_or_sub ~rd:0 ~rs1:0 ~immediate:0x500 ]
@@ -221,12 +172,11 @@ struct
      50000013 40d113 30d193 00 00 00 00 00
 
      =========================================================================
-     ((pc 12)
+     ((pc 4)
       (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     50000013 40d113 30d193 00 00 93000000 226000 00 |}];
+     50000013 00 00 00 00 00 00 00 |}];
     M.finalize_sim sim;
-    [%expect
-      {| |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "op_imm" =
@@ -252,8 +202,7 @@ struct
      (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
     00 00 00 00 00 93000000 131f4000 b312c001 |}];
     M.finalize_sim sim;
-    [%expect
-      {| |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "branch" =
@@ -284,18 +233,10 @@ struct
       sim;
     [%expect
       {|
-      (* CR expect_test: Collector ran multiple times with different outputs *)
-      =========================================================================
       ((pc 8)
        (general
         (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      22600093 1e100a63 00 00 00 00 00 00
-
-      =========================================================================
-      ((pc 8)
-       (general
-        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      22600093 1e100a63 00 00 00 63000000 630c0014 1e000a |}];
+      22600093 1e100a63 00 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
@@ -304,18 +245,10 @@ struct
       sim;
     [%expect
       {|
-      (* CR expect_test: Collector ran multiple times with different outputs *)
-      =========================================================================
       ((pc 504)
        (general
         (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      22600093 1e101a63 00 00 00 00 00 00
-
-      =========================================================================
-      ((pc 504)
-       (general
-        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      22600093 1e101a63 00 00 00 63000000 630c0014 1e000a |}];
+      22600093 1e101a63 00 00 00 00 00 00 |}];
     (* Expect the second branch to be taken *)
     test
       ~instructions:
@@ -326,18 +259,10 @@ struct
       sim;
     [%expect
       {|
-      (* CR expect_test: Collector ran multiple times with different outputs *)
-      =========================================================================
       ((pc 258)
        (general
         (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      2104963 6400093 e104d63 00 00 00 00 00
-
-      =========================================================================
-      ((pc 258)
-       (general
-        (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      2104963 6400093 e104d63 00 00 63000000 630c0014 1e000a |}];
+      2104963 6400093 e104d63 00 00 00 00 00 |}];
     (* Expect the second branch to be taken *)
     test
       ~instructions:
@@ -348,22 +273,13 @@ struct
       sim;
     [%expect
       {|
-      (* CR expect_test: Collector ran multiple times with different outputs *)
-      =========================================================================
       ((pc 258)
        (general
         (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      6400093 2105963 e00dd63 00 00 00 00 00
-
-      =========================================================================
-      ((pc 258)
-       (general
-        (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-      6400093 2105963 e00dd63 00 00 63000000 630c0014 1e000a |}];
+      6400093 2105963 e00dd63 00 00 00 00 00 |}];
     (* TODO: Test unsigned variants and negative numbers. *)
     M.finalize_sim sim;
-    [%expect
-      {| |}]
+    [%expect {| |}]
   ;;
 end
 
@@ -458,7 +374,8 @@ module With_manually_programmed_ram = Make (struct
             ~f:(fun t -> Bits.to_int !t)
             outputs
         in
-        print_s [%message "" ~_:(outputs : int Cpu_with_no_io_controller.Hart.Registers.t)];
+        print_s
+          [%message "" ~_:(outputs : int Cpu_with_no_io_controller.Hart.Registers.t)];
         print_ram sim
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
     ;;
@@ -607,11 +524,8 @@ module With_dma_ram = Make (struct
       let sim, _, _ = sim in
       (* Initialize the main memory to some known values for testing. *)
       let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-      Array.iteri
-        ~f:(fun index tgt ->
-          match List.nth instructions index with
-          | Some instruction -> Bits.Mutable.copy_bits ~src:instruction ~dst:tgt
-          | None -> ())
+      Array.iter
+        ~f:(fun tgt -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:8 0) ~dst:tgt)
         initial_ram;
       send_dma_message
         ~address:0
