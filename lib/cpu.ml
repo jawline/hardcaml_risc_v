@@ -67,7 +67,7 @@ struct
           let data_bus_width = 8
         end)
       in
-      let module Dma = Dma_packet.Make (Memory_controller) (Packet) in
+      let module Dma = Packet_to_memory.Make (Memory_controller) (Packet) in
       let module Uart_tx = Uart_tx.Make (Config) in
       let module Uart_rx = Uart_rx.Make (Config) in
       let module Serial_to_packet =
