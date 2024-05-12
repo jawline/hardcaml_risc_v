@@ -67,17 +67,10 @@ struct
       sim;
     [%expect
       {|
-    (* CR expect_test: Collector ran multiple times with different outputs *)
-    =========================================================================
     ((pc 4)
      (general
       (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-    22600093 00 00 00 00 00 00 00
-
-    =========================================================================
-    ((pc 0)
-     (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-    00 00 00 00 00 93000000 226000 00 |}];
+    22600093 00 00 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Xor ~rs1:0 ~rd:1 ~immediate:0b0101
@@ -190,17 +183,10 @@ struct
       sim;
     [%expect
       {|
-    (* CR expect_test: Collector ran multiple times with different outputs *)
-    =========================================================================
     ((pc 12)
      (general
       (0 500 300 200 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-    1f400093 12c00113 2081b3 00 00 00 00 00
-
-    =========================================================================
-    ((pc 0)
-     (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-    00 00 00 00 00 93000000 131f4000 b312c001 |}];
+    1f400093 12c00113 2081b3 00 00 00 00 00 |}];
     M.finalize_sim sim;
     [%expect {| |}]
   ;;
@@ -215,16 +201,9 @@ struct
       sim;
     [%expect
       {|
-    (* CR expect_test: Collector ran multiple times with different outputs *)
-    =========================================================================
     ((pc 504)
      (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-    c001463 1e000a63 00 00 00 00 00 00
-
-    =========================================================================
-    ((pc 0)
-     (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-    00 00 00 00 00 63000000 630c0014 1e000a |}];
+    c001463 1e000a63 00 00 00 00 00 00 |}];
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
@@ -464,7 +443,7 @@ module With_dma_ram = Make (struct
       if debug
       then (
         let _, waveform, name = sim in
-        Waveform.Serialize.marshall waveform ("/tmp/" ^ name))
+        Waveform.Serialize.marshall waveform ("/tmp/dma_" ^ name))
       else ()
     ;;
 
@@ -522,11 +501,16 @@ module With_dma_ram = Make (struct
 
     let test ~instructions sim =
       let sim, _, _ = sim in
+      let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       (* Initialize the main memory to some known values for testing. *)
       let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
       Array.iter
         ~f:(fun tgt -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:8 0) ~dst:tgt)
         initial_ram;
+
+      (* Send a clear signal to initialize any CPU IO controller state back to
+       * default so we're ready to receive. *)
+      clear_registers ~inputs sim;
       send_dma_message
         ~address:0
         ~packet:
@@ -535,7 +519,6 @@ module With_dma_ram = Make (struct
            |> List.map ~f:Bits.to_char
            |> String.of_char_list)
         sim;
-      let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       let _outputs_before : _ With_transmitter.O.t =
         Cyclesim.outputs ~clock_edge:Side.Before sim
       in
