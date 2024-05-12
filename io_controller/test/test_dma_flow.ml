@@ -172,9 +172,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   inputs.clear := vdd;
   Cyclesim.cycle sim;
   inputs.clear := gnd;
-
-  Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> 
-      Cyclesim.cycle sim);
+  Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
   let rec loop_for n =
     if n = 0
     then ()

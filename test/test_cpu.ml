@@ -158,13 +158,6 @@ struct
       sim;
     [%expect
       {|
-     (* CR expect_test: Collector ran multiple times with different outputs *)
-     =========================================================================
-     ((pc 12)
-      (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
-     50000013 40d113 30d193 00 00 00 00 00
-
-     =========================================================================
      ((pc 4)
       (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
      50000013 00 00 00 00 00 00 00 |}];
@@ -326,6 +319,9 @@ module With_manually_programmed_ram = Make (struct
       let sim, _, _ = sim in
       (* Initialize the main memory to some known values for testing. *)
       let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+      Array.iter
+        ~f:(fun tgt -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:8 0) ~dst:tgt)
+        initial_ram;
       Array.iteri
         ~f:(fun index tgt ->
           match List.nth instructions index with
@@ -507,7 +503,6 @@ module With_dma_ram = Make (struct
       Array.iter
         ~f:(fun tgt -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:8 0) ~dst:tgt)
         initial_ram;
-
       (* Send a clear signal to initialize any CPU IO controller state back to
        * default so we're ready to receive. *)
       clear_registers ~inputs sim;
