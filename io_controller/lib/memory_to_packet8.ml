@@ -53,7 +53,8 @@ module Make (Memory : Memory_bus_intf.S) = struct
      ; length = input_length
      ; address = input_address
      ; memory_response
-     ; _
+     ; output_packet = { ready = output_packet_ready }
+     ; (* We don't really care about memory acks. *) memory = _
      } :
       _ I.t)
     =
@@ -72,6 +73,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
     let read_data =
       Variable.reg ~width:(width memory_response.data.read_data) reg_spec_no_clear
     in
+    (* TODO: Address alignment or support unaligned addresses? *)
     compile
       [ state.switch
           [ ( State.Idle
@@ -120,14 +122,45 @@ module Make (Memory : Memory_bus_intf.S) = struct
                   ; state.set_next Writing_data
                   ]
               ] )
-          ; Writing_data, []
+          ; ( Writing_data
+            , [ Packet8.Contents_stream.Tx.Of_always.assign
+                  output_packet
+                  { valid = vdd
+                  ; data =
+                      { data =
+                          mux which_step.value (split_lsb ~part_width:8 read_data.value)
+                      ; last = length.value ==:. 1
+                      }
+                  }
+              ; when_
+                  output_packet_ready
+                  [ (* We decrement length and increment address so that
+                       the read address and stop conditions are updated.
+                    *)
+                    address <-- address.value +:. 1
+                  ; length <-- length.value -:. 1
+                  ; which_step <-- which_step.value +:. 1
+                  ; (* TODO: Once we have exhausted our read, we return
+                       to reading data. We could prefetch here to speed this
+                       up and avoid the stall. *)
+                    when_
+                      (which_step.value ==:. address_stride - 1)
+                      [ which_step <--. 0; state.set_next Reading_data ]
+                  ; (* If this was the last write, reset the entire state machine to idle. *)
+                    when_ (length.value ==:. 1) [ which_step <--. 0; state.set_next Idle ]
+                  ]
+              ] )
           ]
       ];
     { O.busy = ~:(state.is State.Idle)
     ; done_ = done_.value
     ; output_packet = Packet8.Contents_stream.Tx.Of_always.value output_packet
-    ; memory = assert false
-    ; memory_response = assert false
+    ; memory = Memory.Tx_bus.Tx.Of_always.value memory
+    ; memory_response =
+        { ready =
+            (* We should always be ready to ack a read on the same cycle it becomes ready. *)
+            vdd
+        }
     }
   ;;
 
