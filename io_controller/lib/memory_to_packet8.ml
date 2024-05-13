@@ -1,5 +1,14 @@
 (* Write a packet from memory. The framing format is a 2 byte length tag
-   followed by data. *)
+   followed by data.
+
+   The module takes an enable signal with a length and address and writes
+   out the address (Little-endian) and then the memory byte by byte to
+   an output stream. When connected to a Uart_tx this should allow us
+   to communicate with the host.
+
+   Currently this module does not prefetch memory while writing, which would
+   be a straightforward improvement.
+ *)
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
@@ -10,14 +19,25 @@ module Packet8 = Packet.Make (struct
     let data_bus_width = 8
   end)
 
+
 module Make (Memory : Memory_bus_intf.S) = struct
+
+
+module Input = struct
+        type 'a t = 
+                {
+
+       length : 'a [@bits 16]
+      ; address : 'a [@bits Memory.data_bus_width] } [@@deriving sexp_of, hardcaml] 
+end
+
+module Input_with_valid = With_valid.Wrap.Make(Input)
+
   module I = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; enable : 'a
-      ; length : 'a [@bits 16]
-      ; address : 'a [@bits Memory.data_bus_width]
+      ; enable : 'a Input_with_valid.t
       ; output_packet : 'a Packet8.Contents_stream.Rx.t
       ; memory : 'a Memory.Tx_bus.Rx.t
       ; memory_response : 'a Memory.Rx_bus.Tx.t
@@ -49,9 +69,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
     (scope : Scope.t)
     ({ I.clock
      ; clear
-     ; enable
-     ; length = input_length
-     ; address = input_address
+     ; enable = { valid = input_enable ; value = { length = input_length ; address = input_address } }
      ; memory_response
      ; output_packet = { ready = output_packet_ready }
      ; (* We don't really care about memory acks. *) memory = _
@@ -82,7 +100,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
                    packets out. This isn't strictly necessary but makes
                    the state machine much easier to think about. *)
                 when_
-                  (enable &: (input_length <>:. 0))
+                  (input_enable &: (input_length <>:. 0))
                   [ length <-- input_length
                   ; address <-- input_address
                   ; which_step <--. 0
@@ -135,8 +153,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
               ; when_
                   output_packet_ready
                   [ (* We decrement length and increment address so that
-                       the read address and stop conditions are updated.
-                    *)
+                       the read address and stop conditions are updated. *)
                     address <-- address.value +:. 1
                   ; length <-- length.value -:. 1
                   ; which_step <-- which_step.value +:. 1
@@ -156,11 +173,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
     ; done_ = done_.value
     ; output_packet = Packet8.Contents_stream.Tx.Of_always.value output_packet
     ; memory = Memory.Tx_bus.Tx.Of_always.value memory
-    ; memory_response =
-        { ready =
-            (* We should always be ready to ack a read on the same cycle it becomes ready. *)
-            vdd
-        }
+    ; memory_response = { ready = (* We should always be ready to ack a read on the same cycle it becomes ready. *) vdd }
     }
   ;;
 
