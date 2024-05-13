@@ -8,7 +8,7 @@
 
    Currently this module does not prefetch memory while writing, which would
    be a straightforward improvement.
- *)
+*)
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
@@ -19,19 +19,16 @@ module Packet8 = Packet.Make (struct
     let data_bus_width = 8
   end)
 
-
 module Make (Memory : Memory_bus_intf.S) = struct
+  module Input = struct
+    type 'a t =
+      { length : 'a [@bits 16]
+      ; address : 'a [@bits Memory.data_bus_width]
+      }
+    [@@deriving sexp_of, hardcaml]
+  end
 
-
-module Input = struct
-        type 'a t = 
-                {
-
-       length : 'a [@bits 16]
-      ; address : 'a [@bits Memory.data_bus_width] } [@@deriving sexp_of, hardcaml] 
-end
-
-module Input_with_valid = With_valid.Wrap.Make(Input)
+  module Input_with_valid = With_valid.Wrap.Make (Input)
 
   module I = struct
     type 'a t =
@@ -69,7 +66,10 @@ module Input_with_valid = With_valid.Wrap.Make(Input)
     (scope : Scope.t)
     ({ I.clock
      ; clear
-     ; enable = { valid = input_enable ; value = { length = input_length ; address = input_address } }
+     ; enable =
+         { valid = input_enable
+         ; value = { length = input_length; address = input_address }
+         }
      ; memory_response
      ; output_packet = { ready = output_packet_ready }
      ; (* We don't really care about memory acks. *) memory = _
@@ -117,7 +117,11 @@ module Input_with_valid = With_valid.Wrap.Make(Input)
               ; which_step <-- which_step.value +:. 1
               ; when_
                   (which_step.value ==:. 1)
-                  [ which_step <--. 0; state.set_next Reading_data ]
+                  [ which_step <--. 0
+                  ; state.set_next Reading_data
+                  ; (* If the address was unaligned, set which_step to the offset here to align it. *)
+                    assert false
+                  ]
               ] )
           ; ( Reading_data
             , [ Memory.Tx_bus.Tx.Of_always.assign
@@ -173,7 +177,11 @@ module Input_with_valid = With_valid.Wrap.Make(Input)
     ; done_ = done_.value
     ; output_packet = Packet8.Contents_stream.Tx.Of_always.value output_packet
     ; memory = Memory.Tx_bus.Tx.Of_always.value memory
-    ; memory_response = { ready = (* We should always be ready to ack a read on the same cycle it becomes ready. *) vdd }
+    ; memory_response =
+        { ready =
+            (* We should always be ready to ack a read on the same cycle it becomes ready. *)
+            vdd
+        }
     }
   ;;
 
