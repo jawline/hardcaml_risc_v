@@ -19,7 +19,7 @@ module Packet8 = Packet.Make (struct
     let data_bus_width = 8
   end)
 
-module Make (Memory : Memory_bus_intf.S) = struct
+module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S) = struct
   module Input = struct
     module T = struct
       type 'a t =
@@ -59,6 +59,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
   module State = struct
     type t =
       | Idle
+      | (* TODO: Reword magic to header byte in all instances. *) Writing_magic
       | Writing_length
       | Reading_data
       | Writing_data
@@ -107,9 +108,21 @@ module Make (Memory : Memory_bus_intf.S) = struct
                   [ length <-- input_length
                   ; address <-- input_address
                   ; which_step <--. 0
-                  ; state.set_next Writing_length
+                  ; (match Config.magic with
+                     | Some _ -> Writing_magic
+                     | None -> Writing_length)
+                    |> state.set_next
                   ]
               ] )
+          ; ( Writing_magic
+            , match Config.magic with
+              | Some magic ->
+                [ Packet8.Contents_stream.Tx.Of_always.assign
+                    output_packet
+                    { valid = vdd; data = { data = Signal.of_char magic; last = gnd } }
+                ; when_ output_packet_ready [ state.set_next Writing_length ]
+                ]
+              | None -> [] )
           ; ( Writing_length
             , let length_byte =
                 mux which_step.value (split_msb ~part_width:8 length.value)

@@ -1,102 +1,69 @@
 open! Core
 open Hardcaml
 open Hardcaml_waveterm
-open Hardcaml_uart_controller
 open Hardcaml_io_controller
+open Hardcaml_memory_controller
 open! Bits
 
 let debug = false
 
-let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
-  let all_inputs =
-    (* We add the magic and then the packet length before the packet *)
-    let packet = String.to_list packet in
-    let packet_size = List.length packet in
-    let packet_len_msb = packet_size land 0xFF00 in
-    let packet_len_lsb = packet_size land 0x00FF in
-    [ Char.to_int 'Q'; packet_len_msb; packet_len_lsb ] @ List.map ~f:Char.to_int packet
-  in
-  let module Config = struct
-    (* This should trigger a switch every other cycle. *)
-    let config =
-      { Hardcaml_uart_controller.Config.clock_frequency
-      ; baud_rate
-      ; include_parity_bit
-      ; stop_bits
-      }
-    ;;
-  end
-  in
+let test ~name ~packet:_ =
   let module Packet =
     Packet.Make (struct
       let data_bus_width = 8
     end)
   in
-  let module Uart_tx = Uart_tx.Make (Config) in
-  let module Uart_rx = Uart_rx.Make (Config) in
-  let module Serial_to_packet =
-    Serial_to_packet.Make
+  let module Memory_controller =
+    Memory_controller.Make (struct
+      let num_bytes = 128
+      let num_channels = 1
+      let address_width = 32
+      let data_bus_width = 32
+    end)
+  in
+  let module Memory_to_packet8 =
+    Memory_to_packet8.Make
       (struct
-        let magic = 'Q'
-        let serial_input_width = 8
-        let max_packet_length_in_data_widths = 16
+        let magic = Some 'Q'
       end)
-      (Packet)
+      (Memory_controller)
   in
   let module Machine = struct
-    open Signal
 
     module I = struct
       type 'a t =
         { clock : 'a
         ; clear : 'a
-        ; data_in_valid : 'a
-        ; data_in : 'a [@bits 8]
+        ; enable : 'a
+        ; address : 'a [@bits 32]
+        ; length : 'a [@bits 16]
         }
       [@@deriving sexp_of, hardcaml]
     end
 
-    module O = struct
-      type 'a t =
-        { data_out_valid : 'a
-        ; data_out : 'a [@bits 8]
-        ; last : 'a
-        ; parity_error : 'a
-        ; stop_bit_unstable : 'a
-        }
-      [@@deriving sexp_of, hardcaml]
-    end
+    module O = Memory_to_packet8.O
 
-    let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
-      let { Uart_tx.O.uart_tx; _ } =
-        Uart_tx.hierarchical
-          ~instance:"tx"
+    let create (scope : Scope.t) { I.clock; clear; enable; address; length } =
+      let controller =
+        Memory_controller.hierarchical
+          ~instance:"memory_controller"
           scope
-          { Uart_tx.I.clock; clear; data_in_valid; data_in }
-      in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
-        Uart_rx.hierarchical
-          ~instance:"rx"
-          scope
-          { Uart_rx.I.clock; clear; uart_rx = uart_tx }
-      in
-      let { Serial_to_packet.O.out } =
-        Serial_to_packet.hierarchical
-          ~instance:"serial_to_packet"
-          scope
-          { Serial_to_packet.I.clock
+          { Memory_controller.I.clock
           ; clear
-          ; in_valid = data_out_valid
-          ; in_data = data_out
-          ; out = { ready = vdd }
+          ; ch_to_controller = [ assert false ]
+          ; controller_to_ch = [ assert false ]
           }
       in
-      { O.data_out_valid = out.valid
-      ; data_out = out.data.data
-      ; last = out.data.last
-      ; parity_error
-      ; stop_bit_unstable
-      }
+        Memory_to_packet8.hierarchical
+          ~instance:"packet8"
+          scope
+          { Memory_to_packet8.I.clock
+          ; clear
+          ; enable = { valid = enable; value = { address; length } }
+          ; output_packet = { ready = Signal.vdd }
+          ; memory = List.nth_exn controller.ch_to_controller 0
+          ; memory_response = List.nth_exn controller.controller_to_ch 0
+          }
     ;;
   end
   in
@@ -110,78 +77,30 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   let sim = create_sim () in
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  let outputs : _ Machine.O.t = Cyclesim.outputs sim in
+  let _outputs : _ Machine.O.t = Cyclesim.outputs sim in
   (* The fifo needs a clear cycle to initialize *)
   inputs.clear := vdd;
   Cyclesim.cycle sim;
   inputs.clear := gnd;
-  let all_outputs = ref [] in
-  List.iter
-    ~f:(fun input ->
-      inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
-      Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
-      let rec loop_until_finished acc n =
-        if n = 0
-        then List.rev acc
-        else (
-          Cyclesim.cycle sim;
-          let acc =
-            if Bits.to_bool !(outputs.data_out_valid)
-            then Bits.to_int !(outputs.data_out) :: acc
-            else acc
-          in
-          loop_until_finished acc (n - 1))
-      in
-      (* TODO: Don't just arbitrarily pad, instead wait for a tlast *)
-      let outputs = loop_until_finished [] 100 in
-      all_outputs := !all_outputs @ outputs)
-    all_inputs;
-  let output_packet = List.map ~f:Char.of_int_exn !all_outputs |> String.of_char_list in
-  print_s [%message "" ~input_packet:packet ~output_packet];
   if debug
   then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
-  else ();
-  if not (String.( = ) output_packet packet)
-  then raise_s [%message "output packet did not match input"]
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_serial_to_packet_no_parity_hello_world"
-    ~clock_frequency:200
-    ~baud_rate:200
-    ~include_parity_bit:false
-    ~stop_bits:1
-    ~packet:"Hello world";
-  [%expect {|
-     ((input_packet "Hello world") (output_packet "Hello world")) |}];
-  test
-    ~name:"/tmp/test_serial_to_packet_parity_hello_world"
-    ~clock_frequency:200
-    ~baud_rate:200
-    ~include_parity_bit:true
-    ~stop_bits:1
-    ~packet:"Hello world";
-  [%expect {|
-    ((input_packet "Hello world") (output_packet "Hello world")) |}];
-  test
-    ~name:"/tmp/test_serial_to_packet_no_parity_a"
-    ~clock_frequency:200
-    ~baud_rate:200
-    ~include_parity_bit:false
-    ~stop_bits:1
-    ~packet:"A";
-  [%expect {|
-    ((input_packet A) (output_packet A)) |}];
-  test
-    ~name:"/tmp/test_serial_to_packet_parity_a"
-    ~clock_frequency:200
-    ~baud_rate:200
-    ~include_parity_bit:true
-    ~stop_bits:1
-    ~packet:"A";
-  [%expect {|
-    ((input_packet A) (output_packet A)) |}]
+    ~name:"/tmp/test_memory_to_packet8"
+        ~packet:"Hello world";
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  "Assert_failure io_controller/test/test_memory_to_packet8.ml:54:33"
+  Raised at Hardcaml_io_controller_test__Test_memory_to_packet8.test.Machine.create in file "io_controller/test/test_memory_to_packet8.ml", line 54, characters 33-45
+  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 398, characters 18-30
+  Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 117, characters 18-81
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.create_sim in file "io_controller/test/test_memory_to_packet8.ml", line 72, characters 4-161
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.(fun) in file "io_controller/test/test_memory_to_packet8.ml", line 90, characters 2-76
+  Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 234, characters 12-19 |}]
 ;;
