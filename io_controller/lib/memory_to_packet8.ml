@@ -130,13 +130,17 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
               [ Packet8.Contents_stream.Tx.Of_always.assign
                   output_packet
                   { valid = vdd; data = { data = length_byte; last = gnd } }
-              ; which_step <-- which_step.value +:. 1
               ; when_
-                  (which_step.value ==:. 1)
-                  [ which_step <--. 0
-                  ; state.set_next Reading_data
-                  ; (* If the address was unaligned, set which_step to the offset here to align it. *)
-                    assert false
+                  output_packet_ready
+                  [ which_step <-- which_step.value +:. 1
+                  ; when_
+                      (which_step.value ==:. 1)
+                      [ which_step <--. 0
+                      ; state.set_next Reading_data
+                      ; (* If the address was unaligned, set which_step to the
+                           offset here to align it. *)
+                        assert false
+                      ]
                   ]
               ] )
           ; ( Reading_data
@@ -195,7 +199,8 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     ; memory = Memory.Tx_bus.Tx.Of_always.value memory
     ; memory_response =
         { ready =
-            (* We should always be ready to ack a read on the same cycle it becomes ready. *)
+            (* We should always be ready to ack a read on the same cycle it
+               becomes ready. *)
             vdd
         }
     }

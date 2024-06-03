@@ -29,7 +29,6 @@ let test ~name ~packet:_ =
       (Memory_controller)
   in
   let module Machine = struct
-
     module I = struct
       type 'a t =
         { clock : 'a
@@ -44,16 +43,21 @@ let test ~name ~packet:_ =
     module O = Memory_to_packet8.O
 
     let create (scope : Scope.t) { I.clock; clear; enable; address; length } =
+      let ch_to_controller = Memory_controller.Tx_bus.Tx.Of_always.wire Signal.zero in
+      let controller_to_ch = Memory_controller.Rx_bus.Rx.Of_always.wire Signal.zero in
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
           scope
           { Memory_controller.I.clock
           ; clear
-          ; ch_to_controller = [ assert false ]
-          ; controller_to_ch = [ assert false ]
+          ; ch_to_controller =
+              [ Memory_controller.Tx_bus.Tx.Of_always.value ch_to_controller ]
+          ; controller_to_ch =
+              [ Memory_controller.Rx_bus.Rx.Of_always.value controller_to_ch ]
           }
       in
+      let output =
         Memory_to_packet8.hierarchical
           ~instance:"packet8"
           scope
@@ -64,6 +68,14 @@ let test ~name ~packet:_ =
           ; memory = List.nth_exn controller.ch_to_controller 0
           ; memory_response = List.nth_exn controller.controller_to_ch 0
           }
+      in
+      Always.compile
+        [ Memory_controller.Tx_bus.Tx.Of_always.assign ch_to_controller output.memory
+        ; Memory_controller.Rx_bus.Rx.Of_always.assign
+            controller_to_ch
+            output.memory_response
+        ];
+      output
     ;;
   end
   in
@@ -87,20 +99,21 @@ let test ~name ~packet:_ =
 ;;
 
 let%expect_test "test" =
-  test
-    ~name:"/tmp/test_memory_to_packet8"
-        ~packet:"Hello world";
+  test ~name:"/tmp/test_memory_to_packet8" ~packet:"Hello world";
   [%expect.unreachable]
-[@@expect.uncaught_exn {|
+[@@expect.uncaught_exn
+  {|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
 
-  "Assert_failure io_controller/test/test_memory_to_packet8.ml:54:33"
-  Raised at Hardcaml_io_controller_test__Test_memory_to_packet8.test.Machine.create in file "io_controller/test/test_memory_to_packet8.ml", line 54, characters 33-45
+  "Assert_failure io_controller/lib/memory_to_packet8.ml:139:20"
+  Raised at Hardcaml_io_controller__Memory_to_packet8.Make.create in file "io_controller/lib/memory_to_packet8.ml", line 139, characters 20-32
+  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 99, characters 18-40
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.Machine.create in file "io_controller/test/test_memory_to_packet8.ml", line 61, characters 8-409
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 398, characters 18-30
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 117, characters 18-81
-  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.create_sim in file "io_controller/test/test_memory_to_packet8.ml", line 72, characters 4-161
-  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.(fun) in file "io_controller/test/test_memory_to_packet8.ml", line 90, characters 2-76
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.create_sim in file "io_controller/test/test_memory_to_packet8.ml", line 84, characters 4-161
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.(fun) in file "io_controller/test/test_memory_to_packet8.ml", line 102, characters 2-64
   Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 234, characters 12-19 |}]
 ;;
