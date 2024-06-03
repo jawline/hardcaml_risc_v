@@ -42,7 +42,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
       ; memory : 'a Memory.Tx_bus.Rx.t
       ; memory_response : 'a Memory.Rx_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -53,7 +53,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
       ; memory : 'a Memory.Tx_bus.Tx.t
       ; memory_response : 'a Memory.Rx_bus.Rx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module State = struct
@@ -87,7 +87,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     let done_ = Variable.wire ~default:gnd in
     let length = Variable.reg ~width:(width input_length) reg_spec_no_clear in
     let address = Variable.reg ~width:(width input_address) reg_spec_no_clear in
-    let which_step = Variable.reg ~width:4 reg_spec_no_clear in
+    let which_step = Variable.reg ~width:2 reg_spec_no_clear in
     ignore (state.current -- "current_state" : Signal.t);
     let output_packet = Packet8.Contents_stream.Tx.Of_always.wire zero in
     let address_stride = width memory_response.data.read_data / 8 in
@@ -95,7 +95,9 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     let read_data =
       Variable.reg ~width:(width memory_response.data.read_data) reg_spec_no_clear
     in
-    (* TODO: Address alignment or support unaligned addresses? *)
+    let alignment_mask =
+      width memory_response.data.read_data / 8 |> Int.floor_log2 |> ones
+    in
     compile
       [ state.switch
           [ ( State.Idle
@@ -135,11 +137,17 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   [ which_step <-- which_step.value +:. 1
                   ; when_
                       (which_step.value ==:. 1)
-                      [ which_step <--. 0
-                      ; state.set_next Reading_data
-                      ; (* If the address was unaligned, set which_step to the
+                      [ (* If the address was unaligned, set which_step to the
                            offset here to align it. *)
-                        assert false
+                        which_step
+                        <-- (uresize address.value (width alignment_mask)
+                             &: alignment_mask)
+                      ; (* Align the address we read. Which step will
+                           make sure we do not write the lower bytes. *)
+                        address
+                        <-- (address.value
+                             &: ~:(uresize alignment_mask (width address.value)))
+                      ; state.set_next Reading_data
                       ]
                   ]
               ] )

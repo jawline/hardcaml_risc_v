@@ -107,11 +107,12 @@ let%expect_test "test" =
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
 
-  "Assert_failure io_controller/lib/memory_to_packet8.ml:139:20"
-  Raised at Hardcaml_io_controller__Memory_to_packet8.Make.create in file "io_controller/lib/memory_to_packet8.ml", line 139, characters 20-32
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 99, characters 18-40
-  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.Machine.create in file "io_controller/test/test_memory_to_packet8.ml", line 61, characters 8-409
-  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 398, characters 18-30
+  ("circuit input signal must have a port name (unassigned wire?)"
+    (input_signal (wire (width 1) (data_in empty))))
+  Raised at Base__Error.raise in file "src/error.ml" (inlined), line 9, characters 14-30
+  Called from Base__Or_error.ok_exn in file "src/or_error.ml", line 107, characters 17-32
+  Called from Hardcaml__Circuit.create_exn in file "src/circuit.ml", line 167, characters 15-56
+  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 410, characters 6-82
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 117, characters 18-81
   Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.create_sim in file "io_controller/test/test_memory_to_packet8.ml", line 84, characters 4-161
   Called from Hardcaml_io_controller_test__Test_memory_to_packet8.(fun) in file "io_controller/test/test_memory_to_packet8.ml", line 102, characters 2-64
