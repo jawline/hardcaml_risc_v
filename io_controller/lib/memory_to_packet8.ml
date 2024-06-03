@@ -196,7 +196,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                       (which_step.value ==:. address_stride - 1)
                       [ which_step <--. 0; state.set_next Reading_data ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
-                    when_ (length.value ==:. 1) [ which_step <--. 0; state.set_next Idle ]
+                    when_ (length.value ==:. 1) [ done_ <-- vdd ; which_step <--. 0; state.set_next Idle ]
                   ]
               ] )
           ]
