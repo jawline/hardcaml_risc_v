@@ -133,7 +133,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let is_load_word = Util.is (module Funct3.Store) funct3 Funct3.Store.Sw in
     let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
     let funct3_is_error =
-      Util.switch (module Funct3.Store) ~if_not_found:(one 1) ~f:(fun _ -> zero 1) funct3
+      Util.switch (module Funct3.Store) ~if_not_found:vdd ~f:(fun _ -> zero 1) funct3
       -- "funct3_is_error"
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
@@ -160,7 +160,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                       [ word_to_write <-- value; current_state.set_next Preparing_store ]
                       [ Memory.Tx_bus.Tx.Of_always.assign
                           hart_to_memory_controller
-                          { valid = one 1
+                          { valid = vdd
                           ; data =
                               { address = aligned_address
                               ; write = zero 1
@@ -191,10 +191,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               ; ( Preparing_store
                 , [ Memory.Tx_bus.Tx.Of_always.assign
                       hart_to_memory_controller
-                      { valid = one 1
+                      { valid = vdd
                       ; data =
                           { address = aligned_address
-                          ; write = one 1
+                          ; write = vdd
                           ; write_data = word_to_write.value -- "word_to_write"
                           }
                       }
@@ -216,7 +216,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            write finished signal OR immediately with error if we are unaligned.
         *)
         is_unaligned |: store_finished.value
-    ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = one 1 }
+    ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = vdd }
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     }

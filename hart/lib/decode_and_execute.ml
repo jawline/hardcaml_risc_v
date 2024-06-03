@@ -134,7 +134,7 @@ struct
     let error = new_pc &:. 0b11 <>:. 0 in
     { Opcode_output.transaction =
         { Transaction.finished = vdd
-        ; set_rd = one 1
+        ; set_rd = vdd
         ; new_pc
         ; error
         ; new_rd = registers.pc +:. 4

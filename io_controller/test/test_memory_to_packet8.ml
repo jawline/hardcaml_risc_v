@@ -7,7 +7,22 @@ open! Bits
 
 let debug = false
 
-let test ~name ~packet:_ =
+let write_packet_to_memory ~address ~packet sim =
+  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+  let packet = String.to_array packet in
+  for i = 0 to address / 4 do
+    let m = Array.get ram i in
+    let start = i * 4 in
+    let new_bits =
+      [ packet.(start); packet.(start + 1); packet.(start + 2); packet.(start + 3) ]
+      |> List.map ~f:Bits.of_char
+      |> Bits.concat_lsb
+    in
+    Bits.Mutable.copy_bits ~src:new_bits ~dst:m
+  done
+;;
+
+let test ~name ~packet =
   let module Packet =
     Packet.Make (struct
       let data_bus_width = 8
@@ -87,6 +102,7 @@ let test ~name ~packet:_ =
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   in
   let sim = create_sim () in
+  write_packet_to_memory ~address:4 ~packet sim;
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let _outputs : _ Machine.O.t = Cyclesim.outputs sim in
@@ -114,7 +130,7 @@ let%expect_test "test" =
   Called from Hardcaml__Circuit.create_exn in file "src/circuit.ml", line 167, characters 15-56
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 410, characters 6-82
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 117, characters 18-81
-  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.create_sim in file "io_controller/test/test_memory_to_packet8.ml", line 84, characters 4-161
-  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.(fun) in file "io_controller/test/test_memory_to_packet8.ml", line 102, characters 2-64
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.test.create_sim in file "io_controller/test/test_memory_to_packet8.ml", line 99, characters 4-161
+  Called from Hardcaml_io_controller_test__Test_memory_to_packet8.(fun) in file "io_controller/test/test_memory_to_packet8.ml", line 118, characters 2-64
   Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 234, characters 12-19 |}]
 ;;

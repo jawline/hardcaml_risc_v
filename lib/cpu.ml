@@ -92,7 +92,7 @@ struct
           ; clear
           ; in_valid = data_out_valid
           ; in_data = data_out
-          ; out = { ready = one 1 }
+          ; out = { ready = vdd }
           }
       in
       let dma =

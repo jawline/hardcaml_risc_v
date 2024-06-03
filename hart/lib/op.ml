@@ -27,7 +27,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     let rd, error =
       Util.switch2
         (module Funct3.Op)
-        ~if_not_found:(zero register_width, one 1)
+        ~if_not_found:(zero register_width, vdd)
         ~f:(function
           | Funct3.Op.Add_or_sub ->
             if enable_subtract

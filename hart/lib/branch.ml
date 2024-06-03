@@ -29,7 +29,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     let new_pc, error =
       Util.switch2
         (module Funct3.Branch)
-        ~if_not_found:(zero register_width, one 1)
+        ~if_not_found:(zero register_width, vdd)
         ~f:(function
           | Funct3.Branch.Beq -> branch_when ~f:( ==: )
           | Bne -> branch_when ~f:( <>: )

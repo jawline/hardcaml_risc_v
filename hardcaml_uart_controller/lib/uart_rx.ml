@@ -76,7 +76,7 @@ module Make (C : Config_intf.S) = struct
       then
         parity_bit.value -- "calculated_parity_bit"
         ==: rx_parity_bit.value -- "rx_parity_bit"
-      else one 1
+      else vdd
     in
     let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in
     ignore (current_state.current -- "current_state" : Signal.t);

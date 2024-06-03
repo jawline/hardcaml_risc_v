@@ -83,7 +83,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     in
     let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
     let funct3_is_error =
-      Util.switch (module Funct3.Load) ~if_not_found:(one 1) ~f:(fun _ -> zero 1) funct3
+      Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> zero 1) funct3
       -- "funct3_is_error"
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
@@ -94,7 +94,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   (enable &: ~:inputs_are_error)
                   [ Memory.Tx_bus.Tx.Of_always.assign
                       hart_to_memory_controller
-                      { valid = one 1
+                      { valid = vdd
                       ; data =
                           { address = aligned_address
                           ; write = zero 1
@@ -133,7 +133,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            funct3)
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
     ; finished = is_unaligned |: memory_controller_to_hart.valid
-    ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = one 1 }
+    ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = vdd }
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     }
