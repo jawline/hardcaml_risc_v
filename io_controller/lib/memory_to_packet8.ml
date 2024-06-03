@@ -2,7 +2,7 @@
    followed by data.
 
    The module takes an enable signal with a length and address and writes
-   out the address (Little-endian) and then the memory byte by byte to
+   out the length (Little-endian) and then the memory byte by byte to
    an output stream. When connected to a Uart_tx this should allow us
    to communicate with the host.
 
@@ -21,20 +21,23 @@ module Packet8 = Packet.Make (struct
 
 module Make (Memory : Memory_bus_intf.S) = struct
   module Input = struct
-    type 'a t =
-      { length : 'a [@bits 16]
-      ; address : 'a [@bits Memory.data_bus_width]
-      }
-    [@@deriving sexp_of, hardcaml]
-  end
+    module T = struct
+      type 'a t =
+        { length : 'a [@bits 16]
+        ; address : 'a [@bits Memory.data_bus_width]
+        }
+      [@@deriving sexp_of, hardcaml]
+    end
 
-  module Input_with_valid = With_valid.Wrap.Make (Input)
+    include T
+    module With_valid = With_valid.Wrap.Make (T)
+  end
 
   module I = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; enable : 'a Input_with_valid.t
+      ; enable : 'a Input.With_valid.t
       ; output_packet : 'a Packet8.Contents_stream.Rx.t
       ; memory : 'a Memory.Tx_bus.Rx.t
       ; memory_response : 'a Memory.Rx_bus.Tx.t
