@@ -27,6 +27,7 @@ module Make (C : Config_intf.S) = struct
     type 'a t =
       { uart_tx : 'a
       ; data_in_ready : 'a
+      ; idle : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -138,6 +139,7 @@ module Make (C : Config_intf.S) = struct
       ];
     { O.uart_tx = current_output_wire.value
     ; data_in_ready = current_state.is State.Waiting_for_data_in
+    ; idle = current_state.is Waiting_for_data_in
     }
   ;;
 

@@ -155,6 +155,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       let memory_controller_to_dma_out =
         Memory_controller.Rx_bus.Tx.Of_always.wire zero
       in
+      let uart_tx_ready = wire 1 in
       let dma_out =
         Memory_to_packet8.hierarchical
           ~instance:"dma_out"
@@ -169,7 +170,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
               Memory_controller.Tx_bus.Rx.Of_always.value dma_out_to_memory_controller
           ; memory_response =
               Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma_out
-          ; output_packet = { ready = vdd }
+          ; output_packet = { ready = uart_tx_ready }
           }
       in
       let dma_out_uart_tx =
@@ -182,8 +183,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; data_in = dma_out.output_packet.data.data
           }
       in
-      let dma_out_uart_rx = Uart_rx.hierarchical ~instance:"tx_rx"
-          scope {Uart_rx.I.clock ; clear ; uart_rx = dma_out_uart_tx.uart_tx } in
+      uart_tx_ready <== dma_out_uart_tx.idle;
+      let dma_out_uart_rx =
+        Uart_rx.hierarchical
+          ~instance:"tx_rx"
+          scope
+          { Uart_rx.I.clock; clear; uart_rx = dma_out_uart_tx.uart_tx }
+      in
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
@@ -208,7 +214,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
             memory_controller_to_dma_out
             (List.nth_exn controller.controller_to_ch 1)
         ];
-      { O.out_valid = dma_out_uart_rx.data_out_valid ; out_data = dma_out_uart_rx.data_out }
+      { O.out_valid = dma_out_uart_rx.data_out_valid
+      ; out_data = dma_out_uart_rx.data_out
+      }
     ;;
   end
   in
@@ -245,33 +253,25 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       loop_for 11)
     all_inputs;
   loop_for 100;
-
-
   printf "Printing ram (not DMA response):\n";
   print_ram sim;
-
   printf "Doing a DMA read:\n";
-
-
   let issue_read ~address ~length =
     inputs.dma_out_enable := Bits.vdd;
     inputs.dma_out_address := Bits.of_int ~width:32 address;
     inputs.dma_out_length := Bits.of_int ~width:16 length;
     Cyclesim.cycle sim;
-
-
-  let data = ref "" in
-let store_outputs () =
-    if Bits.to_bool !(outputs.out_valid)
-    then
-      data
-      := String.concat
-           [ !data; Bits.to_char !(outputs.out_data) |> Char.to_string ]
-    else ()
-  in
-
+    inputs.dma_out_enable := Bits.gnd;
+    let data = ref "" in
+    let store_outputs () =
+      if Bits.to_bool !(outputs.out_valid)
+      then
+        data
+        := String.concat [ !data; Bits.to_char !(outputs.out_data) |> Char.to_string ]
+      else ()
+    in
     let count = ref 0 in
-    while !count <> 100  do
+    while !count <> 500 do
       Cyclesim.cycle sim;
       store_outputs ();
       incr count
@@ -280,15 +280,13 @@ let store_outputs () =
     printf "%i\n" !count
   in
   issue_read ~address ~length:(String.length packet);
-
-
   if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform;
+  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_dma_hello_world"
+    ~name:"/tmp/test_e2e_dma_hio"
     ~clock_frequency:200
     ~baud_rate:200
     ~include_parity_bit:false
@@ -307,10 +305,10 @@ let%expect_test "test" =
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       Doing a DMA read:
-      ("00000000  51 03 48 6f 51 03 48 6f                           |Q.HoQ.Ho|")
-      100 |}];
+      ("00000000  51 00 03 48 69 6f                                 |Q..Hio|")
+      500 |}];
   test
-    ~name:"/tmp/test_dma_hello_world"
+    ~name:"/tmp/test_e2e_dma_hello_world"
     ~clock_frequency:200
     ~baud_rate:200
     ~include_parity_bit:false
@@ -329,6 +327,6 @@ let%expect_test "test" =
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       Doing a DMA read:
-      ("00000000  51 6f 00 77 48 72 6c 64                           |Qo.wHrld|")
-      100 |}]
+      ("00000000  51 00 0c 48 65 6c 6c 6f  20 77 6f 72 6c 64 21     |Q..Hello world!|")
+      500 |}]
 ;;
