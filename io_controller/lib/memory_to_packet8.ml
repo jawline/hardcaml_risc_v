@@ -49,9 +49,9 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     type 'a t =
       { busy : 'a
       ; done_ : 'a
-      ; output_packet : 'a Packet8.Contents_stream.Tx.t
-      ; memory : 'a Memory.Tx_bus.Tx.t
-      ; memory_response : 'a Memory.Rx_bus.Rx.t
+      ; output_packet : 'a Packet8.Contents_stream.Tx.t [@rtlprefix "output$"]
+      ; memory : 'a Memory.Tx_bus.Tx.t [@rtlprefix "memory$"]
+      ; memory_response : 'a Memory.Rx_bus.Rx.t [@rtlprefix "mem_response$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -127,7 +127,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
               | None -> [] )
           ; ( Writing_length
             , let length_byte =
-                mux which_step.value (split_msb ~part_width:8 length.value)
+                mux (which_step.value -- "which_step") (split_msb ~part_width:8 length.value)
               in
               [ Packet8.Contents_stream.Tx.Of_always.assign
                   output_packet
@@ -162,7 +162,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                       }
                   }
               ; when_
-                  memory_response.valid
+                  (memory_response.valid -- "is_memory_response_valid")
                   [ (* Memory read can fail, if they do return zero. *)
                     read_data
                     <-- mux2
@@ -184,17 +184,14 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   }
               ; when_
                   output_packet_ready
-                  [ (* We decrement length and increment address so that
-                       the read address and stop conditions are updated. *)
-                    address <-- address.value +:. 1
-                  ; length <-- length.value -:. 1
+                  [  length <-- length.value -:. 1
                   ; which_step <-- which_step.value +:. 1
                   ; (* TODO: Once we have exhausted our read, we return
                        to reading data. We could prefetch here to speed this
                        up and avoid the stall. *)
                     when_
                       (which_step.value ==:. address_stride - 1)
-                      [ which_step <--. 0; state.set_next Reading_data ]
+                      [ which_step <--. 0; address <-- address.value +:. address_stride ; state.set_next Reading_data ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
                     when_
                       (length.value ==:. 1)

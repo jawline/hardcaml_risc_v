@@ -109,8 +109,10 @@ let test ~name ~packet =
   let data = ref "" in
   let store_outputs () =
     if Bits.to_bool !(outputs.output_packet.valid)
-    then (
-            data := String.concat [ !data ;  ((Bits.to_char !(outputs.output_packet.data.data))) |> Char.to_string ])
+    then
+      data
+      := String.concat
+           [ !data; Bits.to_char !(outputs.output_packet.data.data) |> Char.to_string ]
     else ()
   in
   let issue_read ~address ~length =
@@ -126,17 +128,23 @@ let test ~name ~packet =
       store_outputs ();
       incr count
     done;
-    print_s [%message "" ~_:((!data) : String.Hexdump.t)];
-    printf "%i\n" !(count);
+    print_s [%message "" ~_:(!data : String.Hexdump.t)];
+    printf "%i\n" !count
   in
-  issue_read ~address:2 ~length:4;
+  inputs.clear := Bits.vdd;
+  Cyclesim.cycle sim;
+  Cyclesim.cycle sim;
+  Cyclesim.cycle sim;
+  inputs.clear := Bits.gnd;
+  issue_read ~address:2 ~length:6;
   if debug
   then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
 ;;
 
 let%expect_test "test" =
   test ~name:"/tmp/test_memory_to_packet8" ~packet:"Hello world";
-  [%expect {|
-    ("00000000  51 00 04 6c 6c                                    |Q..ll|")
-    100 |}]
+  [%expect
+    {|
+   ("00000000  51 00 06 6c 6c 6f 20 77  6f                       |Q..llo wo|")
+   12 |}]
 ;;
