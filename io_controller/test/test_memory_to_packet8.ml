@@ -10,16 +10,13 @@ let debug = false
 let write_packet_to_memory ~packet sim =
   let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
   let packet = String.to_array packet in
-  for i = 0 to (Array.length packet) / 4 do
+  for i = 0 to Array.length packet / 4 do
     let m = Array.get ram i in
     let start = i * 4 in
     let sel idx =
-      if (start + idx) < Array.length packet  then packet.(start + idx) else '\x00'  in
-    let new_bits =
-      List.init ~f:sel 4
-      |> List.map ~f:Bits.of_char
-      |> Bits.concat_lsb
+      if start + idx < Array.length packet then packet.(start + idx) else '\x00'
     in
+    let new_bits = List.init ~f:sel 4 |> List.map ~f:Bits.of_char |> Bits.concat_lsb in
     Bits.Mutable.copy_bits ~src:new_bits ~dst:m
   done
 ;;
@@ -138,24 +135,39 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   inputs.clear := Bits.gnd;
-  issue_read ~address:dma_address ~length:dma_length ;
+  issue_read ~address:dma_address ~length:dma_length;
   if debug
   then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
 ;;
 
 let%expect_test "test" =
-  test ~name:"/tmp/test_memory_to_packet8" ~load_memory:"The quick brown fox jumps over the lazy dog" ~dma_address:3 ~dma_length:9;
-  [%expect{|
+  test
+    ~name:"/tmp/test_memory_to_packet8"
+    ~load_memory:"The quick brown fox jumps over the lazy dog"
+    ~dma_address:3
+    ~dma_length:9;
+  [%expect
+    {|
     ("00000000  51 00 09 20 71 75 69 63  6b 20 62 72              |Q.. quick br|")
     17 |}];
-  test ~name:"/tmp/test_memory_to_packet8" ~load_memory:"The quick brown fox jumps over the lazy dog" ~dma_address:0 ~dma_length:(String.length "The quick brown fox jumps over the lazy dog");
-  [%expect{|
+  test
+    ~name:"/tmp/test_memory_to_packet8"
+    ~load_memory:"The quick brown fox jumps over the lazy dog"
+    ~dma_address:0
+    ~dma_length:(String.length "The quick brown fox jumps over the lazy dog");
+  [%expect
+    {|
     ("00000000  51 00 2b 54 68 65 20 71  75 69 63 6b 20 62 72 6f  |Q.+The quick bro|"
      "00000010  77 6e 20 66 6f 78 20 6a  75 6d 70 73 20 6f 76 65  |wn fox jumps ove|"
      "00000020  72 20 74 68 65 20 6c 61  7a 79 20 64 6f 67        |r the lazy dog|")
     67 |}];
-  test ~name:"/tmp/test_memory_to_packet8" ~load_memory:"The quick brown fox jumps over the lazy dog" ~dma_address:8 ~dma_length:1;
-  [%expect{|
+  test
+    ~name:"/tmp/test_memory_to_packet8"
+    ~load_memory:"The quick brown fox jumps over the lazy dog"
+    ~dma_address:8
+    ~dma_length:1;
+  [%expect
+    {|
     ("00000000  51 00 01 6b                                       |Q..k|")
     5 |}]
 ;;

@@ -127,7 +127,9 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
               | None -> [] )
           ; ( Writing_length
             , let length_byte =
-                mux (which_step.value -- "which_step") (split_msb ~part_width:8 length.value)
+                mux
+                  (which_step.value -- "which_step")
+                  (split_msb ~part_width:8 length.value)
               in
               [ Packet8.Contents_stream.Tx.Of_always.assign
                   output_packet
@@ -184,14 +186,17 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   }
               ; when_
                   output_packet_ready
-                  [  length <-- length.value -:. 1
+                  [ length <-- length.value -:. 1
                   ; which_step <-- which_step.value +:. 1
                   ; (* TODO: Once we have exhausted our read, we return
                        to reading data. We could prefetch here to speed this
                        up and avoid the stall. *)
                     when_
                       (which_step.value ==:. address_stride - 1)
-                      [ which_step <--. 0; address <-- address.value +:. address_stride ; state.set_next Reading_data ]
+                      [ which_step <--. 0
+                      ; address <-- address.value +:. address_stride
+                      ; state.set_next Reading_data
+                      ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
                     when_
                       (length.value ==:. 1)
