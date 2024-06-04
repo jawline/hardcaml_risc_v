@@ -104,13 +104,39 @@ let test ~name ~packet =
   let sim = create_sim () in
   write_packet_to_memory ~address:4 ~packet sim;
   let waveform, sim = Waveform.create sim in
-  let _inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  let _outputs : _ Machine.O.t = Cyclesim.outputs sim in
+  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
+  let outputs : _ Machine.O.t = Cyclesim.outputs sim in
+  let data = ref "" in
+  let store_outputs () =
+    if Bits.to_bool !(outputs.output_packet.valid)
+    then (
+            data := String.concat [ !data ;  ((Bits.to_char !(outputs.output_packet.data.data))) |> Char.to_string ])
+    else ()
+  in
+  let issue_read ~address ~length =
+    inputs.enable := Bits.vdd;
+    inputs.address := Bits.of_int ~width:32 address;
+    inputs.length := Bits.of_int ~width:16 length;
+    Cyclesim.cycle sim;
+    store_outputs ();
+    inputs.enable := Bits.gnd;
+    let count = ref 0 in
+    while !count <> 100 && not (Bits.to_bool !(outputs.output_packet.data.last)) do
+      Cyclesim.cycle sim;
+      store_outputs ();
+      incr count
+    done;
+    print_s [%message "" ~_:((!data) : String.Hexdump.t)];
+    printf "%i\n" !(count);
+  in
+  issue_read ~address:2 ~length:4;
   if debug
   then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
 ;;
 
 let%expect_test "test" =
   test ~name:"/tmp/test_memory_to_packet8" ~packet:"Hello world";
-  [%expect{||}]
+  [%expect {|
+    ("00000000  51 00 04 6c 6c                                    |Q..ll|")
+    100 |}]
 ;;
