@@ -54,10 +54,10 @@ struct
       { clock : 'a
       ; clear : 'a
       ; ch_to_controller : 'a Tx_bus.Tx.t list
-           [@length M.num_channels] [@rtlprefix "ch_co_controller"]
+           [@length M.num_channels] [@rtlprefix "ch_co_controller$"]
       ; (* We ignore the ready signal from the ch when responding, we do not permit pushback. Consider dropping this input. *)
         controller_to_ch : 'a Rx_bus.Rx.t list
-           [@length M.num_channels] [@rtlprefix "controller_to_ch"]
+           [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -65,9 +65,9 @@ struct
   module O = struct
     type 'a t =
       { ch_to_controller : 'a Tx_bus.Rx.t list
-           [@length M.num_channels] [@rtlprefix "ch_co_controller"]
+           [@length M.num_channels] [@rtlprefix "ch_co_controller$"]
       ; controller_to_ch : 'a Rx_bus.Tx.t list
-           [@length M.num_channels] [@rtlprefix "controller_to_ch"]
+           [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
       }
     [@@deriving sexp_of, hardcaml]
   end
