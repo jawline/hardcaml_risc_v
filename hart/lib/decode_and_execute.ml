@@ -7,11 +7,12 @@ open Always
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
-    (Registers : Registers_intf.S) =
+    (Registers : Registers_intf.S)
+    (Decoded_instruction : Decoded_instruction_intf.S)
+    (Transaction : Transaction_intf.S)
+    (Custom_ecall : Custom_ecall_intf.M(Registers)(Decoded_instruction)(Transaction).S) =
 struct
-  module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
   module Opcode_output = Opcode_output.Make (Hart_config) (Memory)
-  module Transaction = Opcode_output.Transaction
   module Op = Op.Make (Hart_config)
   module Branch = Branch.Make (Hart_config)
   module Load = Load.Make (Hart_config) (Memory)
