@@ -33,7 +33,18 @@ struct
       let data_bus_width = 32
     end)
 
-  module Hart = Hart.Make (Hart_config) (Memory_controller)
+  module Registers = Registers.Make (Hart_config)
+  module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
+  module Transaction = Transaction.Make (Hart_config) (Memory_controller)
+
+  module Custom_ecall = struct
+    let handler ~registers ~decoded_instruction = assert false
+  end
+
+  module Hart =
+    Hart.Make (Hart_config) (Memory_controller) (Registers) (Decoded_instruction)
+      (Transaction)
+      (Custom_ecall)
 
   module I = struct
     type 'a t =
