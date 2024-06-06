@@ -4,10 +4,20 @@ open Hardcaml_memory_controller
 open Signal
 open Always
 
-module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
-  module Registers = Registers.Make (Hart_config)
+module Make
+    (Hart_config : Hart_config_intf.S)
+    (Memory : Memory_bus_intf.S)
+    (Registers : Registers_intf.S)
+    (Decoded_instruction : Decoded_instruction_intf.M(Registers).S)
+    (Transaction : Transaction_intf.S)
+    (Custom_ecall : Custom_ecall_intf.M(Registers)(Decoded_instruction)(Transaction).S) =
+struct
   module Fetch = Fetch.Make (Hart_config) (Memory)
-  module Decode_and_execute = Decode_and_execute.Make (Hart_config) (Memory) (Registers)
+
+  module Decode_and_execute =
+    Decode_and_execute.Make (Hart_config) (Memory) (Registers) (Decoded_instruction)
+      (Transaction)
+      (Custom_ecall)
 
   module State = struct
     type t =

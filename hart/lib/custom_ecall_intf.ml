@@ -3,7 +3,7 @@ open Hardcaml
 
 module M
     (Registers : Registers_intf.S)
-    (Decoded_instruction : Decoded_instruction_intf.S)
+    (Decoded_instruction : Decoded_instruction_intf.M(Registers).S)
     (Transaction : Transaction_intf.S) =
 struct
   module type S = sig

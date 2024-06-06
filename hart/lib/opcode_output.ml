@@ -5,9 +5,11 @@ open! Core
 open! Hardcaml
 open Hardcaml_memory_controller
 
-module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
-  module Transaction = Transaction.Make (Hart_config) (Memory)
-
+module Make
+    (Hart_config : Hart_config_intf.S)
+    (Memory : Memory_bus_intf.S)
+    (Transaction : Transaction_intf.S) =
+struct
   type 'a t =
     { transaction : 'a Transaction.t
     ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
