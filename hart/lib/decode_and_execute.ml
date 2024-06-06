@@ -306,6 +306,36 @@ struct
     }
   ;;
 
+  (** The system instruction allows access to hardware registers and ecall / ebreak. *)
+  let system
+    ~clock:_
+    ~clear:_
+    ~memory_controller_to_hart:_
+    ~hart_to_memory_controller:_
+    ~(registers : _ Registers.t)
+    (decoded_instruction : _ Decoded_instruction.t)
+    _scope
+    =
+    let custom_ecall = Custom_ecall.handler ~decoded_instruction ~registers in
+    let is_ecall =
+      decoded_instruction.funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
+    in
+    let unsupported_increment_pc =
+      (* TODO: Support hardware registers *)
+      { Transaction.finished = vdd
+      ; set_rd = gnd
+      ; new_rd = zero 32
+      ; error = one 1
+      ; new_pc = registers.pc +:. 4
+      }
+    in
+    { Opcode_output.transaction =
+        Transaction.Of_signal.mux2 is_ecall custom_ecall unsupported_increment_pc
+    ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    }
+  ;;
+
   module Table_entry = struct
     (* This doesn't need to be a whole type *)
     type 'a t =

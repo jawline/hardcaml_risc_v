@@ -345,12 +345,9 @@ module With_manually_programmed_ram = Make (struct
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
-          Cpu_with_no_io_controller.Hart.Registers.map
-            ~f:(fun t -> Bits.to_int !t)
-            outputs
+          Cpu_with_no_io_controller.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
         in
-        print_s
-          [%message "" ~_:(outputs : int Cpu_with_no_io_controller.Hart.Registers.t)];
+        print_s [%message "" ~_:(outputs : int Cpu_with_no_io_controller.Registers.t)];
         print_ram sim
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
     ;;
@@ -395,7 +392,7 @@ module With_transmitter = struct
   end
 
   module O = struct
-    type 'a t = { registers : 'a Cpu_with_dma_memory.Hart.Registers.t list [@length 1] }
+    type 'a t = { registers : 'a Cpu_with_dma_memory.Registers.t list [@length 1] }
     [@@deriving sexp_of, hardcaml]
   end
 
@@ -530,9 +527,9 @@ module With_dma_ram = Make (struct
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
-          Cpu_with_dma_memory.Hart.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
+          Cpu_with_dma_memory.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
         in
-        print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Hart.Registers.t)];
+        print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Registers.t)];
         print_ram sim
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
     ;;

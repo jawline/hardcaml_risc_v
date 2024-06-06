@@ -122,13 +122,24 @@ module Store = struct
 end
 
 module System = struct
-  (** If the last 12 bits are 0 then this is ECALL otherwise it is EBREAK *)
-  let ecall_or_ebreak = 0b000
+  type t =
+    | (* If the last 12 bits are 0 then this is ECALL otherwise it is EBREAK *)
+      Ecall_or_ebreak
+    | Csrrw
+    | Csrrs
+    | Csrrc
+    | Csrrwi
+    | Csrrsi
+    | Csrrci
+  [@@deriving enumerate]
 
-  let csrrw = 0b001
-  let csrrs = 0b010
-  let csrrc = 0b011
-  let csrrwi = 0b101
-  let csrrsi = 0b110
-  let csrrci = 0b111
+  let to_int = function
+    | Ecall_or_ebreak -> 0
+    | Csrrw -> 0b001
+    | Csrrs -> 0b010
+    | Csrrc -> 0b011
+    | Csrrwi -> 0b101
+    | Csrrsi -> 0b110
+    | Csrrci -> 0b111
+  ;;
 end

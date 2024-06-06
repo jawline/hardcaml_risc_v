@@ -38,7 +38,7 @@ struct
   module Transaction = Transaction.Make (Hart_config) (Memory_controller)
 
   module Custom_ecall = struct
-    let handler ~registers ~decoded_instruction = assert false
+    let handler ~registers:_ ~decoded_instruction:_ = assert false
   end
 
   module Hart =
@@ -59,7 +59,7 @@ struct
 
   module O = struct
     type 'a t =
-      { registers : 'a Hart.Registers.t list [@length General_config.num_harts]
+      { registers : 'a Registers.t list [@length General_config.num_harts]
       ; uart_tx : 'a
       }
     [@@deriving sexp_of, hardcaml]
