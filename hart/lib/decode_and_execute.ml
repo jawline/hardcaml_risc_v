@@ -307,7 +307,7 @@ struct
   ;;
 
   (** The system instruction allows access to hardware registers and ecall / ebreak. *)
-  let system
+  let system_instruction
     ~clock:_
     ~clear:_
     ~memory_controller_to_hart:_
@@ -420,7 +420,16 @@ struct
            ~registers
            decoded_instruction
            scope)
-      (* TODO: System *)
+    ; Table_entry.create
+        ~opcode:Opcodes.system
+        (system_instruction
+           ~clock
+           ~clear
+           ~memory_controller_to_hart
+           ~hart_to_memory_controller
+           ~registers
+           decoded_instruction
+           scope)
     ]
   ;;
 
