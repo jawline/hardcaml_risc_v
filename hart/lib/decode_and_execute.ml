@@ -316,9 +316,14 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     _scope
     =
-    let custom_ecall = custom_ecall ~decoded_instruction ~registers in
     let is_ecall =
-      decoded_instruction.funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
+      decoded_instruction.opcode
+      ==:. Opcodes.system
+      &: (decoded_instruction.funct3
+          ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak)
+    in
+    let custom_ecall_logic, custom_ecall =
+      custom_ecall ~is_ecall ~decoded_instruction ~registers
     in
     let unsupported_increment_pc =
       (* TODO: Support hardware registers *)
@@ -329,6 +334,7 @@ struct
       ; new_pc = registers.pc +:. 4
       }
     in
+    compile [ custom_ecall_logic ];
     { Opcode_output.transaction =
         Transaction.Of_signal.mux2 is_ecall custom_ecall unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0

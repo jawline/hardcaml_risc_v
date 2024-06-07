@@ -41,6 +41,13 @@ struct
     Hart.Make (Hart_config) (Memory_controller) (Registers) (Decoded_instruction)
       (Transaction)
 
+  module Memory_to_packet8 =
+    Memory_to_packet8.Make
+      (struct
+        let magic = Some 'D'
+      end)
+      (Memory_controller)
+
   module I = struct
     type 'a t =
       { clock : 'a
@@ -60,12 +67,17 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
+  module Tx_input = Memory_to_packet8.Input
+
   module Dma_wiring = struct
     type 'a t =
       { dma_to_memory_controller : Memory_controller.Tx_bus.Tx.Of_signal.t list
       ; dma_to_memory_controller_rx : Variable.t Memory_controller.Tx_bus.Rx.t list
       ; memory_controller_to_dma : Variable.t Memory_controller.Rx_bus.Tx.t list
       ; memory_controller_to_dma_rx : Memory_controller.Rx_bus.Rx.Of_signal.t list
+      ; tx_input : Variable.t Tx_input.With_valid.t
+      ; tx_busy : 'a
+      ; uart_tx : Signal.t
       }
   end
 
@@ -94,8 +106,8 @@ struct
           end)
           (Packet)
       in
-      let dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
-      let memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
+      let rx_dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
+      let rx_memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _; stop_bit_unstable = _ } =
         Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
       in
@@ -117,11 +129,49 @@ struct
           { Dma.I.clock
           ; clear
           ; in_ = out
-          ; out = Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
-          ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
+          ; out = Memory_controller.Tx_bus.Rx.Of_always.value rx_dma_to_memory_controller
+          ; out_ack =
+              Memory_controller.Rx_bus.Tx.Of_always.value rx_memory_controller_to_dma
           }
       in
-      Some (dma.out, dma.out_ack, dma_to_memory_controller, memory_controller_to_dma)
+      let tx_enable = Tx_input.With_valid.Of_always.wire zero in
+      let tx_dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
+      let tx_memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
+      let uart_tx_ready = wire 1 in
+      let dma_out =
+        Memory_to_packet8.hierarchical
+          ~instance:"dma_out"
+          scope
+          { Memory_to_packet8.I.clock
+          ; clear
+          ; enable = Tx_input.With_valid.Of_always.value tx_enable
+          ; memory =
+              Memory_controller.Tx_bus.Rx.Of_always.value tx_dma_to_memory_controller
+          ; memory_response =
+              Memory_controller.Rx_bus.Tx.Of_always.value tx_memory_controller_to_dma
+          ; output_packet = { ready = uart_tx_ready }
+          }
+      in
+      let dma_out_uart_tx =
+        Uart_tx.hierarchical
+          ~instance:"tx"
+          scope
+          { Uart_tx.I.clock
+          ; clear
+          ; data_in_valid = dma_out.output_packet.valid
+          ; data_in = dma_out.output_packet.data.data
+          }
+      in
+      uart_tx_ready <== dma_out_uart_tx.data_in_ready;
+      Some
+        { Dma_wiring.dma_to_memory_controller = [ dma.out ; dma_out.memory ]
+        ; dma_to_memory_controller_rx = [ rx_dma_to_memory_controller ; tx_dma_to_memory_controller ]
+        ; memory_controller_to_dma = [ rx_memory_controller_to_dma ; tx_memory_controller_to_dma ]
+        ; memory_controller_to_dma_rx = [ dma.out_ack ; dma_out.memory_response ]
+        ; tx_input = tx_enable
+        ; tx_busy = dma_out.busy
+        ; uart_tx = dma_out_uart_tx.uart_tx
+        }
   ;;
 
   let create scope (i : _ I.t) =
@@ -146,28 +196,64 @@ struct
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
         ; ch_to_controller =
-            (List.map
-               ~f:Memory_controller.Tx_bus.Tx.Of_always.value
-               ch_to_controller_per_hart
-             @
-             match maybe_dma_controller with
+            (match maybe_dma_controller with
              | None -> []
-             | Some (to_controller, _, _, _) -> [ to_controller ])
+             | Some { dma_to_memory_controller; _ } -> dma_to_memory_controller)
+            @ List.map
+                ~f:Memory_controller.Tx_bus.Tx.Of_always.value
+                ch_to_controller_per_hart
         ; controller_to_ch =
-            (List.map
-               ~f:Memory_controller.Rx_bus.Rx.Of_always.value
-               controller_to_ch_per_hart
-             @
-             match maybe_dma_controller with
+            (match maybe_dma_controller with
              | None -> []
-             | Some (_, from_controller, _, _) -> [ from_controller ])
+             | Some { memory_controller_to_dma_rx; _ } -> memory_controller_to_dma_rx)
+            @ List.map
+                ~f:Memory_controller.Rx_bus.Rx.Of_always.value
+                controller_to_ch_per_hart
         }
     in
     let harts =
       List.init
         ~f:(fun which_hart ->
           Hart.hierarchical
-            ~custom_ecall:(fun ~decoded_instruction:_ ~registers:_ -> assert false)
+            ~custom_ecall:(fun ~is_ecall ~decoded_instruction:_ ~registers ->
+              match maybe_dma_controller with
+              | Some { tx_input; tx_busy; _ } ->
+                let result = Variable.wire ~default:(zero 32) in
+                ( proc
+                    [ when_
+                        is_ecall
+                        [ when_
+                            (List.nth_exn registers.general 1 ==:. 0 &: ~:tx_busy)
+                            [ result <--. 1
+                            ; Tx_input.With_valid.Of_always.assign
+                                tx_input
+                                { valid = vdd
+                                ; value =
+                                    { address = List.nth_exn registers.general 2
+                                    ; length =
+                                        uresize
+                                          (List.nth_exn registers.general 3)
+                                          (width tx_input.value.length.value)
+                                    }
+                                }
+                            ]
+                        ]
+                    ]
+                , { Transaction.finished = vdd
+                  ; set_rd = vdd
+                  ; new_rd = result.value
+                  ; new_pc = registers.pc +:. 4
+                  ; error = gnd
+                  } )
+              | None ->
+                (* Set RD to false (failure) and do nothing else. *)
+                ( proc []
+                , { Transaction.finished = vdd
+                  ; set_rd = vdd
+                  ; new_rd = zero 32
+                  ; new_pc = registers.pc +:. 4
+                  ; error = gnd
+                  } ))
             ~instance:[%string "hart_%{which_hart#Int}"]
             scope
             { Hart.I.clock = i.clock
@@ -203,15 +289,25 @@ struct
        @
        match maybe_dma_controller with
        | None -> []
-       | Some (_, _, ch_to, to_ch) ->
-         [ Memory_controller.Tx_bus.Rx.Of_always.assign
-             ch_to
-             (List.last_exn controller.ch_to_controller)
-         ; Memory_controller.Rx_bus.Tx.Of_always.assign
-             to_ch
-             (List.last_exn controller.controller_to_ch)
-         ]);
-    { O.registers = List.map ~f:(fun o -> o.registers) harts; uart_tx = gnd }
+       | Some { dma_to_memory_controller_rx; memory_controller_to_dma; _ } ->
+         List.mapi
+           ~f:(fun i t ->
+             Memory_controller.Tx_bus.Rx.Of_always.assign
+               t
+               (List.nth_exn controller.ch_to_controller i))
+           dma_to_memory_controller_rx
+         @ List.mapi
+             ~f:(fun i t ->
+               Memory_controller.Rx_bus.Tx.Of_always.assign
+                 t
+                 (List.nth_exn controller.controller_to_ch i))
+             memory_controller_to_dma);
+    { O.registers = List.map ~f:(fun o -> o.registers) harts
+    ; uart_tx =
+        (match maybe_dma_controller with
+         | Some { uart_tx; _ } -> uart_tx
+         | None -> gnd)
+    }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
