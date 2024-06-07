@@ -37,14 +37,9 @@ struct
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
   module Transaction = Transaction.Make (Hart_config) (Memory_controller)
 
-  module Custom_ecall = struct
-    let handler ~registers:_ ~decoded_instruction:_ = assert false
-  end
-
   module Hart =
     Hart.Make (Hart_config) (Memory_controller) (Registers) (Decoded_instruction)
       (Transaction)
-      (Custom_ecall)
 
   module I = struct
     type 'a t =
@@ -163,6 +158,7 @@ struct
       List.init
         ~f:(fun which_hart ->
           Hart.hierarchical
+            ~custom_ecall:(fun ~decoded_instruction:_ ~registers:_ -> assert false)
             ~instance:[%string "hart_%{which_hart#Int}"]
             scope
             { Hart.I.clock = i.clock

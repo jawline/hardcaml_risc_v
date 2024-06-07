@@ -9,15 +9,13 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Registers : Registers_intf.S)
     (Decoded_instruction : Decoded_instruction_intf.M(Registers).S)
-    (Transaction : Transaction_intf.S)
-    (Custom_ecall : Custom_ecall_intf.M(Registers)(Decoded_instruction)(Transaction).S) =
+    (Transaction : Transaction_intf.S) =
 struct
   module Fetch = Fetch.Make (Hart_config) (Memory)
 
   module Decode_and_execute =
     Decode_and_execute.Make (Hart_config) (Memory) (Registers) (Decoded_instruction)
       (Transaction)
-      (Custom_ecall)
 
   module State = struct
     type t =
@@ -54,7 +52,7 @@ struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create scope (i : _ I.t) =
+  let create ~custom_ecall scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     (* Register 0 is hardwired to zero so we don't actually store it *)
     let registers = Registers.For_writeback.Of_always.reg reg_spec in
@@ -77,6 +75,7 @@ struct
     in
     let decode_and_execute =
       Decode_and_execute.hierarchical
+        ~custom_ecall
         ~instance:"decode_and_execute"
         scope
         { Decode_and_execute.I.clock = i.clock
@@ -131,8 +130,8 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~custom_ecall ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Hart" ~instance create input
+    H.hierarchical ~scope ~name:"Hart" ~instance (create ~custom_ecall) input
   ;;
 end

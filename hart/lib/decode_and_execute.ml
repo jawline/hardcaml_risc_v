@@ -9,8 +9,7 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Registers : Registers_intf.S)
     (Decoded_instruction : Decoded_instruction_intf.M(Registers).S)
-    (Transaction : Transaction_intf.S)
-    (Custom_ecall : Custom_ecall_intf.M(Registers)(Decoded_instruction)(Transaction).S) =
+    (Transaction : Transaction_intf.S) =
 struct
   module Opcode_output = Opcode_output.Make (Hart_config) (Memory) (Transaction)
   module Op = Op.Make (Hart_config)
@@ -313,10 +312,11 @@ struct
     ~memory_controller_to_hart:_
     ~hart_to_memory_controller:_
     ~(registers : _ Registers.t)
+    ~custom_ecall
     (decoded_instruction : _ Decoded_instruction.t)
     _scope
     =
-    let custom_ecall = Custom_ecall.handler ~decoded_instruction ~registers in
+    let custom_ecall = custom_ecall ~decoded_instruction ~registers in
     let is_ecall =
       decoded_instruction.funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
     in
@@ -376,6 +376,7 @@ struct
     ~hart_to_memory_controller
     ~registers
     ~decoded_instruction
+    ~custom_ecall
     scope
     =
     [ Table_entry.create
@@ -428,6 +429,7 @@ struct
            ~memory_controller_to_hart
            ~hart_to_memory_controller
            ~registers
+           ~custom_ecall
            decoded_instruction
            scope)
     ]
@@ -441,7 +443,7 @@ struct
     [@@deriving sexp_of, compare, enumerate]
   end
 
-  let create scope (i : _ I.t) =
+  let create ~custom_ecall scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
@@ -455,6 +457,7 @@ struct
         ~hart_to_memory_controller:i.hart_to_memory_controller
         ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
         ~registers:i.registers
+        ~custom_ecall
         scope
     in
     let transaction = Transaction.Of_always.reg reg_spec in
@@ -529,8 +532,13 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~custom_ecall ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Decode_and_execute" ~instance create input
+    H.hierarchical
+      ~scope
+      ~name:"Decode_and_execute"
+      ~instance
+      (create ~custom_ecall)
+      input
   ;;
 end
