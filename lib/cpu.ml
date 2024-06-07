@@ -26,7 +26,7 @@ struct
         +
         match General_config.include_io_controller with
         | No_io_controller -> 0
-        | Uart_controller _ -> 1
+        | Uart_controller _ -> 2
       ;;
 
       let address_width = Address_width.bits Hart_config.address_width
@@ -58,6 +58,15 @@ struct
       ; uart_tx : 'a
       }
     [@@deriving sexp_of, hardcaml]
+  end
+
+  module Dma_wiring = struct
+    type 'a t =
+      { dma_to_memory_controller : Memory_controller.Tx_bus.Tx.Of_signal.t list
+      ; dma_to_memory_controller_rx : Variable.t Memory_controller.Tx_bus.Rx.t list
+      ; memory_controller_to_dma : Variable.t Memory_controller.Rx_bus.Tx.t list
+      ; memory_controller_to_dma_rx : Memory_controller.Rx_bus.Rx.Of_signal.t list
+      }
   end
 
   let maybe_dma_controller ~uart_rx ~clock ~clear scope =
