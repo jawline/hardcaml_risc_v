@@ -229,6 +229,7 @@ struct
 
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
+    ~enable
     ~clock
     ~clear
     ~memory_controller_to_hart
@@ -252,7 +253,7 @@ struct
         ; enable =
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            decoded_instruction.opcode ==:. Opcodes.load
+            enable &: (decoded_instruction.opcode ==:. Opcodes.load)
         ; funct3 = decoded_instruction.funct3
         ; source = decoded_instruction.rs1
         ; memory_controller_to_hart
@@ -268,6 +269,7 @@ struct
 
   (** The store table loads a value from [rs1] and writes it to address rd *)
   let store_instruction
+    ~enable
     ~clock
     ~clear
     ~memory_controller_to_hart
@@ -285,7 +287,7 @@ struct
         ; enable =
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            decoded_instruction.opcode ==:. Opcodes.store
+            enable &: (decoded_instruction.opcode ==:. Opcodes.store)
         ; funct3 = decoded_instruction.funct3
         ; destination = decoded_instruction.rd_value
         ; value = decoded_instruction.rs1
@@ -307,6 +309,7 @@ struct
 
   (** The system instruction allows access to hardware registers and ecall / ebreak. *)
   let system_instruction
+    ~enable
     ~clock:_
     ~clear:_
     ~memory_controller_to_hart:_
@@ -317,16 +320,16 @@ struct
     _scope
     =
     let is_ecall =
-      decoded_instruction.opcode
-      ==:. Opcodes.system
+      enable
+      &: (decoded_instruction.opcode ==:. Opcodes.system)
       &: (decoded_instruction.funct3
           ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak)
     in
     let custom_ecall_logic, custom_ecall =
       custom_ecall ~is_ecall ~decoded_instruction ~registers
     in
+    (* TODO: Support hardware registers *)
     let unsupported_increment_pc =
-      (* TODO: Support hardware registers *)
       { Transaction.finished = vdd
       ; set_rd = gnd
       ; new_rd = zero 32
@@ -376,6 +379,7 @@ struct
   end
 
   let instruction_table
+    ~enable
     ~clock
     ~clear
     ~memory_controller_to_hart
@@ -410,6 +414,7 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.load
         (load_instruction
+           ~enable
            ~clock
            ~clear
            ~memory_controller_to_hart
@@ -420,6 +425,7 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.store
         (store_instruction
+           ~enable
            ~clock
            ~clear
            ~memory_controller_to_hart
@@ -430,6 +436,7 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.system
         (system_instruction
+           ~enable
            ~clock
            ~clear
            ~memory_controller_to_hart
@@ -455,17 +462,6 @@ struct
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let new_registers = Registers.For_writeback.Of_always.wire zero in
     let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec in
-    let instruction_table =
-      instruction_table
-        ~clock:i.clock
-        ~clear:i.clear
-        ~memory_controller_to_hart:i.memory_controller_to_hart
-        ~hart_to_memory_controller:i.hart_to_memory_controller
-        ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
-        ~registers:i.registers
-        ~custom_ecall
-        scope
-    in
     let transaction = Transaction.Of_always.reg reg_spec in
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
@@ -475,6 +471,18 @@ struct
            ~when_:set_rd
            ~index_signal:decoded_instruction.rd.value
            ~value_signal:new_rd
+    in
+    let instruction_table =
+      instruction_table
+        ~enable:(current_state.is Executing)
+        ~clock:i.clock
+        ~clear:i.clear
+        ~memory_controller_to_hart:i.memory_controller_to_hart
+        ~hart_to_memory_controller:i.hart_to_memory_controller
+        ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
+        ~registers:i.registers
+        ~custom_ecall
+        scope
     in
     compile
       [ when_

@@ -18,17 +18,15 @@ module Make
        val include_io_controller : Io_controller_config.t
      end) =
 struct
+  let system_non_hart_memory_channels =
+    match General_config.include_io_controller with
+    | No_io_controller -> 0
+    | Uart_controller _ -> 2
+  ;;
+
   module Memory_controller = Memory_controller.Make (struct
       let num_bytes = Memory_config.num_bytes
-
-      let num_channels =
-        General_config.num_harts
-        +
-        match General_config.include_io_controller with
-        | No_io_controller -> 0
-        | Uart_controller _ -> 2
-      ;;
-
+      let num_channels = system_non_hart_memory_channels + General_config.num_harts
       let address_width = Address_width.bits Hart_config.address_width
       let data_bus_width = 32
     end)
@@ -164,10 +162,12 @@ struct
       in
       uart_tx_ready <== dma_out_uart_tx.data_in_ready;
       Some
-        { Dma_wiring.dma_to_memory_controller = [ dma.out ; dma_out.memory ]
-        ; dma_to_memory_controller_rx = [ rx_dma_to_memory_controller ; tx_dma_to_memory_controller ]
-        ; memory_controller_to_dma = [ rx_memory_controller_to_dma ; tx_memory_controller_to_dma ]
-        ; memory_controller_to_dma_rx = [ dma.out_ack ; dma_out.memory_response ]
+        { Dma_wiring.dma_to_memory_controller = [ dma.out; dma_out.memory ]
+        ; dma_to_memory_controller_rx =
+            [ rx_dma_to_memory_controller; tx_dma_to_memory_controller ]
+        ; memory_controller_to_dma =
+            [ rx_memory_controller_to_dma; tx_memory_controller_to_dma ]
+        ; memory_controller_to_dma_rx = [ dma.out_ack; dma_out.memory_response ]
         ; tx_input = tx_enable
         ; tx_busy = dma_out.busy
         ; uart_tx = dma_out_uart_tx.uart_tx
@@ -227,7 +227,7 @@ struct
                             [ result <--. 1
                             ; Tx_input.With_valid.Of_always.assign
                                 tx_input
-                                { valid = vdd
+                                { valid = gnd
                                 ; value =
                                     { address = List.nth_exn registers.general 2
                                     ; length =
@@ -259,9 +259,13 @@ struct
             { Hart.I.clock = i.clock
             ; clear = i.clear
             ; memory_controller_to_hart =
-                List.nth_exn controller.controller_to_ch which_hart
+                List.nth_exn
+                  controller.controller_to_ch
+                  (system_non_hart_memory_channels + which_hart)
             ; hart_to_memory_controller =
-                List.nth_exn controller.ch_to_controller which_hart
+                List.nth_exn
+                  controller.ch_to_controller
+                  (system_non_hart_memory_channels + which_hart)
             })
         General_config.num_harts
     in
