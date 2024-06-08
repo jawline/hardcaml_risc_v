@@ -227,7 +227,7 @@ struct
                             [ result <--. 1
                             ; Tx_input.With_valid.Of_always.assign
                                 tx_input
-                                { valid = gnd
+                                { valid = vdd
                                 ; value =
                                     { address = List.nth_exn registers.general 2
                                     ; length =

@@ -317,13 +317,15 @@ struct
     ~(registers : _ Registers.t)
     ~custom_ecall
     (decoded_instruction : _ Decoded_instruction.t)
-    _scope
+    scope
     =
+    let ( -- ) = Scope.naming scope in
     let is_ecall =
-      enable
-      &: (decoded_instruction.opcode ==:. Opcodes.system)
-      &: (decoded_instruction.funct3
-          ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak)
+      (enable
+       &: (decoded_instruction.opcode ==:. Opcodes.system)
+       &: (decoded_instruction.funct3
+           ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
+      -- "is_ecall"
     in
     let custom_ecall_logic, custom_ecall =
       custom_ecall ~is_ecall ~decoded_instruction ~registers

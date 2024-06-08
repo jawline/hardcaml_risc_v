@@ -17,7 +17,7 @@ module Make (M : sig
   end) =
 struct
   open Opcode_helper
-  
+
   let create_sim = M.create_sim
   let finalize_sim = M.finalize_sim
   let test = M.test
