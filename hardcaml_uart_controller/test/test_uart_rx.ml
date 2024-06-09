@@ -4,7 +4,7 @@ open Hardcaml_waveterm
 open Hardcaml_uart_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_inputs =
   let module Config = struct
@@ -70,17 +70,20 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
   let all_outputs = ref [] in
+  let total_cycles = ref 0 in
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := of_int ~width:1 1;
       inputs.data_in := of_int ~width:8 input;
       Cyclesim.cycle sim;
+      incr total_cycles;
       inputs.data_in_valid := of_int ~width:1 0;
       let rec loop_until_finished acc n =
         if n = 0
         then List.rev acc
         else (
           Cyclesim.cycle sim;
+          incr total_cycles;
           let acc =
             if Bits.to_bool !(outputs.data_out_valid)
                || Bits.to_bool !(outputs.parity_error)
@@ -89,13 +92,15 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
           in
           loop_until_finished acc (n - 1))
       in
-      let outputs = loop_until_finished [] 100 in
+      let cycles_per_bit = clock_frequency / baud_rate in
+      let number_of_cycles_to_loop_for =
+        cycles_per_bit * (1 + 8 + (if include_parity_bit then 1 else 0) + stop_bits)
+      in
+      let outputs = loop_until_finished [] number_of_cycles_to_loop_for in
       all_outputs := !all_outputs @ outputs)
     all_inputs;
-  print_s [%message "" ~_:(!all_outputs : int list)];
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
-  else ();
+  print_s [%message "" ~_:(!all_outputs : int list) ~_:(!total_cycles : int)];
+  if debug then Waveform.Serialize.marshall waveform name else ();
   if not (List.equal Int.( = ) !all_outputs all_inputs)
   then raise_s [%message "outputs did not match inputs"]
 ;;
@@ -103,13 +108,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
 let%expect_test "test" =
   test
     ~name:"/tmp/one_stop_bit_no_parity"
-    ~clock_frequency:200
-    ~baud_rate:200
+    ~clock_frequency:10
+    ~baud_rate:1
     ~include_parity_bit:false
     ~stop_bits:1
     ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {|
-     (10 7 153 255 0 170) |}];
+  [%expect {|70) |}];
   test
     ~name:"/tmp/one_stop_bit_with_parity"
     ~clock_frequency:200

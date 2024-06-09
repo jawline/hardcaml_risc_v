@@ -51,3 +51,39 @@ let ecall ~rs1 ~rd =
     ~rd:(Bits.of_int ~width:5 rd)
     ~immediate:(Bits.of_int ~width:12 0)
 ;;
+
+let instructions_to_data instructions =
+  Bits.concat_lsb instructions
+  |> Bits.split_lsb ~part_width:8
+  |> List.map ~f:Bits.to_char
+  |> String.of_char_list
+;;
+
+let hello_world_program =
+  let print_string = "Hello world!" in
+  instructions_to_data
+    [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0
+    ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:2 ~immediate:16
+    ; op_imm
+        ~funct3:Funct3.Op.Add_or_sub
+        ~rs1:0
+        ~rd:3
+        ~immediate:(String.length print_string)
+    ; ecall ~rs1:0 ~rd:0
+    ]
+  ^ print_string
+;;
+
+let dma_packet ~address packet =
+  (* We add the magic and then the packet length before the packet *)
+  let packet = String.to_list packet in
+  let packet_len_parts =
+    Bits.of_int ~width:16 (List.length packet + 4)
+    |> split_msb ~part_width:8
+    |> List.map ~f:Bits.to_int
+  in
+  let address =
+    Bits.of_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:Bits.to_int
+  in
+  [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
+;;

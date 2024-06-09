@@ -1,10 +1,18 @@
 (executable
  (public_name hardcaml_risc_v)
  (name top)
+ (preprocess
+  (pps
+   ppx_jane
+   ppx_deriving_hardcaml
+   ppx_deriving.show
+   ppx_deriving.ord
+   ppx_expect))
  (libraries
   core
   core_unix
   async
   hardcaml_risc_v
   hardcaml_risc_v_hart
-  hardcaml_xilinx_reports))
+  hardcaml_xilinx_reports
+  hardcaml_risc_v_test))

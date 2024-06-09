@@ -1,2 +1,6 @@
 _build/
 .Xil/
+*.gen/
+*.ip_user_files/
+*.cache/
+*.runs/

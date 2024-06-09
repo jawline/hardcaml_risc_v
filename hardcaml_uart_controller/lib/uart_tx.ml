@@ -42,13 +42,16 @@ module Make (C : Config_intf.S) = struct
     [@@deriving sexp, enumerate, compare]
   end
 
-  let switch_cycle spec =
+  let switch_cycle ~reset_when spec =
     if switching_frequency = 1
     then vdd
     else (
       let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
       (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
-         mod_counter ~max:(switching_frequency - 1) t))
+         mux2
+           reset_when
+           (one bits_to_repr_switching_frequency)
+           (mod_counter ~max:(switching_frequency - 1) t)))
         spec
       ==:. 0)
   ;;
@@ -62,7 +65,11 @@ module Make (C : Config_intf.S) = struct
        register. *)
     let current_output_reg = Variable.reg ~width:1 reg_spec_no_clear in
     let current_output_wire = Variable.wire ~default:(zero 1) in
-    let switch_cycle = switch_cycle reg_spec_no_clear -- "switch_cycle" in
+    let reset_switch_cycle = Variable.wire ~default:(zero 1) in
+    let switch_cycle =
+      switch_cycle ~reset_when:reset_switch_cycle.value reg_spec_no_clear
+      -- "switch_cycle"
+    in
     let data_to_write = Variable.reg ~width:(width data_in) reg_spec_no_clear in
     let which_data_bits = Variable.reg ~width:3 reg_spec_no_clear in
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
@@ -81,6 +88,7 @@ module Make (C : Config_intf.S) = struct
               ; parity_bit <--. 0
               ; which_stop_bit <--. 0
               ; which_data_bits <--. 0
+              ; reset_switch_cycle <-- vdd
               ; when_
                   data_in_valid
                   [ data_to_write <-- data_in
@@ -124,14 +132,14 @@ module Make (C : Config_intf.S) = struct
             , [ current_output_wire <-- current_output_reg.value
               ; when_
                   switch_cycle
-                  [ which_stop_bit <-- which_stop_bit.value +:. 1
+                  [ which_stop_bit <-- which_stop_bit.value -- "which_stop_bit" +:. 1
                   ; current_output_reg <--. 1
                   ; (* While unlikely in practice, if the baud rate is equal to
                        clock rate then just setting the register would be wrong as
                        it would only reflect the change on the next cycle. *)
                     current_output_wire <--. 1
                   ; when_
-                      (which_stop_bit.value ==:. C.config.stop_bits)
+                      (which_stop_bit.value ==:. C.config.stop_bits - 1)
                       [ current_state.set_next Waiting_for_data_in ]
                   ]
               ] )

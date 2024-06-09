@@ -61,6 +61,10 @@ struct
     type 'a t =
       { registers : 'a Registers.t list [@length General_config.num_harts]
       ; uart_tx : 'a
+      ; uart_rx_valid : 'a
+      ; parity_error : 'a
+      ; stop_bit_unstable : 'a
+      ; serial_to_packet_valid : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -73,9 +77,13 @@ struct
       ; dma_to_memory_controller_rx : Variable.t Memory_controller.Tx_bus.Rx.t list
       ; memory_controller_to_dma : Variable.t Memory_controller.Rx_bus.Tx.t list
       ; memory_controller_to_dma_rx : Memory_controller.Rx_bus.Rx.Of_signal.t list
+      ; uart_rx_valid : 'a
       ; tx_input : Signal.t Tx_input.With_valid.t
       ; tx_busy : 'a
       ; uart_tx : Signal.t
+      ; parity_error : 'a
+      ; stop_bit_unstable : 'a
+      ; serial_to_packet_valid : 'a
       }
   end
 
@@ -106,7 +114,7 @@ struct
       in
       let rx_dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
       let rx_memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error = _; stop_bit_unstable = _ } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
         Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
       in
       let { Serial_to_packet.O.out } =
@@ -173,6 +181,10 @@ struct
         ; tx_input = tx_enable
         ; tx_busy = dma_out.busy
         ; uart_tx = dma_out_uart_tx.uart_tx
+        ; uart_rx_valid = data_out_valid
+        ; parity_error
+        ; stop_bit_unstable
+        ; serial_to_packet_valid = out.valid
         }
   ;;
 
@@ -330,6 +342,22 @@ struct
     ; uart_tx =
         (match maybe_dma_controller with
          | Some { uart_tx; _ } -> uart_tx
+         | None -> gnd)
+    ; uart_rx_valid =
+        (match maybe_dma_controller with
+         | Some { uart_rx_valid; _ } -> uart_rx_valid
+         | None -> gnd)
+    ; parity_error =
+        (match maybe_dma_controller with
+         | Some { parity_error; _ } -> parity_error
+         | None -> gnd)
+    ; stop_bit_unstable =
+        (match maybe_dma_controller with
+         | Some { stop_bit_unstable; _ } -> stop_bit_unstable
+         | None -> gnd)
+    ; serial_to_packet_valid =
+        (match maybe_dma_controller with
+         | Some { serial_to_packet_valid; _ } -> serial_to_packet_valid
          | None -> gnd)
     }
   ;;
