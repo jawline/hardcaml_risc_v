@@ -70,14 +70,19 @@ struct
                   [ (* If a received tag is out of the range of the
                        routable tags we discard the whole packet in the
                        router. *)
-                    if_
-                      (in_.data.data <=:. (Config.num_tags - 1))
-                      [ state.set_next Routing ]
-                      [ state.set_next Discarding_bad_tag ]
+                    when_
+                      ~:(in_.data.last)
+                      [ if_
+                          (in_.data.data <=:. Config.num_tags - 1)
+                          [ state.set_next Routing ]
+                          [ state.set_next Discarding_bad_tag ]
+                      ]
                   ]
               ] )
-          ; Routing, []
-          ; Discarding_bad_tag, []
+          ; ( Routing
+            , [ when_ in_.data.last [ state.set_next Waiting_for_start_of_packet ] ] )
+          ; ( Discarding_bad_tag
+            , [ when_ in_.data.last [ state.set_next Waiting_for_start_of_packet ] ] )
           ]
       ];
     { O.in_ = { ready = selected_out_ready }
@@ -85,7 +90,7 @@ struct
         List.init
           ~f:(fun index ->
             P.Contents_stream.Tx.Of_signal.mux2
-              ((which_tag.value ==:. index) &: state.is Routing)
+              (which_tag.value -- "which_tag" ==:. index &: state.is Routing)
               in_
               (P.Contents_stream.Tx.Of_signal.of_int 0))
           Config.num_tags

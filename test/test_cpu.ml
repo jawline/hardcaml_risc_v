@@ -17,7 +17,6 @@ module Make (M : sig
     val test : instructions:Bits.t list -> sim -> unit
   end) =
 struct
-
   let create_sim = M.create_sim
   let finalize_sim = M.finalize_sim
   let test = M.test
@@ -415,13 +414,11 @@ module With_dma_ram = Make (struct
       inputs.clear := Bits.zero 1
     ;;
 
-    let send_dma_message ~address ~packet sim =
+    let send_bits sim whole_packet =
+      (* Send the message through byte by byte. Uart_tx will transmit a
+         * byte once every ~10 cycles (this is dependent on the number of stop
+         * bits and the parity bit. *)
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
-      (* TODO: Move this to a util section *)
-      let whole_packet = dma_packet ~address packet in
-      (* Send the DMA message through byte by byte. Uart_tx will transmit a
-       * byte once every ~10 cycles (this is dependent on the number of stop
-       * bits and the parity bit. *)
       let rec loop_for n =
         if n = 0
         then ()
@@ -438,6 +435,12 @@ module With_dma_ram = Make (struct
           (* TODO: Tighter loop *)
           loop_for 20)
         whole_packet
+    ;;
+
+    let send_dma_message ~address ~packet sim =
+      (* TODO: Move this to a util section *)
+      let whole_packet = dma_packet ~address packet in
+      send_bits sim whole_packet
     ;;
 
     let test ~instructions sim =
@@ -459,11 +462,11 @@ module With_dma_ram = Make (struct
            |> List.map ~f:Bits.to_char
            |> String.of_char_list)
         sim;
+      send_bits sim clear_packet;
       let _outputs_before : _ With_transmitter.O.t =
         Cyclesim.outputs ~clock_edge:Side.Before sim
       in
       let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
-      clear_registers ~inputs sim;
       let rec loop_for cycles =
         if cycles = 0
         then ()

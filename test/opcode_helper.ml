@@ -74,6 +74,17 @@ let hello_world_program =
   ^ print_string
 ;;
 
+let clear_packet =
+  let packet_len_parts =
+    Bits.of_int ~width:16 2 |> split_msb ~part_width:8 |> List.map ~f:Bits.to_int
+  in
+  [ Char.to_int 'Q' ]
+  @ packet_len_parts
+  (* This 0 is the router tag. 0 will
+     route to DMA and 1 will route to clear. A one tag indicates a
+     clear signal. *) @ [ 1; 0 ]
+;;
+
 let dma_packet ~address packet =
   (* We add the magic and then the packet length before the packet *)
   let packet = String.to_list packet in

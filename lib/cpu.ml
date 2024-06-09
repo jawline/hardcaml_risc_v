@@ -89,7 +89,7 @@ struct
   end
 
   let maybe_dma_controller ~uart_rx ~clock ~clear scope =
-          let ( -- ) = Scope.naming scope in 
+    let ( -- ) = Scope.naming scope in
     match General_config.include_io_controller with
     | No_io_controller -> None
     | Uart_controller config ->
