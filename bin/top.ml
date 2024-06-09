@@ -97,9 +97,15 @@ module Program = struct
       ~summary:"program running design and then listen for output"
       (Command.Param.return (fun () ->
          let whole_packet = dma_packet ~address:0 hello_world_program in
+         printf "Sending program via DMA\n";
          Out_channel.write_all
            "/dev/ttyUSB0"
            ~data:(List.map ~f:Char.of_int_exn whole_packet |> String.of_char_list);
+         printf "Sending clear signal via DMA\n";
+         Out_channel.write_all
+           "/dev/ttyUSB0"
+           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
+         printf "Waiting\n";
          let reader = In_channel.create ~binary:true "/dev/ttyUSB0" in
          let rec loop () =
            let header, length, bytes_ = read_packet reader in
