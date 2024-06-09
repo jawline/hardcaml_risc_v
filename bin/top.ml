@@ -16,7 +16,7 @@ module Design =
       let num_bytes = 4096
     end)
     (struct
-      let num_harts = 2
+      let num_harts = 1
 
       let include_io_controller =
         Io_controller_config.Uart_controller

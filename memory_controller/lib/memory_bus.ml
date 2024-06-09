@@ -13,7 +13,7 @@ struct
       ; write : 'a
       ; write_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module Rx_data = struct
@@ -21,7 +21,7 @@ struct
       { error : 'a
       ; read_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   let address_is_word_aligned address =

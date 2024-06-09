@@ -12,7 +12,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -20,7 +20,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       { rd : 'a [@bits register_width] [@rtlname "new_rd"]
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   let create ~enable_subtract _scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =

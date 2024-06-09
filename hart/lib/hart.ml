@@ -33,7 +33,7 @@ struct
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -49,7 +49,7 @@ struct
           'a Registers.t
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   let create ~custom_ecall scope (i : _ I.t) =

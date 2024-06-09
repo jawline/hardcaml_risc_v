@@ -20,7 +20,7 @@ module Make (C : Config_intf.S) = struct
       ; data_in_valid : 'a
       ; data_in : 'a [@bits 8]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -29,7 +29,7 @@ module Make (C : Config_intf.S) = struct
       ; data_in_ready : 'a
       ; idle : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module State = struct

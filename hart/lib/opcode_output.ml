@@ -15,5 +15,5 @@ struct
     ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
     ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
     }
-  [@@deriving sexp_of, hardcaml]
+  [@@deriving sexp_of, hardcaml ~rtlmangle:true]
 end

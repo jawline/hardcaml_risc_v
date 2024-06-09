@@ -19,7 +19,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; u_immediate : 'a [@bits register_width]
     ; b_immediate : 'a [@bits register_width]
     }
-  [@@deriving sexp_of, hardcaml]
+  [@@deriving sexp_of, hardcaml ~rtlmangle:true]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 

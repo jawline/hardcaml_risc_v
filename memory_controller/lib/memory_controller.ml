@@ -35,7 +35,7 @@ struct
       ; write : 'a
       ; write_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module Rx_data = struct
@@ -43,7 +43,7 @@ struct
       { error : 'a
       ; read_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module Tx_bus = Stream.Make (Tx_data)
@@ -59,7 +59,7 @@ struct
         controller_to_ch : 'a Rx_bus.Rx.t list
            [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -69,7 +69,7 @@ struct
       ; controller_to_ch : 'a Rx_bus.Tx.t list
            [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   let create scope (i : _ I.t) =

@@ -23,14 +23,15 @@ struct
       { clock : 'a
       ; clear : 'a
       ; in_valid : 'a
-      ; in_data : 'a
+      ; in_data : 'a [@bits Config.serial_input_width]
       ; out : 'a P.Contents_stream.Rx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
-    type 'a t = { out : 'a P.Contents_stream.Tx.t } [@@deriving sexp_of, hardcaml]
+    type 'a t = { out : 'a P.Contents_stream.Tx.t }
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module State = struct
@@ -49,8 +50,7 @@ struct
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let out = P.Contents_stream.Tx.Of_always.wire zero in
-    let wout = width out.data.data.value in
+    let wout = width (P.Contents_stream.Tx.Of_signal.of_int 0).data.data in
     if wout <> Config.serial_input_width
     then
       raise_s
@@ -80,6 +80,22 @@ struct
         ~scope:(Scope.sub_scope scope "fifo")
         ()
     in
+    let length_this_cycle =
+      mux_init
+        which_length_packet.value
+        ~f:(fun which_length_packet_i ->
+          let current_parts =
+            split_msb ~part_width:Config.serial_input_width reading_length.value
+          in
+          let new_length =
+            concat_msb
+              (List.take current_parts which_length_packet_i
+               @ [ in_data ]
+               @ List.drop current_parts (which_length_packet_i + 1))
+          in
+          new_length)
+        num_length_packets
+    in
     let have_buffered_packets = ~:(packet_buffer.empty) -- "have_buffered_packets" in
     compile
       [ reading_packet_buffer <-- (have_buffered_packets &: out_ready)
@@ -94,20 +110,7 @@ struct
             , [ when_
                   in_valid
                   [ which_length_packet <-- which_length_packet.value +:. 1
-                  ; reading_length
-                    <-- mux_init
-                          which_length_packet.value
-                          ~f:(fun which_length_packet_i ->
-                            let current_parts =
-                              split_msb
-                                ~part_width:Config.serial_input_width
-                                reading_length.value
-                            in
-                            concat_msb
-                              (List.take current_parts which_length_packet_i
-                               @ [ in_data ]
-                               @ List.drop current_parts (which_length_packet_i + 1)))
-                          num_length_packets
+                  ; reading_length <-- length_this_cycle
                   ; when_
                       (which_length_packet.value ==:. num_length_packets - 1)
                       [ state.set_next Streaming_in ]

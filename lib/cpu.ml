@@ -54,7 +54,7 @@ struct
         (* TODO: Remove these from the I.t when unused *)
         uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -62,7 +62,7 @@ struct
       { registers : 'a Registers.t list [@length General_config.num_harts]
       ; uart_tx : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module Tx_input = Memory_to_packet8.Input
@@ -73,7 +73,7 @@ struct
       ; dma_to_memory_controller_rx : Variable.t Memory_controller.Tx_bus.Rx.t list
       ; memory_controller_to_dma : Variable.t Memory_controller.Rx_bus.Tx.t list
       ; memory_controller_to_dma_rx : Memory_controller.Rx_bus.Rx.Of_signal.t list
-      ; tx_input : Variable.t Tx_input.With_valid.t
+      ; tx_input : Signal.t Tx_input.With_valid.t
       ; tx_busy : 'a
       ; uart_tx : Signal.t
       }
@@ -132,7 +132,9 @@ struct
               Memory_controller.Rx_bus.Tx.Of_always.value rx_memory_controller_to_dma
           }
       in
-      let tx_enable = Tx_input.With_valid.Of_always.wire zero in
+      let tx_enable = Tx_input.With_valid.Of_signal.wires () in
+      let ( -- ) = Scope.naming scope in
+      ignore (tx_enable.valid -- "tx_enable" : Signal.t);
       let tx_dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
       let tx_memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
       let uart_tx_ready = wire 1 in
@@ -142,7 +144,7 @@ struct
           scope
           { Memory_to_packet8.I.clock
           ; clear
-          ; enable = Tx_input.With_valid.Of_always.value tx_enable
+          ; enable = tx_enable
           ; memory =
               Memory_controller.Tx_bus.Rx.Of_always.value tx_dma_to_memory_controller
           ; memory_response =
@@ -215,45 +217,35 @@ struct
       List.init
         ~f:(fun which_hart ->
           Hart.hierarchical
-            ~custom_ecall:(fun ~is_ecall ~decoded_instruction:_ ~registers ->
+            ~custom_ecall:
+              (fun
+                ~is_ecall ~decoded_instruction:_ ~(registers : Signal.t Registers.t) ->
               match maybe_dma_controller with
               | Some { tx_input; tx_busy; _ } ->
-                let result = Variable.wire ~default:(zero 32) in
-                ( proc
-                    [ when_
-                        is_ecall
-                        [ when_
-                            (List.nth_exn registers.general 1 ==:. 0 &: ~:tx_busy)
-                            [ result <--. 1
-                            ; Tx_input.With_valid.Of_always.assign
-                                tx_input
-                                { valid = vdd
-                                ; value =
-                                    { address = List.nth_exn registers.general 2
-                                    ; length =
-                                        uresize
-                                          (List.nth_exn registers.general 3)
-                                          (width tx_input.value.length.value)
-                                    }
-                                }
-                            ]
-                        ]
-                    ]
-                , { Transaction.finished = vdd
-                  ; set_rd = vdd
-                  ; new_rd = result.value
-                  ; new_pc = registers.pc +:. 4
-                  ; error = gnd
-                  } )
+                let should_do_dma =
+                  is_ecall &: (List.nth_exn registers.general 1 ==:. 0)
+                in
+                let not_busy = ~:tx_busy in
+                tx_input.valid <== (should_do_dma &: not_busy);
+                tx_input.value.address <== List.nth_exn registers.general 2;
+                tx_input.value.length
+                <== uresize
+                      (List.nth_exn registers.general 3)
+                      (width tx_input.value.length);
+                { Transaction.finished = vdd
+                ; set_rd = vdd
+                ; new_rd = uresize not_busy 32
+                ; new_pc = registers.pc +:. 4
+                ; error = zero 1
+                }
               | None ->
                 (* Set RD to false (failure) and do nothing else. *)
-                ( proc []
-                , { Transaction.finished = vdd
-                  ; set_rd = vdd
-                  ; new_rd = zero 32
-                  ; new_pc = registers.pc +:. 4
-                  ; error = gnd
-                  } ))
+                { Transaction.finished = vdd
+                ; set_rd = vdd
+                ; new_rd = zero 32
+                ; new_pc = registers.pc +:. 4
+                ; error = gnd
+                })
             ~instance:[%string "hart_%{which_hart#Int}"]
             scope
             { Hart.I.clock = i.clock

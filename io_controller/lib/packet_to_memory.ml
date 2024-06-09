@@ -13,7 +13,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       ; out : 'a Memory.Tx_bus.Rx.t
       ; out_ack : 'a Memory.Rx_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
@@ -22,7 +22,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       ; out : 'a Memory.Tx_bus.Tx.t
       ; out_ack : 'a Memory.Rx_bus.Rx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module State = struct

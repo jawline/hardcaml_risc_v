@@ -24,27 +24,23 @@ struct
       { clock : 'a
       ; clear : 'a
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller"]
       ; enable : 'a
       ; instruction : 'a [@bits register_width]
-      ; registers : 'a Registers.t [@rtlprefix "input_registers"]
+      ; registers : 'a Registers.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   module O = struct
     type 'a t =
       { memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
-           [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller"]
       ; finished : 'a
-      ; new_registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers"]
+      ; new_registers : 'a Registers.For_writeback.t
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
   let op_imm_instructions
@@ -327,9 +323,6 @@ struct
            ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
       -- "is_ecall"
     in
-    let custom_ecall_logic, custom_ecall =
-      custom_ecall ~is_ecall ~decoded_instruction ~registers
-    in
     (* TODO: Support hardware registers *)
     let unsupported_increment_pc =
       { Transaction.finished = vdd
@@ -339,7 +332,7 @@ struct
       ; new_pc = registers.pc +:. 4
       }
     in
-    compile [ custom_ecall_logic ];
+    let custom_ecall = custom_ecall ~is_ecall ~decoded_instruction ~registers in
     { Opcode_output.transaction =
         Transaction.Of_signal.mux2 is_ecall custom_ecall unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
