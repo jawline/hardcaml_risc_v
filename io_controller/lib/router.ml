@@ -45,24 +45,33 @@ struct
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
-    let which_tag = Variable.reg ~width:1 reg_spec_no_clear in
+    let which_tag =
+      Variable.reg
+        ~width:(Signal.num_bits_to_represent (Config.num_tags - 1))
+        reg_spec_no_clear
+    in
     let selected_out_ready =
+      let output_is_ready =
+        if Config.num_tags = 1
+        then (List.hd_exn outs).ready
+        else mux which_tag.value (List.map ~f:(fun out -> out.ready) outs)
+      in
       state.is Routing
-      &: mux which_tag.value (List.map ~f:(fun out -> out.ready) outs)
+      &: output_is_ready
       |: state.is Waiting_for_start_of_packet
       |: state.is Discarding_bad_tag
     in
     compile
       [ state.switch
           [ ( State.Waiting_for_start_of_packet
-            , [ which_tag <-- in_.data.data
+            , [ which_tag <-- uresize in_.data.data (width which_tag.value)
               ; when_
                   in_.valid
                   [ (* If a received tag is out of the range of the
                        routable tags we discard the whole packet in the
                        router. *)
                     if_
-                      (in_.data.data <:. Config.num_tags)
+                      (in_.data.data <=:. (Config.num_tags - 1))
                       [ state.set_next Routing ]
                       [ state.set_next Discarding_bad_tag ]
                   ]
@@ -76,7 +85,7 @@ struct
         List.init
           ~f:(fun index ->
             P.Contents_stream.Tx.Of_signal.mux2
-              (which_tag.value ==:. index &: state.is Routing)
+              ((which_tag.value ==:. index) &: state.is Routing)
               in_
               (P.Contents_stream.Tx.Of_signal.of_int 0))
           Config.num_tags

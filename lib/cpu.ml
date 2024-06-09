@@ -84,10 +84,12 @@ struct
       ; parity_error : 'a
       ; stop_bit_unstable : 'a
       ; serial_to_packet_valid : 'a
+      ; clear_message : 'a
       }
   end
 
   let maybe_dma_controller ~uart_rx ~clock ~clear scope =
+          let ( -- ) = Scope.naming scope in 
     match General_config.include_io_controller with
     | No_io_controller -> None
     | Uart_controller config ->
@@ -112,11 +114,20 @@ struct
           end)
           (Packet)
       in
+      let module Router =
+        Router.Make
+          (struct
+            let num_tags = 2
+          end)
+          (Packet)
+      in
+      let module Pulse = Pulse.Make (Packet) in
       let rx_dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
       let rx_memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
       let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
         Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
       in
+      let router_ready = wire 1 in
       let { Serial_to_packet.O.out } =
         Serial_to_packet.hierarchical
           ~instance:"serial_to_packet"
@@ -128,20 +139,40 @@ struct
           ; out = { ready = vdd }
           }
       in
+      let dma_ready = wire 1 in
+      let pulse_ready = wire 1 in
+      let router =
+        Router.hierarchical
+          ~instance:"io_packet_router"
+          scope
+          { Router.I.clock
+          ; clear
+          ; in_ = out
+          ; outs = [ { ready = dma_ready }; { ready = pulse_ready } ]
+          }
+      in
+      router_ready <== router.in_.ready;
       let dma =
         Dma.hierarchical
           ~instance:"dma"
           scope
           { Dma.I.clock
           ; clear
-          ; in_ = out
+          ; in_ = List.nth_exn router.outs 0
           ; out = Memory_controller.Tx_bus.Rx.Of_always.value rx_dma_to_memory_controller
           ; out_ack =
               Memory_controller.Rx_bus.Tx.Of_always.value rx_memory_controller_to_dma
           }
       in
+      dma_ready <== dma.in_.ready;
+      let pulse =
+        Pulse.hierarchical
+          ~instance:"pulse"
+          scope
+          { Pulse.I.clock; clear; in_ = List.nth_exn router.outs 1 }
+      in
+      pulse_ready <== pulse.in_.ready;
       let tx_enable = Tx_input.With_valid.Of_signal.wires () in
-      let ( -- ) = Scope.naming scope in
       ignore (tx_enable.valid -- "tx_enable" : Signal.t);
       let tx_dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
       let tx_memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
@@ -185,6 +216,7 @@ struct
         ; parity_error
         ; stop_bit_unstable
         ; serial_to_packet_valid = out.valid
+        ; clear_message = pulse.signal -- "clear_message"
         }
   ;;
 
@@ -236,7 +268,11 @@ struct
               ~instance:[%string "hart_%{which_hart#Int}"]
               scope
               { Hart.I.clock = i.clock
-              ; clear = i.clear
+              ; clear =
+                  (* Allow resets via remote IO if a DMA controller is attached. *)
+                  (match maybe_dma_controller with
+                   | Some { clear_message; _ } -> clear_message |: i.clear
+                   | None -> i.clear)
               ; memory_controller_to_hart =
                   List.nth_exn
                     controller.controller_to_ch

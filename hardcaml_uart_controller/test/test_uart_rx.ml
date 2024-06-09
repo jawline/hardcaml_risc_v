@@ -94,7 +94,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
       in
       let cycles_per_bit = clock_frequency / baud_rate in
       let number_of_cycles_to_loop_for =
-        cycles_per_bit * (1 + 8 + (if include_parity_bit then 1 else 0) + stop_bits)
+        cycles_per_bit * (1 + 8 + (if include_parity_bit then 1 else 0) + stop_bits) + 1
       in
       let outputs = loop_until_finished [] number_of_cycles_to_loop_for in
       all_outputs := !all_outputs @ outputs)
@@ -113,7 +113,7 @@ let%expect_test "test" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {|70) |}];
+  [%expect{| ((10 7 153 255 0 170) 612) |}];
   test
     ~name:"/tmp/one_stop_bit_with_parity"
     ~clock_frequency:200
@@ -121,7 +121,7 @@ let%expect_test "test" =
     ~include_parity_bit:true
     ~stop_bits:1
     ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {| (10 7 153 255 0 170) |}];
+  [%expect{| ((10 7 153 255 0 170) 78) |}];
   test
     ~name:"/tmp/two_stop_bits_with_parity"
     ~clock_frequency:200
@@ -129,5 +129,5 @@ let%expect_test "test" =
     ~include_parity_bit:true
     ~stop_bits:2
     ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {| (10 7 153 255 0 170) |}]
+  [%expect{| ((10 7 153 255 0 170) 84) |}]
 ;;

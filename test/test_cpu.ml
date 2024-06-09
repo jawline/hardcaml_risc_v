@@ -4,9 +4,10 @@ open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
 open Hardcaml_uart_controller
 open Hardcaml_waveterm
+open Opcode_helper
 open! Bits
 
-let debug = false
+let debug = true
 
 module Make (M : sig
     type sim
@@ -16,7 +17,6 @@ module Make (M : sig
     val test : instructions:Bits.t list -> sim -> unit
   end) =
 struct
-  open Opcode_helper
 
   let create_sim = M.create_sim
   let finalize_sim = M.finalize_sim
@@ -418,21 +418,7 @@ module With_dma_ram = Make (struct
     let send_dma_message ~address ~packet sim =
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       (* TODO: Move this to a util section *)
-      let whole_packet =
-        (* We add the magic and then the packet length before the packet *)
-        let packet = String.to_list packet in
-        let packet_len_parts =
-          Bits.of_int ~width:16 (List.length packet + 4)
-          |> split_msb ~part_width:8
-          |> List.map ~f:Bits.to_int
-        in
-        let address =
-          Bits.of_int ~width:32 address
-          |> split_msb ~part_width:8
-          |> List.map ~f:Bits.to_int
-        in
-        [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
-      in
+      let whole_packet = dma_packet ~address packet in
       (* Send the DMA message through byte by byte. Uart_tx will transmit a
        * byte once every ~10 cycles (this is dependent on the number of stop
        * bits and the parity bit. *)

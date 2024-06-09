@@ -78,12 +78,17 @@ let dma_packet ~address packet =
   (* We add the magic and then the packet length before the packet *)
   let packet = String.to_list packet in
   let packet_len_parts =
-    Bits.of_int ~width:16 (List.length packet + 4)
+    Bits.of_int ~width:16 (List.length packet + 5)
     |> split_msb ~part_width:8
     |> List.map ~f:Bits.to_int
   in
   let address =
     Bits.of_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:Bits.to_int
   in
-  [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
+  [ Char.to_int 'Q' ]
+  @ packet_len_parts
+  (* This 0 is the router tag. 0 will
+     route to DMA and 1 will route to clear. *) @ [ 0 ]
+  @ address
+  @ List.map ~f:Char.to_int packet
 ;;
