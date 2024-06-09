@@ -28,6 +28,7 @@ struct
       ; enable : 'a
       ; instruction : 'a [@bits register_width]
       ; registers : 'a Registers.t
+      ; ecall_transaction : 'a Transaction.t
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -39,6 +40,7 @@ struct
       ; finished : 'a
       ; new_registers : 'a Registers.For_writeback.t
       ; error : 'a
+      ; is_ecall : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -305,24 +307,17 @@ struct
 
   (** The system instruction allows access to hardware registers and ecall / ebreak. *)
   let system_instruction
-    ~enable
+    ~enable:_
     ~clock:_
     ~clear:_
     ~memory_controller_to_hart:_
     ~hart_to_memory_controller:_
     ~(registers : _ Registers.t)
-    ~custom_ecall
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+    ~is_ecall
+    ~ecall_transaction
+    (_decoded_instruction : _ Decoded_instruction.t)
+    _scope
     =
-    let ( -- ) = Scope.naming scope in
-    let is_ecall =
-      (enable
-       &: (decoded_instruction.opcode ==:. Opcodes.system)
-       &: (decoded_instruction.funct3
-           ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
-      -- "is_ecall"
-    in
     (* TODO: Support hardware registers *)
     let unsupported_increment_pc =
       { Transaction.finished = vdd
@@ -332,9 +327,8 @@ struct
       ; new_pc = registers.pc +:. 4
       }
     in
-    let custom_ecall = custom_ecall ~is_ecall ~decoded_instruction ~registers in
     { Opcode_output.transaction =
-        Transaction.Of_signal.mux2 is_ecall custom_ecall unsupported_increment_pc
+        Transaction.Of_signal.mux2 is_ecall ecall_transaction unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     }
@@ -381,7 +375,8 @@ struct
     ~hart_to_memory_controller
     ~registers
     ~decoded_instruction
-    ~custom_ecall
+    ~is_ecall
+    ~ecall_transaction
     scope
     =
     [ Table_entry.create
@@ -437,7 +432,8 @@ struct
            ~memory_controller_to_hart
            ~hart_to_memory_controller
            ~registers
-           ~custom_ecall
+           ~is_ecall
+           ~ecall_transaction
            decoded_instruction
            scope)
     ]
@@ -451,7 +447,7 @@ struct
     [@@deriving sexp_of, compare, enumerate]
   end
 
-  let create ~custom_ecall scope (i : _ I.t) =
+  let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
@@ -467,6 +463,13 @@ struct
            ~index_signal:decoded_instruction.rd.value
            ~value_signal:new_rd
     in
+    let is_ecall =
+      (current_state.is Executing
+       &: (decoded_instruction.opcode.value ==:. Opcodes.system)
+       &: (decoded_instruction.funct3.value
+           ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
+      -- "is_ecall"
+    in
     let instruction_table =
       instruction_table
         ~enable:(current_state.is Executing)
@@ -476,7 +479,8 @@ struct
         ~hart_to_memory_controller:i.hart_to_memory_controller
         ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
         ~registers:i.registers
-        ~custom_ecall
+        ~is_ecall
+        ~ecall_transaction:i.ecall_transaction
         scope
     in
     compile
@@ -538,16 +542,12 @@ struct
     ; finished = current_state.is Committing
     ; new_registers = Registers.For_writeback.Of_always.value new_registers
     ; error = transaction.error.value
+    ; is_ecall
     }
   ;;
 
-  let hierarchical ~custom_ecall ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical
-      ~scope
-      ~name:"Decode_and_execute"
-      ~instance
-      (create ~custom_ecall)
-      input
+    H.hierarchical ~scope ~name:"Decode_and_execute" ~instance create input
   ;;
 end

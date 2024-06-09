@@ -32,6 +32,7 @@ struct
            [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
+      ; ecall_transaction : 'a Transaction.t
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -48,11 +49,12 @@ struct
              after this is IO in the top level design. *)
           'a Registers.t
       ; error : 'a
+      ; is_ecall : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
-  let create ~custom_ecall scope (i : _ I.t) =
+  let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     (* Register 0 is hardwired to zero so we don't actually store it *)
     let registers = Registers.For_writeback.Of_always.reg reg_spec in
@@ -75,7 +77,6 @@ struct
     in
     let decode_and_execute =
       Decode_and_execute.hierarchical
-        ~custom_ecall
         ~instance:"decode_and_execute"
         scope
         { Decode_and_execute.I.clock = i.clock
@@ -87,6 +88,7 @@ struct
         ; registers =
             Registers.For_writeback.Of_always.value registers
             |> Registers.For_writeback.to_registers
+        ; ecall_transaction = i.ecall_transaction
         }
     in
     compile
@@ -127,11 +129,12 @@ struct
         Registers.For_writeback.Of_always.value registers
         |> Registers.For_writeback.to_registers
     ; error = error.value
+    ; is_ecall = decode_and_execute.is_ecall
     }
   ;;
 
-  let hierarchical ~custom_ecall ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Hart" ~instance (create ~custom_ecall) input
+    H.hierarchical ~scope ~name:"Hart" ~instance create input
   ;;
 end

@@ -213,54 +213,82 @@ struct
                 controller_to_ch_per_hart
         }
     in
+    let hart_ecall_transactions =
+      List.init ~f:(fun _ -> Transaction.Of_signal.wires ()) General_config.num_harts
+    in
     let harts =
       List.init
         ~f:(fun which_hart ->
-          Hart.hierarchical
-            ~custom_ecall:
-              (fun
-                ~is_ecall ~decoded_instruction:_ ~(registers : Signal.t Registers.t) ->
-              match maybe_dma_controller with
-              | Some { tx_input; tx_busy; _ } ->
-                let should_do_dma =
-                  is_ecall &: (List.nth_exn registers.general 1 ==:. 0)
-                in
-                let not_busy = ~:tx_busy in
-                tx_input.valid <== (should_do_dma &: not_busy);
-                tx_input.value.address <== List.nth_exn registers.general 2;
-                tx_input.value.length
-                <== uresize
-                      (List.nth_exn registers.general 3)
-                      (width tx_input.value.length);
-                { Transaction.finished = vdd
-                ; set_rd = vdd
-                ; new_rd = uresize not_busy 32
-                ; new_pc = registers.pc +:. 4
-                ; error = zero 1
-                }
-              | None ->
-                (* Set RD to false (failure) and do nothing else. *)
-                { Transaction.finished = vdd
-                ; set_rd = vdd
-                ; new_rd = zero 32
-                ; new_pc = registers.pc +:. 4
-                ; error = gnd
-                })
-            ~instance:[%string "hart_%{which_hart#Int}"]
-            scope
-            { Hart.I.clock = i.clock
-            ; clear = i.clear
-            ; memory_controller_to_hart =
-                List.nth_exn
-                  controller.controller_to_ch
-                  (system_non_hart_memory_channels + which_hart)
-            ; hart_to_memory_controller =
-                List.nth_exn
-                  controller.ch_to_controller
-                  (system_non_hart_memory_channels + which_hart)
-            })
+          let hart =
+            Hart.hierarchical
+              ~instance:[%string "hart_%{which_hart#Int}"]
+              scope
+              { Hart.I.clock = i.clock
+              ; clear = i.clear
+              ; memory_controller_to_hart =
+                  List.nth_exn
+                    controller.controller_to_ch
+                    (system_non_hart_memory_channels + which_hart)
+              ; hart_to_memory_controller =
+                  List.nth_exn
+                    controller.ch_to_controller
+                    (system_non_hart_memory_channels + which_hart)
+              ; ecall_transaction = List.nth_exn hart_ecall_transactions which_hart
+              }
+          in
+          hart)
         General_config.num_harts
     in
+    let assign_non_io_ecall ((hart : _ Hart.O.t), transaction) =
+      (* Default the remainders *)
+      Transaction.Of_signal.(
+        transaction
+        <== { Transaction.finished = vdd
+            ; set_rd = vdd
+            ; new_rd = zero 32
+            ; new_pc = hart.registers.pc +:. 4
+            ; error = gnd
+            })
+    in
+    (* If a DMA controller is in the design then wire up DMA related ecalls
+       otherwise do not include any ecalls *)
+    (match maybe_dma_controller with
+     | Some { tx_input; tx_busy; _ } ->
+       (* TODO: For now we only allow Hart0 to do IO. This isn't
+          necessary, but it makes it easier to stop them both
+          issuing commands at the same time and entering a weird
+          state. *)
+       let hart0 = List.nth_exn harts 0 in
+       let should_do_dma =
+         hart0.is_ecall &: (List.nth_exn hart0.registers.general 1 ==:. 0)
+       in
+       let not_busy = ~:tx_busy in
+       Tx_input.With_valid.Of_signal.(
+         tx_input
+         <== { valid = should_do_dma &: not_busy
+             ; value =
+                 { address = List.nth_exn hart0.registers.general 2
+                 ; length =
+                     uresize
+                       (List.nth_exn hart0.registers.general 3)
+                       (width tx_input.value.length)
+                 }
+             });
+       (* Assign the Hart0 transaction *)
+       Transaction.Of_signal.(
+         List.hd_exn hart_ecall_transactions
+         <== { Transaction.finished = vdd
+             ; set_rd = vdd
+             ; new_rd = uresize not_busy 32
+             ; new_pc = hart0.registers.pc +:. 4
+             ; error = zero 1
+             });
+       (* Default the remainders *)
+       List.zip_exn harts hart_ecall_transactions
+       |> List.tl_exn
+       |> List.iter ~f:assign_non_io_ecall
+     | None ->
+       List.zip_exn harts hart_ecall_transactions |> List.iter ~f:assign_non_io_ecall);
     (* TODO: After adding the DMA controller this code has got a little ugly. Factor it out? *)
     compile
       ([ List.map
