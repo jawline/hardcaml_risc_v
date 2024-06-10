@@ -141,10 +141,13 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         }
     in
     uart_tx_ready <== dma_out_uart_tx.data_in_ready;
-    let pulse_held = reg_fb ~width:8 ~f:(fun t ->
-        mux2 pulse.signal
-          (of_int ~width:8 256)
-          (mux2 (t ==:. 0) (zero 8) (t -:. 1))) reg_spec_no_clear in
+    let pulse_held =
+      reg_fb
+        ~width:8
+        ~f:(fun t ->
+          mux2 pulse.signal (of_int ~width:8 256) (mux2 (t ==:. 0) (zero 8) (t -:. 1)))
+        reg_spec_no_clear
+    in
     Some
       { dma_to_memory_controller = [ dma.out; dma_out.memory ]
       ; dma_to_memory_controller_rx =

@@ -81,8 +81,6 @@ module Program = struct
     let length_msb = In_channel.input_byte t |> Option.value_exn in
     let length_lsb = In_channel.input_byte t |> Option.value_exn in
     let length = (length_msb lsl 8) lor length_lsb in
-    print_s
-      [%message (header : char) (length : int) (length_lsb : int) (length_msb : int)];
     let bytes_ =
       List.init ~f:(fun _ -> In_channel.input_char t |> Option.value_exn) length
       |> List.rev
@@ -96,26 +94,20 @@ module Program = struct
       ~summary:"program running design and then listen for output"
       (Command.Param.return (fun () ->
          let whole_packet = dma_packet ~address:0 hello_world_program in
-         printf "Sending program via DMA\n";
+         printf "Sending program via DMA\n%!";
          Out_channel.write_all
            "/dev/ttyUSB0"
            ~data:(List.map ~f:Char.of_int_exn whole_packet |> String.of_char_list);
-         Caml_unix.sleep 1;
-         printf "Sending clear signal via DMA\n";
-         Out_channel.write_all
-           "/dev/ttyUSB0"
-           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
-         Out_channel.write_all
-           "/dev/ttyUSB0"
-           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
-         Out_channel.write_all
-           "/dev/ttyUSB0"
-           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
-         printf "Waiting\n";
+         printf "Opening in channel\n%!";
          let reader = In_channel.create ~binary:true "/dev/ttyUSB0" in
+         printf "Sending clear signal via DMA\n%!";
+         Out_channel.write_all
+           "/dev/ttyUSB0"
+           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
+         printf "Waiting\n%!";
          let rec loop () =
            let header, length, bytes_ = read_packet reader in
-           print_s [%message (header : char) (length : int) (bytes_ : string)];
+           printf "%c %i %s\n%!" header length bytes_;
            loop ()
          in
          loop ()))
