@@ -1,4 +1,4 @@
-module Op_0 (
+module op_0 (
     rhs,
     lhs,
     funct7,

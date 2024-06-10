@@ -98,6 +98,6 @@ struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Packet_router" ~instance create input
+    H.hierarchical ~scope ~name:"packet_router" ~instance create input
   ;;
 end

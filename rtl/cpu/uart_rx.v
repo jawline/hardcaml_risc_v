@@ -1,6 +1,6 @@
-module Uart_tx (
-    uart_rx,
+module uart_rx (
     clear,
+    uart_rx,
     clock,
     data_out_valid,
     data_out,
@@ -8,8 +8,8 @@ module Uart_tx (
     stop_bit_unstable
 );
 
-    input uart_rx;
     input clear;
+    input uart_rx;
     input clock;
     output data_out_valid;
     output [7:0] data_out;
@@ -166,9 +166,10 @@ module Uart_tx (
     wire _226;
     wire _223 = 1'b0;
     wire [1:0] _24 = 2'b00;
+    wire _8;
     wire [1:0] _23 = 2'b00;
     wire _217 = 1'b0;
-    wire _8;
+    wire _10;
     wire _218;
     wire _219;
     wire [1:0] _220;
@@ -183,7 +184,7 @@ module Uart_tx (
     wire [2:0] _185;
     wire _180;
     wire [2:0] _187;
-    wire [2:0] _9;
+    wire [2:0] _11;
     reg [2:0] which_data_bit;
     wire _213;
     wire [1:0] _214;
@@ -200,20 +201,19 @@ module Uart_tx (
     wire [1:0] _193;
     wire _188;
     wire [1:0] _195;
-    wire [1:0] _10;
+    wire [1:0] _12;
     reg [1:0] _36;
     wire _38;
     wire [1:0] _207;
     wire [13:0] _32 = 14'b00000000000000;
     wire vdd = 1'b1;
     wire [13:0] _30 = 14'b00000000000000;
-    wire _12;
     wire [13:0] _29 = 14'b00000000000000;
     wire _14;
     wire [13:0] _200 = 14'b00000000000000;
     wire [13:0] _198 = 14'b00000000000001;
     wire [13:0] _199;
-    wire [13:0] _196 = 14'b10011100001111;
+    wire [13:0] _196 = 14'b11110100001000;
     wire _197;
     wire [13:0] _201;
     wire [13:0] _15;
@@ -257,7 +257,7 @@ module Uart_tx (
     assign _155 = _154[3:1];
     assign _156 = _155[2:1];
     assign _157 = _156[0:0];
-    assign _164 = { _8, _157, _158, _159, _160, _161, _162, _163 };
+    assign _164 = { _10, _157, _158, _159, _160, _161, _162, _163 };
     assign _149 = _49[0:0];
     assign _148 = _137[0:0];
     assign _147 = _138[0:0];
@@ -271,7 +271,7 @@ module Uart_tx (
     assign _141 = _140[3:1];
     assign _142 = _141[2:1];
     assign _143 = _142[1:1];
-    assign _150 = { _143, _8, _144, _145, _146, _147, _148, _149 };
+    assign _150 = { _143, _10, _144, _145, _146, _147, _148, _149 };
     assign _135 = _49[0:0];
     assign _134 = _123[0:0];
     assign _133 = _124[0:0];
@@ -285,7 +285,7 @@ module Uart_tx (
     assign _127 = _126[3:1];
     assign _128 = _127[2:1];
     assign _129 = _128[1:1];
-    assign _136 = { _129, _130, _8, _131, _132, _133, _134, _135 };
+    assign _136 = { _129, _130, _10, _131, _132, _133, _134, _135 };
     assign _121 = _49[0:0];
     assign _120 = _109[0:0];
     assign _119 = _110[0:0];
@@ -299,7 +299,7 @@ module Uart_tx (
     assign _113 = _112[3:1];
     assign _114 = _113[2:1];
     assign _115 = _114[1:1];
-    assign _122 = { _115, _116, _117, _8, _118, _119, _120, _121 };
+    assign _122 = { _115, _116, _117, _10, _118, _119, _120, _121 };
     assign _107 = _49[0:0];
     assign _106 = _95[0:0];
     assign _105 = _96[0:0];
@@ -313,7 +313,7 @@ module Uart_tx (
     assign _99 = _98[3:1];
     assign _100 = _99[2:1];
     assign _101 = _100[1:1];
-    assign _108 = { _101, _102, _103, _104, _8, _105, _106, _107 };
+    assign _108 = { _101, _102, _103, _104, _10, _105, _106, _107 };
     assign _93 = _49[0:0];
     assign _92 = _81[0:0];
     assign _91 = _83[0:0];
@@ -327,7 +327,7 @@ module Uart_tx (
     assign _85 = _84[3:1];
     assign _86 = _85[2:1];
     assign _87 = _86[1:1];
-    assign _94 = { _87, _88, _89, _90, _91, _8, _92, _93 };
+    assign _94 = { _87, _88, _89, _90, _91, _10, _92, _93 };
     assign _79 = _49[0:0];
     assign _78 = _68[0:0];
     assign _77 = _69[0:0];
@@ -341,7 +341,7 @@ module Uart_tx (
     assign _71 = _70[3:1];
     assign _72 = _71[2:1];
     assign _73 = _72[1:1];
-    assign _80 = { _73, _74, _75, _76, _77, _78, _8, _79 };
+    assign _80 = { _73, _74, _75, _76, _77, _78, _10, _79 };
     assign _65 = _53[0:0];
     assign _64 = _54[0:0];
     assign _63 = _55[0:0];
@@ -355,7 +355,7 @@ module Uart_tx (
     assign _57 = _56[3:1];
     assign _58 = _57[2:1];
     assign _59 = _58[1:1];
-    assign _66 = { _59, _60, _61, _62, _63, _64, _65, _8 };
+    assign _66 = { _59, _60, _61, _62, _63, _64, _65, _10 };
     always @* begin
         case (which_data_bit)
         0: data_with_new_bit <= _66;
@@ -377,7 +377,7 @@ module Uart_tx (
     always @(posedge _14) begin
         _49 <= _4;
     end
-    assign _173 = _8 == _172;
+    assign _173 = _10 == _172;
     assign _175 = _173 ? _174 : _22;
     assign _176 = switch_cycle ? _175 : _22;
     assign _171 = current_state == _26;
@@ -391,8 +391,9 @@ module Uart_tx (
     assign _224 = ~ _22;
     assign _225 = _38 ? _224 : _223;
     assign _226 = switch_cycle ? _225 : _223;
-    assign _8 = uart_rx;
-    assign _218 = _8 == _217;
+    assign _8 = clear;
+    assign _10 = uart_rx;
+    assign _218 = _10 == _217;
     assign _219 = switch_cycle & _218;
     assign _220 = _219 ? _45 : current_state;
     assign _183 = which_data_bit + _182;
@@ -401,9 +402,9 @@ module Uart_tx (
     assign _185 = _181 ? _184 : which_data_bit;
     assign _180 = current_state == _43;
     assign _187 = _180 ? _186 : _185;
-    assign _9 = _187;
+    assign _11 = _187;
     always @(posedge _14) begin
-        which_data_bit <= _9;
+        which_data_bit <= _11;
     end
     assign _213 = which_data_bit == _212;
     assign _214 = _213 ? _26 : current_state;
@@ -415,23 +416,19 @@ module Uart_tx (
     assign _193 = _189 ? _192 : _36;
     assign _188 = current_state == _43;
     assign _195 = _188 ? _194 : _193;
-    assign _10 = _195;
+    assign _12 = _195;
     always @(posedge _14) begin
-        _36 <= _10;
+        _36 <= _12;
     end
     assign _38 = _36 == _37;
     assign _207 = _38 ? _43 : current_state;
-    assign _12 = clear;
     assign _14 = clock;
     assign _199 = _31 + _198;
     assign _197 = _31 == _196;
     assign _201 = _197 ? _200 : _199;
     assign _15 = _201;
     always @(posedge _14) begin
-        if (_12)
-            _31 <= _30;
-        else
-            _31 <= _15;
+        _31 <= _15;
     end
     assign switch_cycle = _31 == _32;
     assign _208 = switch_cycle ? _207 : current_state;
@@ -445,7 +442,7 @@ module Uart_tx (
     assign _221 = _202 ? _220 : _216;
     assign _16 = _221;
     always @(posedge _14) begin
-        if (_12)
+        if (_8)
             current_state <= _24;
         else
             current_state <= _16;

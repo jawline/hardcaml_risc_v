@@ -64,7 +64,9 @@ struct
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let error = Variable.wire ~default:(zero 1) in
     let fetched_instruction =
-      Variable.reg ~width:(Register_width.bits Hart_config.register_width) reg_spec_no_clear
+      Variable.reg
+        ~width:(Register_width.bits Hart_config.register_width)
+        reg_spec_no_clear
     in
     let fetch =
       Fetch.hierarchical
@@ -136,6 +138,6 @@ struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Hart" ~instance create input
+    H.hierarchical ~scope ~name:"hart" ~instance create input
   ;;
 end

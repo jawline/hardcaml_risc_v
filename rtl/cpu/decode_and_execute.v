@@ -1,4 +1,4 @@
-module Decode_and_execute (
+module decode_and_execute (
     ecall_transaction_error,
     ecall_transaction_new_rd,
     ecall_transaction_set_rd,
@@ -40,8 +40,8 @@ module Decode_and_execute (
     registers_general2,
     registers_general1,
     registers_general0,
-    ecall_transaction_finished,
     clear,
+    ecall_transaction_finished,
     clock,
     instruction,
     enable,
@@ -128,8 +128,8 @@ module Decode_and_execute (
     input [31:0] registers_general2;
     input [31:0] registers_general1;
     input [31:0] registers_general0;
-    input ecall_transaction_finished;
     input clear;
+    input ecall_transaction_finished;
     input clock;
     input [31:0] instruction;
     input enable;
@@ -902,13 +902,14 @@ module Decode_and_execute (
     wire _216;
     wire _214;
     wire _217;
+    wire _172;
     wire [68:0] _225;
     wire _226;
     wire [6:0] _212 = 7'b0100011;
     wire _213;
     wire _227;
     wire [1:0] _845;
-    wire _172;
+    wire _174;
     wire [2:0] _201 = 3'b000;
     wire [2:0] _199 = 3'b000;
     wire [2:0] _198 = 3'b000;
@@ -916,7 +917,7 @@ module Decode_and_execute (
     wire _824;
     wire [2:0] _826;
     wire [2:0] _827;
-    wire [2:0] _173;
+    wire [2:0] _175;
     reg [2:0] _200;
     wire _202;
     wire [6:0] _195 = 7'b1110011;
@@ -928,7 +929,6 @@ module Decode_and_execute (
     wire [6:0] _208 = 7'b1110011;
     wire vdd = 1'b1;
     wire [6:0] _193 = 7'b0000000;
-    wire _175;
     wire [6:0] _192 = 7'b0000000;
     wire _177;
     wire [31:0] _179;
@@ -990,10 +990,7 @@ module Decode_and_execute (
     assign _309 = _183 ? _308 : _206;
     assign _4 = _309;
     always @(posedge _177) begin
-        if (_175)
-            _206 <= _205;
-        else
-            _206 <= _4;
+        _206 <= _4;
     end
     assign _320 = _318 == _319;
     assign _321 = _315 & _320;
@@ -1221,12 +1218,9 @@ module Decode_and_execute (
     assign _569 = _183 ? _568 : _265;
     assign _68 = _569;
     always @(posedge _177) begin
-        if (_175)
-            _265 <= _264;
-        else
-            _265 <= _68;
+        _265 <= _68;
     end
-    Op
+    op
         op_imm
         ( .funct3(_200), .funct7(_255), .lhs(_223), .rhs(_265), .error(_267[32:32]), .new_rd(_267[31:0]) );
     assign _577 = _267[31:0];
@@ -1236,12 +1230,9 @@ module Decode_and_execute (
     assign _573 = _183 ? _572 : _255;
     assign _69 = _573;
     always @(posedge _177) begin
-        if (_175)
-            _255 <= _254;
-        else
-            _255 <= _69;
+        _255 <= _69;
     end
-    Op_0
+    op_0
         op
         ( .funct3(_200), .funct7(_255), .lhs(_223), .rhs(_258), .error(_260[32:32]), .new_rd(_260[31:0]) );
     assign _575 = _260[31:0];
@@ -1261,10 +1252,7 @@ module Decode_and_execute (
     assign _603 = _183 ? _602 : _324;
     assign _70 = _603;
     always @(posedge _177) begin
-        if (_175)
-            _324 <= _323;
-        else
-            _324 <= _70;
+        _324 <= _70;
     end
     assign _605 = _179[11:7];
     assign _604 = _190 == _560;
@@ -1272,10 +1260,7 @@ module Decode_and_execute (
     assign _607 = _183 ? _606 : _318;
     assign _71 = _607;
     always @(posedge _177) begin
-        if (_175)
-            _318 <= _317;
-        else
-            _318 <= _71;
+        _318 <= _71;
     end
     assign _627 = _318 == _626;
     assign _73 = ecall_transaction_set_rd;
@@ -1296,10 +1281,7 @@ module Decode_and_execute (
     assign _623 = _183 ? _622 : _315;
     assign _74 = _623;
     always @(posedge _177) begin
-        if (_175)
-            _315 <= _314;
-        else
-            _315 <= _74;
+        _315 <= _74;
     end
     assign _628 = _315 & _627;
     assign _629 = _628 ? _324 : _167;
@@ -1325,10 +1307,7 @@ module Decode_and_execute (
     assign _645 = _183 ? _644 : _297;
     assign _79 = _645;
     always @(posedge _177) begin
-        if (_175)
-            _297 <= _296;
-        else
-            _297 <= _79;
+        _297 <= _79;
     end
     assign _647 = _179[24:20];
     always @* begin
@@ -1372,12 +1351,9 @@ module Decode_and_execute (
     assign _650 = _183 ? _649 : _258;
     assign _80 = _650;
     always @(posedge _177) begin
-        if (_175)
-            _258 <= _257;
-        else
-            _258 <= _80;
+        _258 <= _80;
     end
-    Branch
+    branch
         branch
         ( .pc(_84), .lhs(_223), .rhs(_258), .funct3(_200), .b_immediate(_297), .error(_299[32:32]), .new_rd(_299[31:0]) );
     assign _691 = _299[31:0];
@@ -1390,10 +1366,7 @@ module Decode_and_execute (
     assign _659 = _183 ? _658 : _653;
     assign _81 = _659;
     always @(posedge _177) begin
-        if (_175)
-            _653 <= _652;
-        else
-            _653 <= _81;
+        _653 <= _81;
     end
     assign _280 = _223 + _272;
     assign _282 = _280 & _281;
@@ -1409,10 +1382,7 @@ module Decode_and_execute (
     assign _672 = _183 ? _671 : _272;
     assign _82 = _672;
     always @(posedge _177) begin
-        if (_175)
-            _272 <= _271;
-        else
-            _272 <= _82;
+        _272 <= _82;
     end
     assign _273 = _84 + _272;
     assign _681 = _84 + _680;
@@ -1434,10 +1404,7 @@ module Decode_and_execute (
     assign _704 = _183 ? _703 : _675;
     assign _85 = _704;
     always @(posedge _177) begin
-        if (_175)
-            _675 <= _674;
-        else
-            _675 <= _85;
+        _675 <= _85;
     end
     assign _706 = _190 == _311;
     assign _707 = _706 ? _675 : _705;
@@ -1543,9 +1510,9 @@ module Decode_and_execute (
     assign _843 = _238 ? _311 : _842;
     assign _231 = _194 == _230;
     assign _232 = _214 & _231;
-    Load
+    load
         load
-        ( .clock(_177), .clear(_175), .enable(_232), .funct3(_200), .source(_223), .memory_controller_to_hart$memory_controller_to_hart_valid(_104), .memory_controller_to_hart$memory_controller_to_hart_error(_102), .memory_controller_to_hart$memory_controller_to_hart_read_data(_100), .hart_to_memory_controller$hart_to_memory_controller_ready(_98), .hart_to_memory_controller$hart_to_memory_controller_write_data(_234[100:69]), .hart_to_memory_controller$hart_to_memory_controller_write(_234[68:68]), .hart_to_memory_controller$hart_to_memory_controller_address(_234[67:36]), .hart_to_memory_controller$hart_to_memory_controller_valid(_234[35:35]), .memory_controller_to_hart$memory_controller_to_hart_ready(_234[34:34]), .finished(_234[33:33]), .error(_234[32:32]), .new_rd(_234[31:0]) );
+        ( .clock(_177), .clear(_172), .enable(_232), .funct3(_200), .source(_223), .memory_controller_to_hart$memory_controller_to_hart_valid(_104), .memory_controller_to_hart$memory_controller_to_hart_error(_102), .memory_controller_to_hart$memory_controller_to_hart_read_data(_100), .hart_to_memory_controller$hart_to_memory_controller_ready(_98), .hart_to_memory_controller$hart_to_memory_controller_write_data(_234[100:69]), .hart_to_memory_controller$hart_to_memory_controller_write(_234[68:68]), .hart_to_memory_controller$hart_to_memory_controller_address(_234[67:36]), .hart_to_memory_controller$hart_to_memory_controller_valid(_234[35:35]), .memory_controller_to_hart$memory_controller_to_hart_ready(_234[34:34]), .finished(_234[33:33]), .error(_234[32:32]), .new_rd(_234[31:0]) );
     assign _235 = _234[33:33];
     assign _229 = _194 == _228;
     assign _236 = _229 & _235;
@@ -1596,10 +1563,7 @@ module Decode_and_execute (
     assign _818 = _183 ? _817 : _223;
     assign _105 = _818;
     always @(posedge _177) begin
-        if (_175)
-            _223 <= _222;
-        else
-            _223 <= _105;
+        _223 <= _105;
     end
     assign _107 = registers_general31;
     assign _109 = registers_general30;
@@ -1675,40 +1639,34 @@ module Decode_and_execute (
     assign _823 = _183 ? _822 : _220;
     assign _170 = _823;
     always @(posedge _177) begin
-        if (_175)
-            _220 <= _219;
-        else
-            _220 <= _170;
+        _220 <= _170;
     end
     assign _216 = _194 == _215;
     assign _214 = _186 == _190;
     assign _217 = _214 & _216;
-    Store
+    assign _172 = clear;
+    store
         store
-        ( .clock(_177), .clear(_175), .enable(_217), .funct3(_200), .destination(_220), .value(_223), .memory_controller_to_hart$memory_controller_to_hart_valid(_104), .memory_controller_to_hart$memory_controller_to_hart_error(_102), .memory_controller_to_hart$memory_controller_to_hart_read_data(_100), .hart_to_memory_controller$hart_to_memory_controller_ready(_98), .hart_to_memory_controller$hart_to_memory_controller_write_data(_225[68:37]), .hart_to_memory_controller$hart_to_memory_controller_write(_225[36:36]), .hart_to_memory_controller$hart_to_memory_controller_address(_225[35:4]), .hart_to_memory_controller$hart_to_memory_controller_valid(_225[3:3]), .memory_controller_to_hart$memory_controller_to_hart_ready(_225[2:2]), .finished(_225[1:1]), .error(_225[0:0]) );
+        ( .clock(_177), .clear(_172), .enable(_217), .funct3(_200), .destination(_220), .value(_223), .memory_controller_to_hart$memory_controller_to_hart_valid(_104), .memory_controller_to_hart$memory_controller_to_hart_error(_102), .memory_controller_to_hart$memory_controller_to_hart_read_data(_100), .hart_to_memory_controller$hart_to_memory_controller_ready(_98), .hart_to_memory_controller$hart_to_memory_controller_write_data(_225[68:37]), .hart_to_memory_controller$hart_to_memory_controller_write(_225[36:36]), .hart_to_memory_controller$hart_to_memory_controller_address(_225[35:4]), .hart_to_memory_controller$hart_to_memory_controller_valid(_225[3:3]), .memory_controller_to_hart$memory_controller_to_hart_ready(_225[2:2]), .finished(_225[1:1]), .error(_225[0:0]) );
     assign _226 = _225[1:1];
     assign _213 = _194 == _212;
     assign _227 = _213 & _226;
     assign _845 = _227 ? _311 : _844;
-    assign _172 = ecall_transaction_finished;
+    assign _174 = ecall_transaction_finished;
     assign _825 = _179[14:12];
     assign _824 = _190 == _560;
     assign _826 = _824 ? _825 : _200;
     assign _827 = _183 ? _826 : _200;
-    assign _173 = _827;
+    assign _175 = _827;
     always @(posedge _177) begin
-        if (_175)
-            _200 <= _199;
-        else
-            _200 <= _173;
+        _200 <= _175;
     end
     assign _202 = _200 == _201;
     assign _196 = _194 == _195;
     assign _191 = _186 == _190;
     assign _197 = _191 & _196;
     assign is_ecall_0 = _197 & _202;
-    assign _210 = is_ecall_0 ? _172 : vdd;
-    assign _175 = clear;
+    assign _210 = is_ecall_0 ? _174 : vdd;
     assign _177 = clock;
     assign _179 = instruction;
     assign _829 = _179[6:0];
@@ -1717,10 +1675,7 @@ module Decode_and_execute (
     assign _831 = _183 ? _830 : _194;
     assign _180 = _831;
     always @(posedge _177) begin
-        if (_175)
-            _194 <= _193;
-        else
-            _194 <= _180;
+        _194 <= _180;
     end
     assign _209 = _194 == _208;
     assign _211 = _209 & _210;
@@ -1734,7 +1689,7 @@ module Decode_and_execute (
     assign _849 = _183 ? _848 : _190;
     assign _181 = _849;
     always @(posedge _177) begin
-        if (_175)
+        if (_172)
             _190 <= _188;
         else
             _190 <= _181;

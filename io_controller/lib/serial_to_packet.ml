@@ -142,6 +142,6 @@ struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Serial_to_packet" ~instance create input
+    H.hierarchical ~scope ~name:"serial_to_packet" ~instance create input
   ;;
 end

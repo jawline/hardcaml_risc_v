@@ -1,4 +1,4 @@
-module Hart (
+module hart (
     ecall_transaction_error,
     ecall_transaction_new_pc,
     ecall_transaction_new_rd,
@@ -836,15 +836,12 @@ module Hart (
     assign _376 = _374 ? _375 : _111;
     assign _86 = _376;
     always @(posedge _90) begin
-        if (_88)
-            _111 <= _110;
-        else
-            _111 <= _86;
+        _111 <= _86;
     end
     assign _108 = _103 == _107;
     assign _88 = clear;
     assign _90 = clock;
-    Decode_and_execute
+    decode_and_execute
         decode_and_execute
         ( .clock(_90), .clear(_88), .memory_controller_to_hart_valid(_99), .memory_controller_to_hart_error(_97), .memory_controller_to_hart_read_data(_95), .hart_to_memory_controller_ready(_93), .enable(_108), .instruction(_111), .registers_pc(_114), .registers_general0(_115), .registers_general1(_118), .registers_general2(_121), .registers_general3(_124), .registers_general4(_127), .registers_general5(_130), .registers_general6(_133), .registers_general7(_136), .registers_general8(_139), .registers_general9(_142), .registers_general10(_145), .registers_general11(_148), .registers_general12(_151), .registers_general13(_154), .registers_general14(_157), .registers_general15(_160), .registers_general16(_163), .registers_general17(_166), .registers_general18(_169), .registers_general19(_172), .registers_general20(_175), .registers_general21(_178), .registers_general22(_181), .registers_general23(_184), .registers_general24(_187), .registers_general25(_190), .registers_general26(_193), .registers_general27(_196), .registers_general28(_199), .registers_general29(_202), .registers_general30(_205), .registers_general31(_208), .ecall_transaction_finished(_54), .ecall_transaction_set_rd(_52), .ecall_transaction_new_rd(_50), .ecall_transaction_new_pc(_48), .ecall_transaction_error(_46), .is_ecall(_210[1093:1093]), .error(_210[1092:1092]), .new_registers_general30(_210[1091:1060]), .new_registers_general29(_210[1059:1028]), .new_registers_general28(_210[1027:996]), .new_registers_general27(_210[995:964]), .new_registers_general26(_210[963:932]), .new_registers_general25(_210[931:900]), .new_registers_general24(_210[899:868]), .new_registers_general23(_210[867:836]), .new_registers_general22(_210[835:804]), .new_registers_general21(_210[803:772]), .new_registers_general20(_210[771:740]), .new_registers_general19(_210[739:708]), .new_registers_general18(_210[707:676]), .new_registers_general17(_210[675:644]), .new_registers_general16(_210[643:612]), .new_registers_general15(_210[611:580]), .new_registers_general14(_210[579:548]), .new_registers_general13(_210[547:516]), .new_registers_general12(_210[515:484]), .new_registers_general11(_210[483:452]), .new_registers_general10(_210[451:420]), .new_registers_general9(_210[419:388]), .new_registers_general8(_210[387:356]), .new_registers_general7(_210[355:324]), .new_registers_general6(_210[323:292]), .new_registers_general5(_210[291:260]), .new_registers_general4(_210[259:228]), .new_registers_general3(_210[227:196]), .new_registers_general2(_210[195:164]), .new_registers_general1(_210[163:132]), .new_registers_general0(_210[131:100]), .new_registers_pc(_210[99:68]), .finished(_210[67:67]), .hart_to_memory_controller_write_data(_210[66:35]), .hart_to_memory_controller_write(_210[34:34]), .hart_to_memory_controller_address(_210[33:2]), .hart_to_memory_controller_valid(_210[1:1]), .memory_controller_to_hart_ready(_210[0:0]) );
     assign _250 = _210[67:67];
@@ -863,7 +860,7 @@ module Hart (
     assign _95 = memory_controller_to_hartmemory_controller_to_hart_read_data;
     assign _97 = memory_controller_to_hartmemory_controller_to_hart_error;
     assign _99 = memory_controller_to_hartmemory_controller_to_hart_valid;
-    Fetch
+    fetch
         fetcher
         ( .memory_controller_to_hartvalid(_99), .memory_controller_to_harterror(_97), .memory_controller_to_hartread_data(_95), .hart_to_memory_controllerready(_93), .should_fetch(_215), .address(_114), .error(_217[100:100]), .instruction(_217[99:68]), .has_fetched(_217[67:67]), .hart_to_memory_controllerwrite_data(_217[66:35]), .hart_to_memory_controllerwrite(_217[34:34]), .hart_to_memory_controlleraddress(_217[33:2]), .hart_to_memory_controllervalid(_217[1:1]), .memory_controller_to_hartready(_217[0:0]) );
     assign _384 = _217[67:67];

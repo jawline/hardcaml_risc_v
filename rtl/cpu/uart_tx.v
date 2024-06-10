@@ -1,4 +1,4 @@
-module Uart_tx_0 (
+module uart_tx (
     data_in,
     clear,
     data_in_valid,
@@ -133,7 +133,7 @@ module Uart_tx_0 (
     wire [13:0] _114 = 14'b00000000000000;
     wire [13:0] _112 = 14'b00000000000001;
     wire [13:0] _113;
-    wire [13:0] _110 = 14'b10011100001111;
+    wire [13:0] _110 = 14'b11110100001000;
     wire _111;
     wire [13:0] _115;
     wire vdd = 1'b1;

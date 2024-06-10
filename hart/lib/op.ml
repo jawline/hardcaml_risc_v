@@ -54,6 +54,6 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   let hierarchical ~enable_subtract ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Op" ~instance (create ~enable_subtract) input
+    H.hierarchical ~scope ~name:"op" ~instance (create ~enable_subtract) input
   ;;
 end

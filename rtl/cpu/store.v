@@ -1,4 +1,4 @@
-module Store (
+module store (
     memory_controller_to_hart$memory_controller_to_hart_read_data,
     value,
     clear,
@@ -303,10 +303,7 @@ module Store (
     assign _121 = _52 ? _120 : word_to_write;
     assign _5 = _121;
     always @(posedge _18) begin
-        if (_16)
-            word_to_write <= _54;
-        else
-            word_to_write <= _5;
+        word_to_write <= _5;
     end
     assign _125 = current_state == _124;
     assign _126 = _125 ? word_to_write : _122;

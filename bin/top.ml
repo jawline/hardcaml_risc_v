@@ -5,7 +5,7 @@ open Hardcaml_risc_v_hart
 module Report_synth = Hardcaml_xilinx_reports
 
 let mhz i = i * 1_000_000
-let design_frequency = 96 |> mhz
+let design_frequency = 150 |> mhz
 
 module Design =
   Cpu.Make
@@ -64,7 +64,7 @@ module Rtl = struct
            ~directory:"./rtl/cpu/"
            (module Design.I)
            (module Design.O)
-           (Design.hierarchical ~instance:"cpu")))
+           (Design.hierarchical ~instance:"cpu_top")))
   ;;
 end
 
@@ -100,7 +100,14 @@ module Program = struct
          Out_channel.write_all
            "/dev/ttyUSB0"
            ~data:(List.map ~f:Char.of_int_exn whole_packet |> String.of_char_list);
+         Caml_unix.sleep 1;
          printf "Sending clear signal via DMA\n";
+         Out_channel.write_all
+           "/dev/ttyUSB0"
+           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
+         Out_channel.write_all
+           "/dev/ttyUSB0"
+           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
          Out_channel.write_all
            "/dev/ttyUSB0"
            ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);

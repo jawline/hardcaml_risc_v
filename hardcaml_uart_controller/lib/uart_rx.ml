@@ -44,8 +44,7 @@ module Make (C : Config_intf.S) = struct
     else (
       let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
       (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
-         
-           (mod_counter ~max:(switching_frequency - 1) t)))
+         mod_counter ~max:(switching_frequency - 1) t))
         spec
       ==:. 0)
   ;;
@@ -143,6 +142,6 @@ module Make (C : Config_intf.S) = struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Uart_tx" ~instance create input
+    H.hierarchical ~scope ~name:"uart_rx" ~instance create input
   ;;
 end

@@ -169,8 +169,8 @@ module cpu_top (
     assign _39 = uart_rx;
     assign _41 = clear;
     assign _43 = clock;
-    Cpu
-        cpu
+    cpu
+        cpu_top
         ( .clock(_43), .clear(_41), .uart_rx(_39), .serial_to_packet_valid(_46[1060:1060]), .stop_bit_unstable(_46[1059:1059]), .parity_error(_46[1058:1058]), .uart_rx_valid(_46[1057:1057]), .uart_tx(_46[1056:1056]), .registers_general310(_46[1055:1024]), .registers_general300(_46[1023:992]), .registers_general290(_46[991:960]), .registers_general280(_46[959:928]), .registers_general270(_46[927:896]), .registers_general260(_46[895:864]), .registers_general250(_46[863:832]), .registers_general240(_46[831:800]), .registers_general230(_46[799:768]), .registers_general220(_46[767:736]), .registers_general210(_46[735:704]), .registers_general200(_46[703:672]), .registers_general190(_46[671:640]), .registers_general180(_46[639:608]), .registers_general170(_46[607:576]), .registers_general160(_46[575:544]), .registers_general150(_46[543:512]), .registers_general140(_46[511:480]), .registers_general130(_46[479:448]), .registers_general120(_46[447:416]), .registers_general110(_46[415:384]), .registers_general100(_46[383:352]), .registers_general90(_46[351:320]), .registers_general80(_46[319:288]), .registers_general70(_46[287:256]), .registers_general60(_46[255:224]), .registers_general50(_46[223:192]), .registers_general40(_46[191:160]), .registers_general30(_46[159:128]), .registers_general20(_46[127:96]), .registers_general10(_46[95:64]), .registers_general00(_46[63:32]), .registers_pc0(_46[31:0]) );
     assign _84 = _46[31:0];
 

@@ -72,11 +72,15 @@ struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
-  let create scope ({ clock ; clear = _ ; ch_to_controller; controller_to_ch = _ }  : _ I.t) =
+  let create scope ({ clock; clear = _; ch_to_controller; controller_to_ch = _ } : _ I.t) =
     let ( -- ) = Scope.naming scope in
-    let reg_spec_no_clear = Reg_spec.create ~clock:clock () in
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let which_ch =
-      reg_fb ~width:(Signal.num_bits_to_represent (M.num_channels - 1)) ~f:(mod_counter ~max:(M.num_channels - 1)) reg_spec_no_clear -- "which_ch"
+      reg_fb
+        ~width:(Signal.num_bits_to_represent (M.num_channels - 1))
+        ~f:(mod_counter ~max:(M.num_channels - 1))
+        reg_spec_no_clear
+      -- "which_ch"
     in
     let last_ch = reg reg_spec_no_clear which_ch -- "last_ch " in
     let which_ch_to_controller =

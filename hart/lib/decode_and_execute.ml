@@ -51,8 +51,7 @@ struct
     ({ funct3; funct7; rs1; i_immediate; _ } : _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
-      Op.hierarchical 
-        (* There is no SUBI since a signed addi is sufficient. *)
+      Op.hierarchical (* There is no SUBI since a signed addi is sufficient. *)
         ~enable_subtract:false
         ~instance:"op_imm"
         scope
@@ -549,6 +548,6 @@ struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Decode_and_execute" ~instance create input
+    H.hierarchical ~scope ~name:"decode_and_execute" ~instance create input
   ;;
 end

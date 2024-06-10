@@ -1,4 +1,4 @@
-module Serial_to_packet (
+module serial_to_packet (
     clear,
     in_data,
     clock,

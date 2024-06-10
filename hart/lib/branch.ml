@@ -44,6 +44,6 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Branch" ~instance create input
+    H.hierarchical ~scope ~name:"branch" ~instance create input
   ;;
 end

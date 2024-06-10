@@ -1,4 +1,4 @@
-module Fetch (
+module fetch (
     memory_controller_to_hartread_data,
     memory_controller_to_harterror,
     memory_controller_to_hartvalid,

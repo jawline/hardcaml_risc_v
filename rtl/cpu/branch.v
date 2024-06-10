@@ -1,4 +1,4 @@
-module Branch (
+module branch (
     b_immediate,
     pc,
     rhs,

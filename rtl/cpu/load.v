@@ -1,4 +1,4 @@
-module Load (
+module load (
     clear,
     clock,
     hart_to_memory_controller$hart_to_memory_controller_ready,
