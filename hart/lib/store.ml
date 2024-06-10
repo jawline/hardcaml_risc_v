@@ -112,6 +112,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
        re alignment. Share the logic. *)
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
@@ -142,7 +143,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
          Waiting_for_store.  If we are writing a full word, this is set on cycle 0,
          otherwise we need to do a load from the memory controller and concat it
          with the desire write to produce the word to write back. *)
-      Variable.reg ~width:register_width reg_spec
+      Variable.reg ~width:register_width reg_spec_no_clear
     in
     let store_finished = Variable.wire ~default:(zero 1) in
     compile
