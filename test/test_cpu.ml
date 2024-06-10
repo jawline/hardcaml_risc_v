@@ -272,6 +272,7 @@ module With_manually_programmed_ram = Make (struct
     let clear_registers ~(inputs : Bits.t ref Cpu_with_no_io_controller.I.t) sim =
       inputs.clear := Bits.one 1;
       Cyclesim.cycle sim;
+      Cyclesim.cycle sim;
       inputs.clear := Bits.zero 1
     ;;
 

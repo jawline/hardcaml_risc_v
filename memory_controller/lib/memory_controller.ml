@@ -72,17 +72,17 @@ struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
-  let create scope (i : _ I.t) =
+  let create scope ({ clock ; clear = _ ; ch_to_controller; controller_to_ch = _ }  : _ I.t) =
     let ( -- ) = Scope.naming scope in
-    let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let reg_spec_no_clear = Reg_spec.create ~clock:clock () in
     let which_ch =
-      reg_fb ~width:8 ~f:(mod_counter ~max:(M.num_channels - 1)) reg_spec -- "which_ch"
+      reg_fb ~width:(Signal.num_bits_to_represent (M.num_channels - 1)) ~f:(mod_counter ~max:(M.num_channels - 1)) reg_spec_no_clear -- "which_ch"
     in
-    let last_ch = reg reg_spec which_ch -- "last_ch " in
+    let last_ch = reg reg_spec_no_clear which_ch -- "last_ch " in
     let which_ch_to_controller =
       if M.num_channels = 1
-      then List.hd_exn i.ch_to_controller
-      else Tx_bus.Tx.Of_signal.mux which_ch i.ch_to_controller
+      then List.hd_exn ch_to_controller
+      else Tx_bus.Tx.Of_signal.mux which_ch ch_to_controller
     in
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
     (* We truncate the address by unaligned bits to get the address in words. *)
@@ -95,7 +95,7 @@ struct
       let is_out_of_range = real_address >:. desired_bytes_in_words in
       (is_operation &: (is_unaligned |: is_out_of_range)) -- "illegal_operation"
     in
-    let was_error = reg reg_spec illegal_operation -- "was_error" in
+    let was_error = reg reg_spec_no_clear illegal_operation -- "was_error" in
     let is_operation_and_is_legal =
       (is_operation &: ~:illegal_operation) -- "is_operation_and_is_legal"
     in
@@ -103,7 +103,7 @@ struct
     let was_operation =
       (* We set valid to high when a read / write is completed. This will be on
          the next cycle from acknowledgement. *)
-      is_operation_and_is_legal |> reg reg_spec
+      is_operation_and_is_legal |> reg reg_spec_no_clear
     in
     let memory =
       Ram.create
@@ -115,14 +115,14 @@ struct
                  (is_operation_and_is_legal &: is_write) -- "ram$write_enable"
              ; write_address = real_address -- "ram$write_address"
              ; write_data = which_ch_to_controller.data.write_data -- "ram$write_data"
-             ; write_clock = i.clock
+             ; write_clock = clock
              }
           |]
         ~read_ports:
           [| { read_enable =
                  (is_operation_and_is_legal &: ~:is_write) -- "ram$read_enable"
              ; read_address = real_address -- "ram$read_address"
-             ; read_clock = i.clock
+             ; read_clock = clock
              }
           |]
         ()
