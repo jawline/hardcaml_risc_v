@@ -70,7 +70,7 @@ let%expect_test "branch tests" =
     ((pc 2000) (error false))
     ((pc 504) (error false))
     ((pc 2000) (error false)) |}];
-  (* CR blloring: Add explicit tests for unsigned registers. *)
+  (* TODO: Add explicit tests for unsigned registers. *)
   simple_test ~funct3:(Funct3.Branch.to_int Bltu) sim;
   [%expect
     {|

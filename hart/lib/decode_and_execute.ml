@@ -51,10 +51,8 @@ struct
     ({ funct3; funct7; rs1; i_immediate; _ } : _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
-      (* TODO: A mux could allow us to use the same Op for both *)
-      (* TODO: The mux could be on the decode cycle into decoded
-         instruction and used by both. *)
-      Op.hierarchical (* There is no SUBI since a signed addi is sufficient. *)
+      Op.hierarchical 
+        (* There is no SUBI since a signed addi is sufficient. *)
         ~enable_subtract:false
         ~instance:"op_imm"
         scope

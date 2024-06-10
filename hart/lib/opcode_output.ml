@@ -1,7 +1,6 @@
 (** This encodes all of the outputs of an opcode for Decode_and_execute
     including the memory interface. *)
 open! Core
-
 open! Hardcaml
 open Hardcaml_memory_controller
 
