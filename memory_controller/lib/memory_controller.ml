@@ -139,13 +139,9 @@ struct
     ; controller_to_ch =
         List.init
           ~f:(fun channel ->
-            Rx_bus.Tx.Of_signal.mux
-              (last_ch ==:. channel)
-              [ Rx_bus.Tx.Of_signal.of_int 0
-              ; { Rx_bus.Tx.valid = was_operation
-                ; data = { error = was_error; read_data }
-                }
-              ])
+            { Rx_bus.Tx.valid = last_ch ==:. channel &: was_operation
+            ; data = { error = was_error; read_data }
+            })
           M.num_channels
     }
   ;;
