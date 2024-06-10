@@ -27,7 +27,7 @@ struct
   module Memory_controller = Memory_controller.Make (struct
       let num_bytes = Memory_config.num_bytes
       let num_channels = system_non_hart_memory_channels + General_config.num_harts
-      let address_width = Address_width.bits Hart_config.address_width
+      let address_width = Register_width.bits Hart_config.register_width
       let data_bus_width = 32
     end)
 

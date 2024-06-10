@@ -10,7 +10,6 @@ let design_frequency = 96 |> mhz
 module Design =
   Cpu.Make
     (struct
-      let address_width = Address_width.RV32
       let register_width = Register_width.B32
       let num_registers = 32
     end)

@@ -219,7 +219,6 @@ end
 module Cpu_with_no_io_controller =
   Cpu.Make
     (struct
-      let address_width = Address_width.RV32
       let register_width = Register_width.B32
       let num_registers = 32
     end)
@@ -329,7 +328,6 @@ module Uart_tx = Uart_tx.Make (struct
 module Cpu_with_dma_memory =
   Cpu.Make
     (struct
-      let address_width = Address_width.RV32
       let register_width = Register_width.B32
       let num_registers = 32
     end)

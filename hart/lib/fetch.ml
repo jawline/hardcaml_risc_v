@@ -11,7 +11,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
       ; should_fetch : 'a
-      ; address : 'a [@bits Address_width.bits Hart_config.address_width]
+      ; address : 'a [@bits Register_width.bits Hart_config.register_width]
       }
     [@@deriving sexp_of, hardcaml]
   end

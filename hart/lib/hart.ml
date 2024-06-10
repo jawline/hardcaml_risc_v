@@ -32,7 +32,10 @@ struct
            [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
-      ; ecall_transaction : 'a Transaction.t
+      ; (* When is_ecall is high the opcode will be considered finished when
+           ecall_transaction is finished. If a user wants custom behaviour on ecall
+           they should hold ecall finished low, do the work, then raise finished. *)
+        ecall_transaction : 'a Transaction.t
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -43,13 +46,10 @@ struct
            [@rtlprefix "memory_controller_to_hart"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller"]
-      ; registers :
-          (* TODO: I've stuck this in mostly to avoid the whole
-             design getting const-prop deleted for testing. Remove it
-             after this is IO in the top level design. *)
-          'a Registers.t
+      ; registers : 'a Registers.t
       ; error : 'a
-      ; is_ecall : 'a
+      ; (* Set high when the hart is in an ecall and is delagating behaviour to
+           the user design. *) is_ecall : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
@@ -63,7 +63,7 @@ struct
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let error = Variable.wire ~default:(zero 1) in
     let fetched_instruction =
-      Variable.reg ~width:(Address_width.bits Hart_config.address_width) reg_spec
+      Variable.reg ~width:(Register_width.bits Hart_config.register_width) reg_spec
     in
     let fetch =
       Fetch.hierarchical

@@ -305,7 +305,9 @@ struct
     }
   ;;
 
-  (** The system instruction allows access to hardware registers and ecall / ebreak. *)
+  (** The system instruction allows access to hardware registers and ecall /
+      ebreak. For ecall, the behaviour is delegated back to the user design
+      via the is_ecall and ecall_transaction signals. *)
   let system_instruction
     ~enable:_
     ~clock:_
