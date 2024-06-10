@@ -4,7 +4,7 @@ open Hardcaml_waveterm
 open Hardcaml_uart_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_inputs =
   let module Config = struct
