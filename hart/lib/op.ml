@@ -37,11 +37,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             else lhs +: rhs, zero 1
           | Slt -> uresize (lhs <+ rhs) 32, zero 1
           | Sltu -> uresize (lhs <: rhs) 32, zero 1
-          | Sll ->
-            (* If > 32, set the register to zero. *)
-            (* TODO: This is very slow, consider just a LUT instead. *)
-            let rd = Util.sll lhs rhs in
-            rd, zero 1
+          | Sll -> Util.sll lhs rhs, zero 1
           | Xor -> lhs ^: rhs, zero 1
           | Or -> lhs |: rhs, zero 1
           | And -> lhs &: rhs, zero 1
