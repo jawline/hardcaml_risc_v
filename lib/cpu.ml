@@ -1,12 +1,9 @@
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
-open Hardcaml_io_controller
-open Hardcaml_uart_controller
 open Hardcaml_risc_v_hart
 open Signal
 open Always
-(* TODO: Add an enable? *)
 
 module Make
     (Hart_config : Hart_config_intf.S)
@@ -76,6 +73,9 @@ struct
         ~f:(fun _which_hart -> Memory_controller.Rx_bus.Rx.Of_always.wire zero)
         General_config.num_harts
     in
+    let of_dma ~default ~f =
+      Option.map ~f maybe_dma_controller |> Option.value ~default
+    in
     let controller =
       Memory_controller.hierarchical
         ~instance:"Memory_controller"
@@ -83,16 +83,12 @@ struct
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
         ; ch_to_controller =
-            (match maybe_dma_controller with
-             | None -> []
-             | Some { dma_to_memory_controller; _ } -> dma_to_memory_controller)
+            of_dma ~default:[] ~f:Dma.dma_to_memory_controller
             @ List.map
                 ~f:Memory_controller.Tx_bus.Tx.Of_always.value
                 ch_to_controller_per_hart
         ; controller_to_ch =
-            (match maybe_dma_controller with
-             | None -> []
-             | Some { memory_controller_to_dma_rx; _ } -> memory_controller_to_dma_rx)
+            of_dma ~default:[] ~f:Dma.memory_controller_to_dma_rx
             @ List.map
                 ~f:Memory_controller.Rx_bus.Rx.Of_always.value
                 controller_to_ch_per_hart
@@ -111,9 +107,7 @@ struct
               { Hart.I.clock = i.clock
               ; clear =
                   (* Allow resets via remote IO if a DMA controller is attached. *)
-                  (match maybe_dma_controller with
-                   | Some { clear_message; _ } -> clear_message |: i.clear
-                   | None -> i.clear)
+                  of_dma ~default:gnd ~f:Dma.clear_message |: i.clear
               ; memory_controller_to_hart =
                   List.nth_exn
                     controller.controller_to_ch
@@ -215,29 +209,18 @@ struct
                  t
                  (List.nth_exn controller.controller_to_ch i))
              memory_controller_to_dma);
+    let of_dma = of_dma ~default:gnd in
     { O.registers = List.map ~f:(fun o -> o.registers) harts
-    ; uart_tx = Option.map ~f:Dma.uart_tx maybe_dma_controller |> Option.value ~default:gnd
-    ; uart_rx_valid =
-        (match maybe_dma_controller with
-         | Some { uart_rx_valid; _ } -> uart_rx_valid
-         | None -> gnd)
-    ; parity_error =
-        (match maybe_dma_controller with
-         | Some { parity_error; _ } -> parity_error
-         | None -> gnd)
-    ; stop_bit_unstable =
-        (match maybe_dma_controller with
-         | Some { stop_bit_unstable; _ } -> stop_bit_unstable
-         | None -> gnd)
-    ; serial_to_packet_valid =
-        (match maybe_dma_controller with
-         | Some { serial_to_packet_valid; _ } -> serial_to_packet_valid
-         | None -> gnd)
+    ; uart_tx = of_dma ~f:Dma.uart_tx
+    ; uart_rx_valid = of_dma ~f:Dma.uart_rx_valid
+    ; parity_error = of_dma ~f:Dma.parity_error
+    ; stop_bit_unstable = of_dma ~f:Dma.stop_bit_unstable
+    ; serial_to_packet_valid = of_dma ~f:Dma.serial_to_packet_valid
     }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"Cpu" ~instance create input
+    H.hierarchical ~scope ~name:"cpu" ~instance create input
   ;;
 end
