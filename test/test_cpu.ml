@@ -462,6 +462,10 @@ module With_dma_ram = Make (struct
            |> String.of_char_list)
         sim;
       send_bits sim clear_packet;
+      (* We need to wait for 256 cycles because that is how long the design
+       * holds the clear signal for. *) 
+
+      Sequence.range 0 512 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
       let _outputs_before : _ With_transmitter.O.t =
         Cyclesim.outputs ~clock_edge:Side.Before sim
       in

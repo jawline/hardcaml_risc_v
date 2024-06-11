@@ -62,12 +62,12 @@ let instructions_to_data instructions =
 let hello_world_program =
   let print_string = "Hello world!" in
   instructions_to_data
-    [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0
-    ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:2 ~immediate:16
+    [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:5 ~immediate:0
+    ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:6 ~immediate:16
     ; op_imm
         ~funct3:Funct3.Op.Add_or_sub
         ~rs1:0
-        ~rd:3
+        ~rd:7
         ~immediate:(String.length print_string)
     ; ecall ~rs1:0 ~rd:0
     ]

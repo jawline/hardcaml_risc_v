@@ -145,7 +145,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
       reg_fb
         ~width:8
         ~f:(fun t ->
-          mux2 pulse.signal (of_int ~width:8 256) (mux2 (t ==:. 0) (zero 8) (t -:. 1)))
+          mux2 pulse.signal (of_int ~width:8 255) (mux2 (t ==:. 0) (zero 8) (t -:. 1)))
         reg_spec_no_clear
     in
     Some

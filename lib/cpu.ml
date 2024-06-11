@@ -85,17 +85,17 @@ struct
        state. *)
     let hart0 = List.nth_exn harts 0 in
     let should_do_dma =
-      hart0.is_ecall &: (List.nth_exn hart0.registers.general 1 ==:. 0)
+      hart0.is_ecall &: (List.nth_exn hart0.registers.general 5 ==:. 0)
     in
     let not_busy = ~:tx_busy in
     Dma.Tx_input.With_valid.Of_signal.(
       tx_input
       <== { valid = should_do_dma &: not_busy
           ; value =
-              { address = List.nth_exn hart0.registers.general 2
+              { address = List.nth_exn hart0.registers.general 6
               ; length =
                   uresize
-                    (List.nth_exn hart0.registers.general 3)
+                    (List.nth_exn hart0.registers.general 7)
                     (width tx_input.value.length)
               }
           });
