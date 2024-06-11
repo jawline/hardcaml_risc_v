@@ -8,7 +8,7 @@ unsigned int strlen(char* msg) {
   while (*msg) {
     msg++;
   }
-  msg - origin
+  return msg - origin;
 }
 
 void send_dma(char* msg) {
