@@ -14,7 +14,11 @@ void send_dma_l(char* msg, int len) {
   system_call(0, msg, len);
 }
 
+// Used when expanding the bitvector into chars 
+// for writing to stdout via DMA
 char ROW_BUFFER[BUFFER_SIZE];
+
+// Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
 char BUFFER1[BUFFER_SIZE];
 char BUFFER2[BUFFER_SIZE];
 
@@ -28,22 +32,21 @@ char* byte_address(char* buffer, unsigned int x, unsigned int y) {
   if (x > WIDTH) { return NULL; }
   if (y > HEIGHT) { return NULL; }
   int byte_index_x = x / 8;
-  char* row = buffer + (y * (WIDTH / 8)) + byte_index_x;
-  return row;
+  return buffer + (y * (WIDTH / 8)) + byte_index_x;
 }
 
 unsigned int which_bit (unsigned int x) {
   return 1 << (x % 8);
 }
 
-char get(char* buffer, unsigned int x, unsigned int y) {
+int get(char* buffer, unsigned int x, unsigned int y) {
   char* addr = byte_address(buffer, x, y);
 
   if (addr != NULL) {
-    return *addr & which_bit(x);
+    return (*addr & which_bit(x));
   }
   
-  return ' ';
+  return 0;
 }
 
 void set(char* buffer, unsigned int x, unsigned int y, int value) {
@@ -62,6 +65,7 @@ int neighbors(char* buffer, unsigned int x, unsigned int y) {
   // fall out of bounds which will return an empty position upon
   // get.
   int sum = 0;
+
   for (int yi = y - 1 ; yi <= y + 1; yi++) {
     for (int xi = x - y; xi <= x + 1; yi++) {
       if (xi != x && yi != y) {
@@ -69,6 +73,8 @@ int neighbors(char* buffer, unsigned int x, unsigned int y) {
       }
     }
   }
+
+  return sum;
 }
 
 void compute(char* next, char* prev) {
@@ -81,10 +87,9 @@ void compute(char* next, char* prev) {
   }
 }
 
-
 void expand_row(char* dst, char* buffer, int y) {
   for (int i = 0; i < WIDTH; i++) {
-   dst[i] = get(buffer, i, y);
+   dst[i] = get(buffer, i, y) ? '*' : ' ';
   }
 }
 
