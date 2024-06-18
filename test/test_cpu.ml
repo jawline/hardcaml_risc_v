@@ -14,12 +14,47 @@ module Make (M : sig
 
     val create_sim : string -> sim
     val finalize_sim : sim -> unit
+    val test_and_registers : instructions:Bits.t list -> sim -> int * int list
     val test : instructions:Bits.t list -> sim -> unit
   end) =
 struct
   let create_sim = M.create_sim
   let finalize_sim = M.finalize_sim
   let test = M.test
+
+  let%expect_test "addi" =
+    let open Quickcheck.Generator in
+    let sim = create_sim "addi_qcheck" in
+    Quickcheck.test
+      ~trials:100
+      (tuple4
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 2047)
+         (Int.gen_incl 1 2047))
+      ~f:(fun (rd, rs1, rs1_initial, imm) ->
+        let _pc, registers =
+          M.test_and_registers
+            ~instructions:
+              [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
+              ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1 ~rd ~immediate:imm
+              ]
+            sim
+        in
+        let result = List.nth_exn registers rd in
+        let expectation = rs1_initial + imm in
+        if result <> expectation
+        then
+          raise_s
+            [%message
+              "Failed"
+                (rd : int)
+                (rs1 : int)
+                (rs1_initial : int)
+                (imm : int)
+                (registers : int list)];
+        ())
+  ;;
 
   let%expect_test "op_imm" =
     let sim = create_sim "test_op_imm" in
@@ -28,9 +63,7 @@ struct
       sim;
     [%expect
       {|
-    ((pc 4)
-     (general
-      (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+    (4 (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
     22600093 00 00 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -40,8 +73,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 8)
-      (general (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (8 (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      504093 a0c093 00 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -51,8 +83,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 8)
-      (general (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (8 (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      f00093 30f093 00 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -62,8 +93,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 8)
-      (general (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (8 (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      2a00093 150e093 00 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -73,8 +103,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 8)
-      (general (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (8 (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      100093 409093 00 00 00 00 00 00 |}];
     (* TODO: Test the negative cases *)
     test
@@ -86,8 +115,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 12)
-      (general (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (12 (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      a00093 50a113 f0a193 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -98,8 +126,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 12)
-      (general (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (12 (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      a00093 50b113 f0b193 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -110,8 +137,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 12)
-      (general (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (12 (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      1000093 40d113 30d193 00 00 00 00 00 |}];
     (* Test x0 is hardwired to zero. *)
     test
@@ -119,8 +145,7 @@ struct
       sim;
     [%expect
       {|
-     ((pc 4)
-      (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+     (4 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
      50000013 00 00 00 00 00 00 00 |}];
     M.finalize_sim sim;
     [%expect {| |}]
@@ -137,9 +162,7 @@ struct
       sim;
     [%expect
       {|
-    ((pc 12)
-     (general
-      (0 500 300 200 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+    (12 (0 500 300 200 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
     1f400093 12c00113 2081b3 00 00 00 00 00 |}];
     M.finalize_sim sim;
     [%expect {| |}]
@@ -155,8 +178,7 @@ struct
       sim;
     [%expect
       {|
-    ((pc 504)
-     (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+    (504 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
     c001463 1e000a63 00 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -166,9 +188,7 @@ struct
       sim;
     [%expect
       {|
-      ((pc 8)
-       (general
-        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+      (8 (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       22600093 1e100a63 00 00 00 00 00 00 |}];
     test
       ~instructions:
@@ -178,9 +198,7 @@ struct
       sim;
     [%expect
       {|
-      ((pc 504)
-       (general
-        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+      (504 (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       22600093 1e101a63 00 00 00 00 00 00 |}];
     (* Expect the second branch to be taken *)
     test
@@ -192,9 +210,7 @@ struct
       sim;
     [%expect
       {|
-      ((pc 258)
-       (general
-        (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+      (258 (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       2104963 6400093 e104d63 00 00 00 00 00 |}];
     (* Expect the second branch to be taken *)
     test
@@ -206,9 +222,7 @@ struct
       sim;
     [%expect
       {|
-      ((pc 258)
-       (general
-        (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
+      (258 (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       6400093 2105963 e00dd63 00 00 00 00 00 |}];
     (* TODO: Test unsigned variants and negative numbers. *)
     M.finalize_sim sim;
@@ -276,7 +290,7 @@ module With_manually_programmed_ram = Make (struct
       inputs.clear := Bits.zero 1
     ;;
 
-    let test ~instructions sim =
+    let test_and_registers ~instructions sim =
       let sim, _, _ = sim in
       (* Initialize the main memory to some known values for testing. *)
       let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
@@ -308,9 +322,14 @@ module With_manually_programmed_ram = Make (struct
         let outputs =
           Cpu_with_no_io_controller.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
         in
-        print_s [%message "" ~_:(outputs : int Cpu_with_no_io_controller.Registers.t)];
-        print_ram sim
+        outputs.pc, outputs.general
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
+    ;;
+
+    let test ~instructions sim =
+      let pc, registers = test_and_registers ~instructions sim in
+      print_s [%message "" ~_:(pc : int) ~_:(registers : int list)];
+      print_ram (fst3 sim)
     ;;
   end)
 
@@ -442,7 +461,7 @@ module With_dma_ram = Make (struct
       send_bits sim whole_packet
     ;;
 
-    let test ~instructions sim =
+    let test_and_registers ~instructions sim =
       let sim, _, _ = sim in
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       (* Initialize the main memory to some known values for testing. *)
@@ -482,8 +501,13 @@ module With_dma_ram = Make (struct
         let outputs =
           Cpu_with_dma_memory.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
         in
-        print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Registers.t)];
-        print_ram sim
+        outputs.pc, outputs.general
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
+    ;;
+
+    let test ~instructions sim =
+      let pc, registers = test_and_registers ~instructions sim in
+      print_s [%message "" ~_:(pc : int) ~_:(registers : int list)];
+      print_ram (fst3 sim)
     ;;
   end)
