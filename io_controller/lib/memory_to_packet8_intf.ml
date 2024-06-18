@@ -1,3 +1,3 @@
 module type Config = sig
-  val magic : char option
+  val header : char option
 end

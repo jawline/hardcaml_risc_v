@@ -59,7 +59,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
   module State = struct
     type t =
       | Idle
-      | (* TODO: Reword magic to header byte in all instances. *) Writing_magic
+      | Writing_header
       | Writing_length
       | Reading_data
       | Writing_data
@@ -110,18 +110,18 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   [ length <-- input_length
                   ; address <-- input_address
                   ; which_step <--. 0
-                  ; (match Config.magic with
-                     | Some _ -> Writing_magic
+                  ; (match Config.header with
+                     | Some _ -> Writing_header
                      | None -> Writing_length)
                     |> state.set_next
                   ]
               ] )
-          ; ( Writing_magic
-            , match Config.magic with
-              | Some magic ->
+          ; ( Writing_header
+            , match Config.header with
+              | Some header ->
                 [ Packet8.Contents_stream.Tx.Of_always.assign
                     output_packet
-                    { valid = vdd; data = { data = Signal.of_char magic; last = gnd } }
+                    { valid = vdd; data = { data = Signal.of_char header; last = gnd } }
                 ; when_ output_packet_ready [ state.set_next Writing_length ]
                 ]
               | None -> [] )

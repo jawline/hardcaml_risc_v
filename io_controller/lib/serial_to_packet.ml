@@ -3,7 +3,7 @@ open Hardcaml
 open Signal
 open! Always
 
-(* This expects packets from a serial port in the form [ magic ; length MSB ;
+(* This expects packets from a serial port in the form [ header ; length MSB ;
    length LSB ; data ... ]. If a second packet is received before this packet
    is flushed out then it will be dropped so the serial sender is responsible
    for waiting for acknowledgement. *)
@@ -12,7 +12,7 @@ open! Always
 
 module Make
     (Config : sig
-       val magic : char
+       val header : char
        val serial_input_width : int
        val max_packet_length_in_data_widths : int
      end)
@@ -103,7 +103,7 @@ struct
           [ ( State.Waiting_for_start
             , [ which_length_packet <--. 0
               ; when_
-                  (in_valid &: (in_data ==: of_char Config.magic))
+                  (in_valid &: (in_data ==: of_char Config.header))
                   [ state.set_next Waiting_for_length ]
               ] )
           ; ( Waiting_for_length

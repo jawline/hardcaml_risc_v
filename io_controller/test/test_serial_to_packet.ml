@@ -9,7 +9,7 @@ let debug = false
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
   let all_inputs =
-    (* We add the magic and then the packet length before the packet *)
+    (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_size = List.length packet in
     let packet_len_msb = packet_size land 0xFF00 in
@@ -37,7 +37,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   let module Serial_to_packet =
     Serial_to_packet.Make
       (struct
-        let magic = 'Q'
+        let header = 'Q'
         let serial_input_width = 8
         let max_packet_length_in_data_widths = 16
       end)

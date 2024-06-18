@@ -30,7 +30,7 @@ let print_ram sim =
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
   =
   let all_inputs =
-    (* We add the magic and then the packet length before the packet *)
+    (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_len_parts =
       Bits.of_int ~width:16 (List.length packet + 4)
@@ -64,7 +64,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   let module Serial_to_packet =
     Serial_to_packet.Make
       (struct
-        let magic = 'Q'
+        let header = 'Q'
         let serial_input_width = 8
         let max_packet_length_in_data_widths = 16
       end)

@@ -10,7 +10,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
   module Memory_to_packet8 =
     Memory_to_packet8.Make
       (struct
-        let magic = Some 'D'
+        let header = Some 'D'
       end)
       (Memory)
 
@@ -48,7 +48,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
     let module Serial_to_packet =
       Serial_to_packet.Make
         (struct
-          let magic = 'Q'
+          let header = 'Q'
           let serial_input_width = 8
           let max_packet_length_in_data_widths = 16
         end)

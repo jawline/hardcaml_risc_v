@@ -38,7 +38,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   let module Memory_to_packet8 =
     Memory_to_packet8.Make
       (struct
-        let magic = Some 'Q'
+        let header = Some 'Q'
       end)
       (Memory_controller)
   in

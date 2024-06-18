@@ -86,7 +86,7 @@ let clear_packet =
 ;;
 
 let dma_packet ~address packet =
-  (* We add the magic and then the packet length before the packet *)
+  (* We add the header and then the packet length before the packet *)
   let packet = String.to_list packet in
   let packet_len_parts =
     Bits.of_int ~width:16 (List.length packet + 5)
