@@ -54,7 +54,6 @@ module Make (C : Config_intf.S) = struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
-    (* TODO: Consider resetting the counter on the start bit going low *)
     let switch_cycle = switch_cycle reg_spec_no_clear -- "switch_cycle" in
     let data = Variable.reg ~width:8 reg_spec_no_clear in
     let which_data_bit = Variable.reg ~width:3 reg_spec_no_clear in

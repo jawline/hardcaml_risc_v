@@ -2,7 +2,6 @@ open Hardcaml
 
 module Make (M : Interface.S) = struct
   type 'a data = 'a M.t
-  (* TODO: Rename Stream *)
 
   module Tx = struct
     type 'a t =

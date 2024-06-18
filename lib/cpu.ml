@@ -37,8 +37,7 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; (* These are optional if include_io_controller = Uart_io. *)
-        (* TODO: Remove these from the I.t when unused *)
+      ; (* ignored if include_io_controller = Uart_io. *)
         uart_rx : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
@@ -47,7 +46,8 @@ struct
   module O = struct
     type 'a t =
       { registers : 'a Registers.t list [@length General_config.num_harts]
-      ; uart_tx : 'a
+      ; (* gnd if include_io_controller = Uart_io. *)
+        uart_tx : 'a
       ; uart_rx_valid : 'a
       ; parity_error : 'a
       ; stop_bit_unstable : 'a
@@ -79,7 +79,7 @@ struct
     hart_ecall_transactions
     { Dma.tx_input; tx_busy; _ }
     =
-    (* TODO: For now we only allow Hart0 to do IO. This isn't
+    (* For now we only allow Hart0 to do IO. This isn't
        necessary, but it makes it easier to stop them both
        issuing commands at the same time and entering a weird
        state. *)
@@ -187,7 +187,6 @@ struct
         General_config.num_harts
     in
     assign_ecalls maybe_dma_controller harts hart_ecall_transactions;
-    (* TODO: After adding the DMA controller this code has got a little ugly. Factor it out? *)
     compile
       ([ List.map
            ~f:(fun (hart, ch_to_controller_per_hart) ->
