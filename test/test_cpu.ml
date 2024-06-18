@@ -23,6 +23,7 @@ struct
   let test = M.test
 
   let%expect_test "addi" =
+    (* TODO: Add qcheck tests for every opcode *)
     let open Quickcheck.Generator in
     let sim = create_sim "addi_qcheck" in
     Quickcheck.test
