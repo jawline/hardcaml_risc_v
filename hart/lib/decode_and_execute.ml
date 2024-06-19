@@ -38,7 +38,7 @@ struct
       { memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; finished : 'a
-      ; new_registers : 'a Registers.For_writeback.t
+      ; new_registers : 'a Registers.For_writeback.t [@rtlprefix "new_registers$"]
       ; error : 'a
       ; is_ecall : 'a
       }
@@ -121,9 +121,14 @@ struct
   let jalr_instruction
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
+    scope
     =
+    let ( -- ) = Scope.naming scope in
     let new_pc =
-      decoded_instruction.rs1 +: decoded_instruction.j_immediate
+      decoded_instruction.rs1
+      -- "jalr_rs1"
+      +: (decoded_instruction.i_immediate -- "jalr_i_immediate")
+      -- "jalr_new_pc"
       &: ~:(of_int ~width:register_width 1)
     in
     let error = new_pc &:. 0b11 <>:. 0 in
@@ -148,9 +153,9 @@ struct
     { Opcode_output.transaction =
         { Transaction.finished = vdd
         ; set_rd = vdd
-        ; new_rd = registers.pc +:. 4
+        ; new_rd = decoded_instruction.u_immediate
         ; error = zero 1
-        ; new_pc = decoded_instruction.u_immediate
+        ; new_pc = registers.pc +:. 4
         }
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
@@ -273,6 +278,7 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
+    let ( -- ) = Scope.naming scope in
     let { Store.O.finished; error; memory_controller_to_hart; hart_to_memory_controller } =
       Store.hierarchical
         ~instance:"store"
@@ -294,7 +300,7 @@ struct
         { Transaction.finished
         ; set_rd = gnd
         ; new_rd = zero register_width
-        ; error
+        ; error = error -- "store_error"
         ; new_pc = registers.pc +:. 4
         }
     ; memory_controller_to_hart
@@ -389,7 +395,7 @@ struct
         (jal_instruction ~registers decoded_instruction)
     ; Table_entry.create
         ~opcode:Opcodes.jalr
-        (jalr_instruction ~registers decoded_instruction)
+        (jalr_instruction ~registers decoded_instruction scope)
     ; Table_entry.create
         ~opcode:Opcodes.lui
         (lui_instruction ~registers decoded_instruction)
@@ -447,6 +453,7 @@ struct
   end
 
   let create scope (i : _ I.t) =
+    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clear:i.clear ~clock:i.clock () in
     let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
@@ -456,6 +463,7 @@ struct
     let transaction = Transaction.Of_always.reg reg_spec_no_clear in
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)
     let current_state = State_machine.create (module State) reg_spec in
+    ignore (current_state.current -- "current_state" : Signal.t);
     let commit_transaction ~new_pc ~set_rd ~new_rd =
       Registers.set_pc i.registers new_pc
       |> Registers.assign_when
@@ -466,7 +474,7 @@ struct
     let is_ecall =
       (current_state.is Executing
        &: (decoded_instruction.opcode.value ==:. Opcodes.system)
-       &: (decoded_instruction.funct3.value
+       &: (decoded_instruction.funct3.value -- "funct3"
            ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
       -- "is_ecall"
     in
@@ -508,17 +516,20 @@ struct
                         }
                       ->
                       when_
-                        (decoded_instruction.opcode.value ==:. opcode &: finished)
+                        (decoded_instruction.opcode.value -- "opcode" ==:. opcode)
                         [ Memory.Rx_bus.Rx.Of_always.assign
                             memory_controller_to_hart
                             mem_ctrl_to_op
                         ; Memory.Tx_bus.Tx.Of_always.assign
                             hart_to_memory_controller
                             op_to_mem_ctrl
-                        ; Transaction.Of_always.assign
-                            transaction
-                            { finished = vdd; new_pc; set_rd; new_rd; error }
-                        ; current_state.set_next Committing
+                        ; when_
+                            finished
+                            [ Transaction.Of_always.assign
+                                transaction
+                                { finished = vdd; new_pc; set_rd; new_rd; error }
+                            ; current_state.set_next Committing
+                            ]
                         ])
                     instruction_table )
                 (* TODO: Trap when no opcode matches *)

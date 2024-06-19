@@ -68,7 +68,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      source &: ~:(of_int ~width:register_width 0b11) -- "aligned_address"
+      (source &: ~:(of_int ~width:register_width 0b11)) -- "aligned_address"
     in
     let unaligned_bits =
       Util.switch
@@ -88,29 +88,32 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
     compile
-      [ current_state.switch
-          [ ( State.Waiting_for_memory_controller
-            , [ when_
-                  (enable &: ~:inputs_are_error)
-                  [ Memory.Tx_bus.Tx.Of_always.assign
-                      hart_to_memory_controller
-                      { valid = vdd
-                      ; data =
-                          { address = aligned_address
-                          ; write = zero 1
-                          ; write_data = zero 32
+      [ when_
+          enable
+          [ current_state.switch
+              [ ( State.Waiting_for_memory_controller
+                , [ when_
+                      ~:inputs_are_error
+                      [ Memory.Tx_bus.Tx.Of_always.assign
+                          hart_to_memory_controller
+                          { valid = vdd
+                          ; data =
+                              { address = aligned_address
+                              ; write = zero 1
+                              ; write_data = zero 32
+                              }
                           }
-                      }
-                  ; when_
-                      memory_controller_ready
-                      [ current_state.set_next Waiting_for_load ]
-                  ]
-              ] )
-          ; ( Waiting_for_load
-            , [ when_
-                  memory_controller_to_hart.valid
-                  [ current_state.set_next Waiting_for_memory_controller ]
-              ] )
+                      ; when_
+                          memory_controller_ready
+                          [ current_state.set_next Waiting_for_load ]
+                      ]
+                  ] )
+              ; ( Waiting_for_load
+                , [ when_
+                      memory_controller_to_hart.valid
+                      [ current_state.set_next Waiting_for_memory_controller ]
+                  ] )
+              ]
           ]
       ];
     { O.new_rd =
@@ -132,7 +135,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              | Lbu -> uresize byte register_width)
            funct3)
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
-    ; finished = is_unaligned |: memory_controller_to_hart.valid
+    ; finished = enable &: (is_unaligned |: memory_controller_to_hart.valid)
     ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = vdd }
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller

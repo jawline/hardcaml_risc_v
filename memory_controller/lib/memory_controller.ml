@@ -107,7 +107,7 @@ struct
     let was_operation =
       (* We set valid to high when a read / write is completed. This will be on
          the next cycle from acknowledgement. *)
-      is_operation_and_is_legal |> reg reg_spec_no_clear
+      is_operation |> reg reg_spec_no_clear
     in
     let memory =
       Ram.create

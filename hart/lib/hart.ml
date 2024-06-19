@@ -55,10 +55,12 @@ struct
   end
 
   let create scope (i : _ I.t) =
+    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     (* Register 0 is hardwired to zero so we don't actually store it *)
     let current_state = State_machine.create (module State) ~enable:vdd reg_spec in
+    ignore (current_state.current -- "current_state" : Signal.t);
     let registers = Registers.For_writeback.Of_always.reg reg_spec in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
@@ -108,8 +110,7 @@ struct
               ; when_ fetch.has_fetched [ current_state.set_next Decode_and_execute ]
               ] )
           ; ( Decode_and_execute
-            , [ current_state.set_next Fetching
-              ; Memory.Rx_bus.Rx.Of_always.assign
+            , [ Memory.Rx_bus.Rx.Of_always.assign
                   memory_controller_to_hart
                   decode_and_execute.memory_controller_to_hart
               ; Memory.Tx_bus.Tx.Of_always.assign
@@ -120,6 +121,7 @@ struct
                   [ Registers.For_writeback.Of_always.assign
                       registers
                       decode_and_execute.new_registers
+                  ; current_state.set_next Fetching
                   ]
               ] )
           ]
