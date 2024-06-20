@@ -47,7 +47,7 @@ let%expect_test "branch tests" =
   [%expect
     {|
       Funct 7 = 0
-      ((rd 14) (error false))
+      ((rd 20) (error false))
       Funct 7 = 1
       ((rd 20) (error false)) |}];
   simple_test ~funct3:(Funct3.Op.to_int Sll) sim;

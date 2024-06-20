@@ -33,7 +33,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             if enable_subtract
             then (
               let error = funct7 >:. 1 in
-              mux2 (select funct7 0 0) (lhs +: rhs) (lhs -: rhs), error)
+              mux2 (select funct7 6 6) (lhs -: rhs) (lhs +: rhs) , error)
             else lhs +: rhs, zero 1
           | Slt -> uresize (lhs <+ rhs) 32, zero 1
           | Sltu -> uresize (lhs <: rhs) 32, zero 1

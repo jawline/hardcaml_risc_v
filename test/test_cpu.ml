@@ -31,8 +31,8 @@ struct
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
-         (Int.gen_incl 1 2047)
-         (Int.gen_incl 1 2047))
+         (Int.gen_incl (-2048) 2047)
+         (Int.gen_incl (-2048) 2047))
       ~f:(fun (rd, rs1, rs1_initial, imm) ->
         let _pc, registers =
           M.test_and_registers
@@ -42,13 +42,16 @@ struct
               ]
             sim
         in
-        let result = List.nth_exn registers rd in
-        let expectation = rs1_initial + imm in
+        (* TODO: We mask by 4 bytes because OCaml will use 63-bits here. Comparing the Bits.t would probably be better. *)
+        let result = List.nth_exn registers rd land 0xFFFFFFFF  in
+        let expectation = (rs1_initial + imm) land 0xFFFFFFFF in
         if result <> expectation
         then
           raise_s
             [%message
               "Failed"
+                (result : int)
+                (expectation : int)
                 (rd : int)
                 (rs1 : int)
                 (rs1_initial : int)
@@ -56,6 +59,49 @@ struct
                 (registers : int list)];
         ())
   ;;
+
+  let%expect_test "add" =
+    (* TODO: Add qcheck tests for every opcode *)
+    let open Quickcheck.Generator in
+    let sim = create_sim "addi_qcheck" in
+    Quickcheck.test
+      ~trials:100
+      (tuple5
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 2047)
+         (Int.gen_incl 1 2047))
+      ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial) ->
+          if rs1 <> rs2 then (
+        let _pc, registers =
+          M.test_and_registers
+            ~instructions:
+              [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
+              ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs2 ~immediate:rs2_initial
+             
+              ; op ~funct3:Funct3.Op.Add_or_sub ~rs1 ~rs2 ~rd ~funct7:0
+              ]
+            sim
+        in
+        let result = List.nth_exn registers rd in
+        let expectation = rs1_initial + rs2_initial in
+        if result <> expectation
+        then
+          raise_s
+            [%message
+              "Failed"
+                (result : int)
+                (expectation : int)
+                (rd : int)
+                (rs1 : int)
+                (rs2 : int)
+                (rs1_initial : int)
+                (rs2_initial : int)
+                (registers : int list)]);
+        ())
+  ;;
+
 
   let%expect_test "op_imm" =
     let sim = create_sim "test_op_imm" in
@@ -158,13 +204,13 @@ struct
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:500
         ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:2 ~immediate:300
-        ; op ~funct3:Funct3.Op.Add_or_sub ~rs1:1 ~rs2:2 ~rd:3 (* WRONG *) ~funct7:0
+        ; op ~funct3:Funct3.Op.Add_or_sub ~rs1:1 ~rs2:2 ~rd:4 ~funct7:0
         ]
       sim;
     [%expect
       {|
-    (12 (0 500 300 200 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-    1f400093 12c00113 2081b3 00 00 00 00 00 |}];
+    (12 (0 500 300 0 800 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+    1f400093 12c00113 208233 00 00 00 00 00 |}];
     M.finalize_sim sim;
     [%expect {| |}]
   ;;
@@ -500,7 +546,7 @@ module With_dma_ram = Make (struct
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
-          Cpu_with_dma_memory.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
+          Cpu_with_dma_memory.Registers.map ~f:(fun t -> Bits.to_int !t  ) outputs
         in
         outputs.pc, outputs.general
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
