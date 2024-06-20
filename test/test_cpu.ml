@@ -60,9 +60,9 @@ struct
         ())
   ;;
 
-  let%expect_test "add" =
+  let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
+    let sim = create_sim name in
     let open Quickcheck.Generator in
-    let sim = create_sim "add_qcheck" in
     Quickcheck.test
       ~trials:100
       (tuple5
@@ -70,7 +70,9 @@ struct
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
          (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-2047) 2047))
+         (Int.gen_incl
+            (if small_rs2_range then 0 else -2047)
+            (if small_rs2_range then 10 else 2047)))
       ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial) ->
         if rs1 <> rs2
         then (
@@ -87,12 +89,12 @@ struct
                     ~rs1:0
                     ~rd:rs2
                     ~immediate:rs2_initial
-                ; op ~funct3:Funct3.Op.Add_or_sub ~rs1 ~rs2 ~rd ~funct7:0
+                ; op ~rs1 ~rs2 ~rd ~funct3 ~funct7
                 ]
               sim
           in
           let result = List.nth_exn registers rd land 0xFFFFFFFF in
-          let expectation = (rs1_initial + rs2_initial) land 0xFFFFFFFF in
+          let expectation = f rs1_initial rs2_initial land 0xFFFFFFFF in
           if result <> expectation
           then
             raise_s
@@ -105,57 +107,98 @@ struct
                   (rs2 : int)
                   (rs1_initial : int)
                   (rs2_initial : int)
-                  (registers : int list)]);
-        ())
+                  (registers : int list)])
+        else ())
+  ;;
+
+  let%expect_test "add" =
+    op_helper
+      ~name:"add_qcheck"
+      ~funct3:Funct3.Op.Add_or_sub
+      ~funct7:0
+      ~f:( + )
+      ~small_rs2_range:false
   ;;
 
   let%expect_test "sub" =
-    let open Quickcheck.Generator in
-    let sim = create_sim "sub_qcheck" in
-    Quickcheck.test
-      ~trials:100
-      (tuple5
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-2047) 2047))
-      ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial) ->
-        if rs1 <> rs2
-        then (
-          let _pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs1
-                    ~immediate:rs1_initial
-                ; op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs2
-                    ~immediate:rs2_initial
-                ; op ~funct3:Funct3.Op.Add_or_sub ~rs1 ~rs2 ~rd ~funct7:0b0100000
-                ]
-              sim
-          in
-          let result = List.nth_exn registers rd land 0xFFFFFFFF in
-          let expectation = (rs1_initial - rs2_initial) land 0xFFFFFFFF in
-          if result <> expectation
-          then
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  (expectation : int)
-                  (rd : int)
-                  (rs1 : int)
-                  (rs2 : int)
-                  (rs1_initial : int)
-                  (rs2_initial : int)
-                  (registers : int list)]);
-        ())
+    op_helper
+      ~name:"sub_qcheck"
+      ~funct3:Funct3.Op.Add_or_sub
+      ~funct7:0b0100000
+      ~f:( - )
+      ~small_rs2_range:false
+  ;;
+
+  let%expect_test "and" =
+    op_helper
+      ~name:"and_qcheck"
+      ~funct3:Funct3.Op.And
+      ~funct7:0
+      ~f:( land )
+      ~small_rs2_range:false
+  ;;
+
+  let%expect_test "xor" =
+    op_helper
+      ~name:"not_qcheck"
+      ~funct3:Funct3.Op.Xor
+      ~funct7:0
+      ~f:( lxor )
+      ~small_rs2_range:false
+  ;;
+
+  let%expect_test "or" =
+    op_helper
+      ~name:"or_qcheck"
+      ~funct3:Funct3.Op.Or
+      ~funct7:0
+      ~f:( lor )
+      ~small_rs2_range:false
+  ;;
+
+  let%expect_test "slt" =
+    op_helper
+      ~name:"slt_qcheck"
+      ~funct3:Funct3.Op.Slt
+      ~funct7:0
+      ~f:(fun l r -> if l < r then 1 else 0)
+      ~small_rs2_range:false
+  ;;
+
+  let%expect_test "sltu" =
+    op_helper
+      ~name:"sltu_qcheck"
+      ~funct3:Funct3.Op.Sltu
+      ~funct7:0
+      ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
+      ~small_rs2_range:false
+  ;;
+
+  let%expect_test "sll" =
+    op_helper
+      ~name:"sll_qcheck"
+      ~funct3:Funct3.Op.Sll
+      ~funct7:0
+      ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
+      ~small_rs2_range:true
+  ;;
+
+  let%expect_test "srl" =
+    op_helper
+      ~name:"srl_qcheck"
+      ~funct3:Funct3.Op.Srl_or_sra
+      ~funct7:0
+      ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
+      ~small_rs2_range:true
+  ;;
+
+  let%expect_test "sra" =
+    op_helper
+      ~name:"srl_qcheck"
+      ~funct3:Funct3.Op.Srl_or_sra
+      ~funct7:0b0100_000
+      ~f:(fun l r -> Int.shift_right (l land 0xFFFFFFFF) (r land 0xFFFFFFFF))
+      ~small_rs2_range:true
   ;;
 
   let%expect_test "op_imm" =
