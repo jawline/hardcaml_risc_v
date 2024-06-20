@@ -12,8 +12,11 @@ module M (Registers : Registers_intf.S) = struct
       ; rd_value : 'a [@bits register_width]
       ; i_immediate : 'a [@bits register_width]
       ; j_immediate : 'a [@bits register_width]
+      ; s_immediate : 'a [@bits register_width]
       ; u_immediate : 'a [@bits register_width]
       ; b_immediate : 'a [@bits register_width]
+      ; load_address : 'a [@bits register_width]
+      ; store_address : 'a [@bits register_width]
       }
     [@@deriving sexp_of, hardcaml]
 

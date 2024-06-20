@@ -17,7 +17,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; clear : 'a
       ; enable : 'a
       ; funct3 : 'a [@bits 3]
-      ; source : 'a [@bits register_width]
+      ; address : 'a [@bits register_width]
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
            [@rtlprefix "memory_controller_to_hart$"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
@@ -52,7 +52,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
      ; clear
      ; enable
      ; funct3
-     ; source
+     ; address
      ; memory_controller_to_hart
      ; hart_to_memory_controller = { ready = memory_controller_ready }
      } :
@@ -68,15 +68,15 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      (source &: ~:(of_int ~width:register_width 0b11)) -- "aligned_address"
+      (address &: ~:(of_int ~width:register_width 0b11)) -- "aligned_address"
     in
     let unaligned_bits =
       Util.switch
         (module Funct3.Load)
         ~if_not_found:(zero 2)
         ~f:(function
-          | Funct3.Load.Lw -> uresize source 2 &:. 0b11
-          | Lh | Lhu -> uresize source 2 &:. 0b1
+          | Funct3.Load.Lw -> uresize address 2 &:. 0b11
+          | Lh | Lhu -> uresize address 2 &:. 0b1
           | Lb | Lbu -> zero 2)
         funct3
       -- "unaligned_bits"
@@ -117,7 +117,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ]
       ];
     { O.new_rd =
-        (let alignment_bits = (source &:. 0b11) -- "alignment_bits" in
+        (let alignment_bits = (address &:. 0b11) -- "alignment_bits" in
          let full_word = memory_controller_to_hart.data.read_data -- "full_word" in
          let half_word =
            mux2 (alignment_bits ==:. 0) (sel_top full_word 16) (sel_bottom full_word 16)

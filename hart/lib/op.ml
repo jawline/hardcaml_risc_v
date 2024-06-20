@@ -23,7 +23,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
-  let create ~enable_subtract _scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =
+  let create ~enable_subtract scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =
+    let ( -- ) = Scope.naming scope in
     let rd, error =
       Util.switch2
         (module Funct3.Op)
@@ -33,7 +34,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             if enable_subtract
             then (
               let error = funct7 >:. 1 in
-              mux2 (select funct7 6 6) (lhs -: rhs) (lhs +: rhs) , error)
+              let is_subtract = select funct7 5 5 -- "is_subtract" in
+              mux2 is_subtract (lhs -: rhs) (lhs +: rhs), error)
             else lhs +: rhs, zero 1
           | Slt -> uresize (lhs <+ rhs) 32, zero 1
           | Sltu -> uresize (lhs <: rhs) 32, zero 1

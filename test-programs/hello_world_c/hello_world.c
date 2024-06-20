@@ -15,14 +15,15 @@ unsigned int strlen(char* msg) {
 }
 
 void send_dma(char* msg) {
-  system_call(0, msg, 5);
+  system_call(0, msg, strlen(msg));
 }
 
 char* hello_world = "Hello world!";
+char* goodbye = "Goodbye";
 
 void c_start() {
-  register int test asm("x28") = 4096;
   send_dma(hello_world);
+  send_dma(goodbye);
   for (;;) {
   }
 }

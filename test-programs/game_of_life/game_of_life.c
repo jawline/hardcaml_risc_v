@@ -6,7 +6,10 @@
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
 // This function assumes that x5 - x7 are used as the registers
-void system_call(int mode, void* ptr, unsigned int length) {
+void system_call(int imode, void* iptr, unsigned int ilength) {
+  register int mode asm("x5") = imode;
+  register void* ptr asm("x6") = iptr;
+  register unsigned int length asm("x7") = ilength;
   asm volatile ("ecall");
 }
 
@@ -101,6 +104,7 @@ void send_rows(char* buffer) {
 }
 
 void c_start() {
+  send_dma_l("Starting up", 11);
   char* current = BUFFER1;
   char* next = BUFFER2;
 

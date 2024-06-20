@@ -255,7 +255,7 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             enable &: (decoded_instruction.opcode ==:. Opcodes.load)
         ; funct3 = decoded_instruction.funct3
-        ; source = decoded_instruction.rs1
+        ; address = decoded_instruction.load_address
         ; memory_controller_to_hart
         ; hart_to_memory_controller
         }
@@ -290,8 +290,8 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             enable &: (decoded_instruction.opcode ==:. Opcodes.store)
         ; funct3 = decoded_instruction.funct3
-        ; destination = decoded_instruction.rd_value
-        ; value = decoded_instruction.rs1
+        ; destination = decoded_instruction.store_address
+        ; value = decoded_instruction.rs2
         ; memory_controller_to_hart
         ; hart_to_memory_controller
         }

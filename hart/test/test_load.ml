@@ -29,7 +29,7 @@ module Test_machine = struct
       ; clear : 'a
       ; enable : 'a
       ; funct3 : 'a [@bits 3]
-      ; source : 'a [@bits 32]
+      ; address : 'a [@bits 32]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -47,7 +47,7 @@ module Test_machine = struct
     [@@deriving sexp_of, hardcaml]
   end
 
-  let create (scope : Scope.t) ({ I.clock; clear; enable; funct3; source } : _ I.t) =
+  let create (scope : Scope.t) ({ I.clock; clear; enable; funct3; address } : _ I.t) =
     let memory_controller_to_hart = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
     let hart_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
     let load =
@@ -58,7 +58,7 @@ module Test_machine = struct
         ; clear
         ; enable
         ; funct3
-        ; source
+        ; address
         ; memory_controller_to_hart =
             Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_hart
         ; hart_to_memory_controller =
@@ -102,14 +102,14 @@ let create_sim () =
        (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
 ;;
 
-let test ~source ~funct3 sim =
+let test ~address ~funct3 sim =
   let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
   let outputs_before : _ Test_machine.O.t =
     Cyclesim.outputs ~clock_edge:Side.Before sim
   in
   let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
   inputs.enable := of_int ~width:1 1;
-  inputs.source := of_int ~width:32 source;
+  inputs.address := of_int ~width:32 address;
   inputs.funct3 := of_int ~width:3 funct3;
   let rec loop_until_finished max =
     if max = 0 then raise_s [%message "BUG: Timed out"];
@@ -129,7 +129,7 @@ let%expect_test "lw" =
     initial_ram;
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
-  (try test ~source:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -139,7 +139,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000001)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -149,7 +149,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000010)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:8 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:8 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -159,7 +159,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000011)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:12 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:12 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -170,7 +170,7 @@ let%expect_test "lw" =
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
   (* Unaligned loads, we expect these to fail *)
-  (try test ~source:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -180,7 +180,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -190,7 +190,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -200,7 +200,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:5 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:5 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -210,7 +210,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -220,7 +220,7 @@ let%expect_test "lw" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000000000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:7 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+  (try test ~address:7 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -244,12 +244,12 @@ let%expect_test "lw" =
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
     │enable            ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
     │                  ││                                                                                                                                │
+    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────┬───────┬───────┬───────┬───────┬───────                │
+    │address           ││ 00000000       │00000004       │00000008       │0000000C       │000000.│000000.│000000.│000000.│000000.│000000.                │
+    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────┴───────┴───────┴───────┴───────┴───────                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
     │funct3            ││ 2                                                                                                                              │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
-    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────┬───────┬───────┬───────┬───────┬───────                │
-    │source            ││ 00000000       │00000004       │00000008       │0000000C       │000000.│000000.│000000.│000000.│000000.│000000.                │
-    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────┴───────┴───────┴───────┴───────┴───────                │
     │controller_to_hart││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
     │                  ││────────┬───────────────┬───────────────┬───────────────┬───────────────────────────────────────────────────────                │
@@ -285,6 +285,9 @@ let%expect_test "lw" =
     │                  ││────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────                │
     │load$half_word    ││ 0000                                                           │0004                                                           │
     │                  ││────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────                │
+    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────┬───────┬───────┬───────┬───────┬───────                │
+    │load$i$address    ││ 00000000       │00000004       │00000008       │0000000C       │000000.│000000.│000000.│000000.│000000.│000000.                │
+    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────┴───────┴───────┴───────┴───────┴───────                │
     │load$i$clear      ││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
     │load$i$clock      ││                                                                                                                                │
@@ -303,9 +306,6 @@ let%expect_test "lw" =
     │                  ││────────┴───────────────┴───────────────┴───────────────┴───────────────────────────────────────────────────────                │
     │load$i$memory_cont││        ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                                                               │
     │                  ││────────┘       └───────┘       └───────┘       └───────┘       └───────────────────────────────────────────────                │
-    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────┬───────┬───────┬───────┬───────┬───────                │
-    │load$i$source     ││ 00000000       │00000004       │00000008       │0000000C       │000000.│000000.│000000.│000000.│000000.│000000.                │
-    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────┴───────┴───────┴───────┴───────┴───────                │
     │load$inputs_are_er││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────                │
     │load$is_unaligned ││                                                                ┌───────────────────────────────────────────────                │
@@ -354,7 +354,7 @@ let%expect_test "lh" =
     initial_ram;
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
-  (try test ~source:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
+  (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -364,7 +364,7 @@ let%expect_test "lh" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000010000000000000010)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
+  (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -374,7 +374,7 @@ let%expect_test "lh" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000010000000000000010)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
+  (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -384,7 +384,7 @@ let%expect_test "lh" =
          ((valid 0)
           (data ((error 0) (read_data 00000000000000110000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
+  (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -395,7 +395,7 @@ let%expect_test "lh" =
           (data ((error 0) (read_data 00000000000000110000000000000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
   (* Unaligned loads, we expect these to fail *)
-  (try test ~source:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
+  (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -419,12 +419,12 @@ let%expect_test "lh" =
     │                  ││────────────────────────────────────────────────────────────────────────                                                        │
     │enable            ││────────────────────────────────────────────────────────────────────────                                                        │
     │                  ││                                                                                                                                │
+    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────                                                        │
+    │address           ││ 00000000       │00000002       │00000004       │00000006       │000000.                                                        │
+    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────                                                        │
     │                  ││────────────────────────────────────────────────────────────────────────                                                        │
     │funct3            ││ 1                                                                                                                              │
     │                  ││────────────────────────────────────────────────────────────────────────                                                        │
-    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────                                                        │
-    │source            ││ 00000000       │00000002       │00000004       │00000006       │000000.                                                        │
-    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────                                                        │
     │controller_to_hart││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────                                                        │
     │                  ││────────┬───────────────────────────────┬───────────────────────────────                                                        │
@@ -460,6 +460,9 @@ let%expect_test "lh" =
     │                  ││────────┬───────┬───────────────┬───────┬───────┬───────────────────────                                                        │
     │load$half_word    ││ 0000   │0001   │0002           │0001   │0003   │0004                                                                           │
     │                  ││────────┴───────┴───────────────┴───────┴───────┴───────────────────────                                                        │
+    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────                                                        │
+    │load$i$address    ││ 00000000       │00000002       │00000004       │00000006       │000000.                                                        │
+    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────                                                        │
     │load$i$clear      ││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────                                                        │
     │load$i$clock      ││                                                                                                                                │
@@ -478,9 +481,6 @@ let%expect_test "lh" =
     │                  ││────────┴───────────────────────────────┴───────────────────────────────                                                        │
     │load$i$memory_cont││        ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                                                               │
     │                  ││────────┘       └───────┘       └───────┘       └───────┘       └───────                                                        │
-    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────                                                        │
-    │load$i$source     ││ 00000000       │00000002       │00000004       │00000006       │000000.                                                        │
-    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────                                                        │
     │load$inputs_are_er││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────                                                        │
     │load$is_unaligned ││                                                                ┌───────                                                        │
@@ -534,7 +534,7 @@ let%expect_test "lb" =
     initial_ram;
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
-  (try test ~source:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+  (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -544,7 +544,7 @@ let%expect_test "lb" =
          ((valid 0)
           (data ((error 0) (read_data 00000001000000100000001100000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+  (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -554,7 +554,7 @@ let%expect_test "lb" =
          ((valid 0)
           (data ((error 0) (read_data 00000001000000100000001100000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+  (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -564,7 +564,7 @@ let%expect_test "lb" =
          ((valid 0)
           (data ((error 0) (read_data 00000001000000100000001100000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+  (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -574,7 +574,7 @@ let%expect_test "lb" =
          ((valid 0)
           (data ((error 0) (read_data 00000001000000100000001100000100)))))
         (hart_to_memory_controller ((ready 1))))) |}];
-  (try test ~source:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
+  (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
@@ -598,12 +598,12 @@ let%expect_test "lb" =
     │                  ││────────────────────────────────────────────────────────────────────────────────                                                │
     │enable            ││────────────────────────────────────────────────────────────────────────────────                                                │
     │                  ││                                                                                                                                │
+    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────────────                                                │
+    │address           ││ 00000000       │00000001       │00000002       │00000003       │00000004                                                       │
+    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────────────                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────                                                │
     │funct3            ││ 0                                                                                                                              │
     │                  ││────────────────────────────────────────────────────────────────────────────────                                                │
-    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────────────                                                │
-    │source            ││ 00000000       │00000001       │00000002       │00000003       │00000004                                                       │
-    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────────────                                                │
     │controller_to_hart││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────                                                │
     │                  ││────────┬───────────────────────────────────────────────────────────────┬───────                                                │
@@ -639,6 +639,9 @@ let%expect_test "lb" =
     │                  ││────────┬───────┬───────────────────────────────────────────────┬───────┬───────                                                │
     │load$half_word    ││ 0000   │0102   │0304                                           │0102   │0506                                                   │
     │                  ││────────┴───────┴───────────────────────────────────────────────┴───────┴───────                                                │
+    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────────────                                                │
+    │load$i$address    ││ 00000000       │00000001       │00000002       │00000003       │00000004                                                       │
+    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────────────                                                │
     │load$i$clear      ││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────                                                │
     │load$i$clock      ││                                                                                                                                │
@@ -657,9 +660,6 @@ let%expect_test "lb" =
     │                  ││────────┴───────────────────────────────────────────────────────────────┴───────                                                │
     │load$i$memory_cont││        ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐       ┌───────                                                │
     │                  ││────────┘       └───────┘       └───────┘       └───────┘       └───────┘                                                       │
-    │                  ││────────────────┬───────────────┬───────────────┬───────────────┬───────────────                                                │
-    │load$i$source     ││ 00000000       │00000001       │00000002       │00000003       │00000004                                                       │
-    │                  ││────────────────┴───────────────┴───────────────┴───────────────┴───────────────                                                │
     │load$inputs_are_er││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────                                                │
     │load$is_unaligned ││                                                                                                                                │
