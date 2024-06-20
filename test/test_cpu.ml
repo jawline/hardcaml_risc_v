@@ -22,29 +22,32 @@ struct
   let finalize_sim = M.finalize_sim
   let test = M.test
 
-  let%expect_test "addi" =
-    (* TODO: Add qcheck tests for every opcode *)
+  (* TODO: Add qcheck tests for every opcode *)
+
+  let opi_helper ~name ~f ~funct3 ~small_imm_range =
     let open Quickcheck.Generator in
-    let sim = create_sim "addi_qcheck" in
+    let sim = create_sim name in
     Quickcheck.test
       ~trials:100
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
          (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-2047) 2047))
+         (Int.gen_incl
+            (if small_imm_range then 0 else -2047)
+            (if small_imm_range then 10 else 2047)))
       ~f:(fun (rd, rs1, rs1_initial, imm) ->
         let _pc, registers =
           M.test_and_registers
             ~instructions:
               [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
-              ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1 ~rd ~immediate:imm
+              ; op_imm ~funct3 ~rs1 ~rd ~immediate:imm
               ]
             sim
         in
         (* TODO: We mask by 4 bytes because OCaml will use 63-bits here. Comparing the Bits.t would probably be better. *)
         let result = List.nth_exn registers rd land 0xFFFFFFFF in
-        let expectation = (rs1_initial + imm) land 0xFFFFFFFF in
+        let expectation = f rs1_initial imm land 0xFFFFFFFF in
         if result <> expectation
         then
           raise_s
@@ -58,6 +61,42 @@ struct
                 (imm : int)
                 (registers : int list)];
         ())
+  ;;
+
+  let%expect_test "addi" =
+    opi_helper
+      ~name:"addi_qcheck"
+      ~funct3:Funct3.Op.Add_or_sub
+      ~f:( + )
+      ~small_imm_range:false
+  ;;
+
+  let%expect_test "and" =
+    opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false
+  ;;
+
+  let%expect_test "xor" =
+    opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false
+  ;;
+
+  let%expect_test "or" =
+    opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false
+  ;;
+
+  let%expect_test "slt" =
+    opi_helper
+      ~name:"slt_qcheck"
+      ~funct3:Funct3.Op.Slt
+      ~f:(fun l r -> if l < r then 1 else 0)
+      ~small_imm_range:false
+  ;;
+
+  let%expect_test "sltu" =
+    opi_helper
+      ~name:"sltu_qcheck"
+      ~funct3:Funct3.Op.Sltu
+      ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
+      ~small_imm_range:false
   ;;
 
   let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
