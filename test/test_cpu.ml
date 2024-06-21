@@ -240,6 +240,87 @@ struct
       ~small_rs2_range:true
   ;;
 
+
+  let branch_helper ~name ~f ~funct3 =
+    let sim = create_sim name in
+    let open Quickcheck.Generator in
+    Quickcheck.test
+      ~trials:100
+      (tuple4
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl (-2047) 2047)
+         (Int.gen_incl (-2047) 2047))
+      ~f:(fun (rs1, rs2, rs1_initial, rs2_initial) ->
+        if rs1 <> rs2
+        then (
+          let pc, registers =
+            M.test_and_registers
+              ~instructions:
+                [ op_imm
+                    ~funct3:Funct3.Op.Add_or_sub
+                    ~rs1:0
+                    ~rd:rs1
+                    ~immediate:rs1_initial
+                ; op_imm
+                    ~funct3:Funct3.Op.Add_or_sub
+                    ~rs1:0
+                    ~rd:rs2
+                    ~immediate:rs2_initial
+                ; branch ~rs1 ~rs2 ~funct3 ~offset:250
+                ]
+              sim
+          in
+          let result = pc in 
+          let expectation = if f rs1_initial rs2_initial then 250 + 8 else 12 in
+          if result <> expectation
+          then
+            raise_s
+              [%message
+                "Failed"
+                  (result : int)
+                  (expectation : int)
+                  (rs1 : int)
+                  (rs2 : int)
+                  (rs1_initial : int)
+                  (rs2_initial : int)
+                  (registers : int list)])
+        else ())
+  ;;
+
+let%expect_test "beq" =
+    branch_helper
+      ~name:"beq_qcheck"
+      ~funct3:Funct3.Branch.Beq
+      ~f:( = )
+  ;;
+
+
+  let%expect_test "bne" =
+    branch_helper
+      ~name:"bne_qcheck"
+      ~funct3:Funct3.Branch.Bne
+      ~f:( <> )
+  ;;
+
+
+  let%expect_test "blt" =
+    branch_helper
+      ~name:"blt_qcheck"
+      ~funct3:Funct3.Branch.Blt
+      ~f:( < )
+  ;;
+
+
+  let%expect_test "bge" =
+    branch_helper
+      ~name:"bge_qcheck"
+      ~funct3:Funct3.Branch.Blt
+      ~f:( >= )
+  ;;
+
+
+
   let%expect_test "op_imm" =
     let sim = create_sim "test_op_imm" in
     test
