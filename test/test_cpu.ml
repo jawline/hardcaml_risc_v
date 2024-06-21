@@ -343,8 +343,8 @@ let%expect_test "beq" =
                 ]
               sim
           in
-          let result = pc in 
-          let expectation = rs1_initial + offset in
+          let result = pc land 0xFFFFFFFF in 
+          let expectation = (rs1_initial + offset) land 0xFFFFFFFF in
           if result <> expectation
           then
             raise_s
