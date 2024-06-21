@@ -315,9 +315,48 @@ let%expect_test "beq" =
   let%expect_test "bge" =
     branch_helper
       ~name:"bge_qcheck"
-      ~funct3:Funct3.Branch.Blt
+      ~funct3:Funct3.Branch.Bge
       ~f:( >= )
   ;;
+
+
+  let%expect_test "jalr"  =
+    let sim = create_sim "jalr" in
+    let open Quickcheck.Generator in
+    Quickcheck.test
+      ~trials:100
+      (tuple4
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl (-2047) 2047)
+         (Int.gen_incl (-2047) 2047))
+      ~f:(fun (rd, rs1, rs1_initial, offset) ->
+          let pc, registers =
+            M.test_and_registers
+              ~instructions:
+                [ op_imm
+                    ~funct3:Funct3.Op.Add_or_sub
+                    ~rs1:0
+                    ~rd:rs1
+                    ~immediate:rs1_initial
+                ; jalr ~rd ~rs1 ~offset
+                ]
+              sim
+          in
+          let result = pc in 
+          let expectation = rs1_initial + offset in
+          if result <> expectation
+          then
+            raise_s
+              [%message
+                "Failed"
+                  (result : int)
+                  (expectation : int)
+                  (rd : int)
+                  (rs1 : int)
+                  (registers : int list)])
+  ;;
+
 
 
 

@@ -15,6 +15,15 @@ let assemble_s_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
   concat_msb [ sel_top immediate 7; rs2; rs1; funct3; sel_bottom immediate 5; opcode ]
 ;;
 
+let jalr ~rd ~rs1 ~offset =
+  assemble_i_type
+    ~opcode:(Bits.of_int ~width:7 Opcodes.jalr)
+    ~funct3:(Bits.of_int ~width:3 0)
+    ~rs1:(Bits.of_int ~width:5 rs1)
+    ~rd:(Bits.of_int ~width:5 rd)
+    ~immediate:(Bits.of_int ~width:12 offset)
+;;
+
 let branch ~funct3 ~rs1 ~rs2 ~offset =
   assemble_s_type
     ~opcode:(Bits.of_int ~width:7 Opcodes.branch)
