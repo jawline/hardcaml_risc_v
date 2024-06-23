@@ -240,7 +240,6 @@ struct
       ~small_rs2_range:true
   ;;
 
-
   let branch_helper ~name ~f ~funct3 =
     let sim = create_sim name in
     let open Quickcheck.Generator in
@@ -271,7 +270,7 @@ struct
                 ]
               sim
           in
-          let result = pc in 
+          let result = pc in
           let expectation = if f rs1_initial rs2_initial then 250 + 8 else 12 in
           if result <> expectation
           then
@@ -288,72 +287,46 @@ struct
         else ())
   ;;
 
-let%expect_test "beq" =
-    branch_helper
-      ~name:"beq_qcheck"
-      ~funct3:Funct3.Branch.Beq
-      ~f:( = )
+  let%expect_test "beq" =
+    branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = )
   ;;
-
 
   let%expect_test "bne" =
-    branch_helper
-      ~name:"bne_qcheck"
-      ~funct3:Funct3.Branch.Bne
-      ~f:( <> )
+    branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> )
   ;;
-
 
   let%expect_test "blt" =
-    branch_helper
-      ~name:"blt_qcheck"
-      ~funct3:Funct3.Branch.Blt
-      ~f:( < )
+    branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < )
   ;;
-
 
   let%expect_test "bge" =
-    branch_helper
-      ~name:"bge_qcheck"
-      ~funct3:Funct3.Branch.Bge
-      ~f:( >= )
+    branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= )
   ;;
 
-
-  let%expect_test "jal"  =
+  let%expect_test "jal" =
     let sim = create_sim "jal" in
     let open Quickcheck.Generator in
     Quickcheck.test
       ~trials:100
-      (tuple2
-         (Int.gen_incl 1 31)
-         (Int.gen_incl (-65536) 65536))
+      (tuple2 (Int.gen_incl 1 31) (Int.gen_incl (-65536) 65536))
       ~f:(fun (rd, offset) ->
-          let pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ jal ~rd ~offset
-                ]
-              sim
-          in
-          let result = pc land 0xFFFFFFFF in 
-          let rd = List.nth_exn registers rd  in
-          let expectation = offset land 0xFFFFFFFE in
-          if (result <> expectation) || (if rd <> 0 then (rd <> 4) else false)
-          then
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  (expectation : int)
-                  (rd : int)
-                  (offset : int)
-                  (registers : int list)])
+        let pc, registers = M.test_and_registers ~instructions:[ jal ~rd ~offset ] sim in
+        let result = pc land 0xFFFFFFFF in
+        let rd = List.nth_exn registers rd in
+        let expectation = offset land 0xFFFFFFFE in
+        if result <> expectation || if rd <> 0 then rd <> 4 else false
+        then
+          raise_s
+            [%message
+              "Failed"
+                (result : int)
+                (expectation : int)
+                (rd : int)
+                (offset : int)
+                (registers : int list)])
   ;;
 
-
-
-  let%expect_test "jalr"  =
+  let%expect_test "jalr" =
     let sim = create_sim "jalr" in
     let open Quickcheck.Generator in
     Quickcheck.test
@@ -364,34 +337,27 @@ let%expect_test "beq" =
          (Int.gen_incl (-2047) 2047)
          (Int.gen_incl (-2047) 2047))
       ~f:(fun (rd, rs1, rs1_initial, offset) ->
-          let pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs1
-                    ~immediate:rs1_initial
-                ; jalr ~rd ~rs1 ~offset
-                ]
-              sim
-          in
-          let result = pc land 0xFFFFFFFF in 
-          let expectation = (rs1_initial + offset) land 0xFFFFFFFE in
-          if result <> expectation
-          then
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  (expectation : int)
-                  (rd : int)
-                  (rs1 : int)
-                  (registers : int list)])
+        let pc, registers =
+          M.test_and_registers
+            ~instructions:
+              [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
+              ; jalr ~rd ~rs1 ~offset
+              ]
+            sim
+        in
+        let result = pc land 0xFFFFFFFF in
+        let expectation = (rs1_initial + offset) land 0xFFFFFFFE in
+        if result <> expectation
+        then
+          raise_s
+            [%message
+              "Failed"
+                (result : int)
+                (expectation : int)
+                (rd : int)
+                (rs1 : int)
+                (registers : int list)])
   ;;
-
-
-
 
   let%expect_test "op_imm" =
     let sim = create_sim "test_op_imm" in
