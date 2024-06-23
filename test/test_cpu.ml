@@ -359,6 +359,40 @@ struct
                 (registers : int list)])
   ;;
 
+  let%expect_test "sb/lb" =
+    let sim = create_sim "sb_lb" in
+    let open Quickcheck.Generator in
+    Quickcheck.test
+      ~trials:100
+      (tuple4
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl (-2047) 2047)
+         (Int.gen_incl (-2047) 2047))
+      ~f:(fun (rd, rs1, rs1_initial, offset) ->
+        let pc, registers =
+          M.test_and_registers
+            ~instructions:
+              [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
+              ; store ~funct3:Funct3.Store.Sb ~rs1:rs1 ~
+              ; assert false
+              ]
+            sim
+        in
+        let result = pc land 0xFFFFFFFF in
+        let expectation = (rs1_initial + offset) land 0xFFFFFFFE in
+        if result <> expectation
+        then
+          raise_s
+            [%message
+              "Failed"
+                (result : int)
+                (expectation : int)
+                (rd : int)
+                (rs1 : int)
+                (registers : int list)])
+  ;;
+
   let%expect_test "op_imm" =
     let sim = create_sim "test_op_imm" in
     test
