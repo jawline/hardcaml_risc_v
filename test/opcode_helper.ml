@@ -15,6 +15,24 @@ let assemble_s_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
   concat_msb [ sel_top immediate 7; rs2; rs1; funct3; sel_bottom immediate 5; opcode ]
 ;;
 
+let assemble_j_type ~opcode ~rd ~immediate =
+  concat_msb
+    [ bit immediate 19
+    ; select immediate 10 1
+    ; bit immediate 11
+    ; select immediate 19 12
+    ; rd
+    ; opcode
+    ]
+;;
+
+let jal ~rd ~offset =
+  assemble_j_type
+    ~opcode:(Bits.of_int ~width:7 Opcodes.jal)
+    ~rd:(Bits.of_int ~width:5 rd)
+    ~immediate:(Bits.of_int ~width:20 offset)
+;;
+
 let jalr ~rd ~rs1 ~offset =
   assemble_i_type
     ~opcode:(Bits.of_int ~width:7 Opcodes.jalr)

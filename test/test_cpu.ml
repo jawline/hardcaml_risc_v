@@ -320,6 +320,39 @@ let%expect_test "beq" =
   ;;
 
 
+  let%expect_test "jal"  =
+    let sim = create_sim "jal" in
+    let open Quickcheck.Generator in
+    Quickcheck.test
+      ~trials:100
+      (tuple2
+         (Int.gen_incl 1 31)
+         (Int.gen_incl (-65536) 65536))
+      ~f:(fun (rd, offset) ->
+          let pc, registers =
+            M.test_and_registers
+              ~instructions:
+                [ jal ~rd ~offset
+                ]
+              sim
+          in
+          let result = pc land 0xFFFFFFFF in 
+          let rd = List.nth_exn registers rd  in
+          let expectation = offset land 0xFFFFFFFE in
+          if (result <> expectation) || (if rd <> 0 then (rd <> 4) else false)
+          then
+            raise_s
+              [%message
+                "Failed"
+                  (result : int)
+                  (expectation : int)
+                  (rd : int)
+                  (offset : int)
+                  (registers : int list)])
+  ;;
+
+
+
   let%expect_test "jalr"  =
     let sim = create_sim "jalr" in
     let open Quickcheck.Generator in
@@ -344,7 +377,7 @@ let%expect_test "beq" =
               sim
           in
           let result = pc land 0xFFFFFFFF in 
-          let expectation = (rs1_initial + offset) land 0xFFFFFFFF in
+          let expectation = (rs1_initial + offset) land 0xFFFFFFFE in
           if result <> expectation
           then
             raise_s
