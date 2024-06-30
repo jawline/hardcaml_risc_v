@@ -42,7 +42,7 @@ let assemble_j_type ~opcode ~rd ~immediate =
 let load ~funct3 ~rs1 ~rd ~immediate =
   assemble_i_type
     ~opcode:(Bits.of_int ~width:7 Opcodes.load)
-    ~funct3:(Bits.of_int ~width:3 funct3)
+    ~funct3:(Bits.of_int ~width:3 (Funct3.Load.to_int funct3))
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rd:(Bits.of_int ~width:5 rd)
     ~immediate:(Bits.of_int ~width:12 immediate)
@@ -51,7 +51,7 @@ let load ~funct3 ~rs1 ~rd ~immediate =
 let store ~funct3 ~rs1 ~rs2 ~immediate =
   assemble_s_type
     ~opcode:(Bits.of_int ~width:7 Opcodes.store)
-    ~funct3:(Bits.of_int ~width:3 funct3)
+    ~funct3:(Bits.of_int ~width:3 (Funct3.Store.to_int funct3))
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rs2:(Bits.of_int ~width:5 rs2)
     ~immediate:(Bits.of_int ~width:12 immediate)

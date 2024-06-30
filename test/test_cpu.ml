@@ -364,17 +364,20 @@ struct
     let open Quickcheck.Generator in
     Quickcheck.test
       ~trials:100
-      (tuple4
+      (tuple6
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
+         (Int.gen_incl 1 31)
+         (Int.gen_incl 0 2047)
          (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-2047) 2047))
-      ~f:(fun (rd, rs1, rs1_initial, offset) ->
+         (Int.gen_incl 0 2047))
+      ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial, offset) ->
         let pc, registers =
           M.test_and_registers
             ~instructions:
               [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
-              ; store ~funct3:Funct3.Store.Sb ~rs1:rs1 ~
+              ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs2 ~immediate:rs2_initial
+              ; store ~funct3:Funct3.Store.Sb ~rs1 ~rs2 ~immediate:offset
               ; assert false
               ]
             sim
