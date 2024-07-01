@@ -34,12 +34,19 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       Decoder.i_immediate ~width:register_width instruction -- "decoded_i_immediate"
     in
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
+    let is_ecall =
+      let system = Decoder.opcode instruction ==:. Opcodes.system in
+      let ecall =
+        Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
+      in
+      system &: ecall
+    in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction
     ; funct7 = Decoder.funct7 instruction
     ; rs1
     ; rs2
-    ; rd = Decoder.rd instruction
+    ; rd = mux2 is_ecall (of_int ~width:5 0) (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; i_immediate
     ; s_immediate

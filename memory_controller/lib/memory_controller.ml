@@ -82,7 +82,6 @@ struct
         reg_spec_no_clear
       -- "which_ch"
     in
-    let last_ch = reg reg_spec_no_clear which_ch -- "last_ch " in
     let which_ch_to_controller =
       if M.num_channels = 1
       then List.hd_exn ch_to_controller
@@ -104,11 +103,6 @@ struct
       (is_operation &: ~:illegal_operation) -- "is_operation_and_is_legal"
     in
     let is_write = which_ch_to_controller.data.write -- "is_write_operation" in
-    let was_operation =
-      (* We set valid to high when a read / write is completed. This will be on
-         the next cycle from acknowledgement. *)
-      is_operation |> reg reg_spec_no_clear
-    in
     let memory =
       Ram.create
         ~name:"main_memory_bram"
@@ -143,7 +137,8 @@ struct
     ; controller_to_ch =
         List.init
           ~f:(fun channel ->
-            { Rx_bus.Tx.valid = last_ch ==:. channel &: was_operation
+            { Rx_bus.Tx.valid =
+                reg reg_spec_no_clear (which_ch ==:. channel &: is_operation)
             ; data = { error = was_error; read_data }
             })
           M.num_channels

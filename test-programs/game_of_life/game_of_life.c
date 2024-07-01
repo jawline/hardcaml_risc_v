@@ -6,15 +6,16 @@
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
 // This function assumes that x5 - x7 are used as the registers
-void system_call(int imode, void* iptr, unsigned int ilength) {
+int system_call(int imode, void* iptr, unsigned int ilength) {
   register int mode asm("x5") = imode;
   register void* ptr asm("x6") = iptr;
   register unsigned int length asm("x7") = ilength;
   asm volatile ("ecall");
+  return mode;
 }
 
-void send_dma_l(char* msg, int len) {
-  system_call(0, msg, len);
+int send_dma_l(char* msg, int len) {
+  return system_call(0, msg, len);
 }
 
 // Used when expanding the bitvector into chars 
@@ -99,12 +100,12 @@ void expand_row(char* dst, char* buffer, int y) {
 void send_rows(char* buffer) {
   for (int i = 0; i < HEIGHT; i++) {
     expand_row(ROW_BUFFER, buffer, i);
-    send_dma_l(ROW_BUFFER, WIDTH);
+    while (!send_dma_l(ROW_BUFFER, WIDTH)) {}
   }
 }
 
 void c_start() {
-  send_dma_l("Starting up", 11);
+  while (!send_dma_l("Starting up", 11)) {}
   char* current = BUFFER1;
   char* next = BUFFER2;
 

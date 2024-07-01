@@ -497,7 +497,8 @@ struct
                     ~rd:rs2
                     ~immediate:rs2_initial
                 ; store ~funct3:Funct3.Store.Sw ~rs1 ~rs2 ~immediate:offset
-                ; (* TODO: Add Load tests that are sign extended. *) load ~funct3:Funct3.Load.Lw ~rd ~rs1 ~immediate:offset
+                ; (* TODO: Add Load tests that are sign extended. *)
+                  load ~funct3:Funct3.Load.Lw ~rd ~rs1 ~immediate:offset
                 ]
               sim
           in
@@ -519,7 +520,6 @@ struct
                   (registers : int list)]))
         else ())
   ;;
-
 
   let%expect_test "op_imm" =
     let sim = create_sim "test_op_imm" in
