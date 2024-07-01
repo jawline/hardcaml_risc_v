@@ -229,7 +229,6 @@ struct
 
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
-    ~enable
     ~clock
     ~clear
     ~memory_controller_to_hart
@@ -253,7 +252,7 @@ struct
         ; enable =
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            enable &: (decoded_instruction.opcode ==:. Opcodes.load)
+            decoded_instruction.is_load
         ; funct3 = decoded_instruction.funct3
         ; address = decoded_instruction.load_address
         ; memory_controller_to_hart
@@ -269,7 +268,6 @@ struct
 
   (** The store table loads a value from [rs1] and writes it to address rd *)
   let store_instruction
-    ~enable
     ~clock
     ~clear
     ~memory_controller_to_hart
@@ -288,7 +286,7 @@ struct
         ; enable =
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            enable &: (decoded_instruction.opcode ==:. Opcodes.store)
+            decoded_instruction.is_store
         ; funct3 = decoded_instruction.funct3
         ; destination = decoded_instruction.store_address
         ; value = decoded_instruction.rs2
@@ -312,15 +310,13 @@ struct
       ebreak. For ecall, the behaviour is delegated back to the user design
       via the is_ecall and ecall_transaction signals. *)
   let system_instruction
-    ~enable:_
     ~clock:_
     ~clear:_
     ~memory_controller_to_hart:_
     ~hart_to_memory_controller:_
     ~(registers : _ Registers.t)
-    ~is_ecall
     ~ecall_transaction
-    (_decoded_instruction : _ Decoded_instruction.t)
+    (decoded_instruction : _ Decoded_instruction.t)
     _scope
     =
     (* TODO: Support hardware registers *)
@@ -333,7 +329,10 @@ struct
       }
     in
     { Opcode_output.transaction =
-        Transaction.Of_signal.mux2 is_ecall ecall_transaction unsupported_increment_pc
+        Transaction.Of_signal.mux2
+          decoded_instruction.is_ecall
+          ecall_transaction
+          unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     }
@@ -373,14 +372,12 @@ struct
   end
 
   let instruction_table
-    ~enable
     ~clock
     ~clear
     ~memory_controller_to_hart
     ~hart_to_memory_controller
     ~registers
     ~decoded_instruction
-    ~is_ecall
     ~ecall_transaction
     scope
     =
@@ -409,7 +406,6 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.load
         (load_instruction
-           ~enable
            ~clock
            ~clear
            ~memory_controller_to_hart
@@ -420,7 +416,6 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.store
         (store_instruction
-           ~enable
            ~clock
            ~clear
            ~memory_controller_to_hart
@@ -431,13 +426,11 @@ struct
     ; Table_entry.create
         ~opcode:Opcodes.system
         (system_instruction
-           ~enable
            ~clock
            ~clear
            ~memory_controller_to_hart
            ~hart_to_memory_controller
            ~registers
-           ~is_ecall
            ~ecall_transaction
            decoded_instruction
            scope)
@@ -471,23 +464,14 @@ struct
            ~index_signal:decoded_instruction.rd.value
            ~value_signal:new_rd
     in
-    let is_ecall =
-      (current_state.is Executing
-       &: (decoded_instruction.opcode.value ==:. Opcodes.system)
-       &: (decoded_instruction.funct3.value -- "funct3"
-           ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
-      -- "is_ecall"
-    in
     let instruction_table =
       instruction_table
-        ~enable:(current_state.is Executing)
         ~clock:i.clock
         ~clear:i.clear
         ~memory_controller_to_hart:i.memory_controller_to_hart
         ~hart_to_memory_controller:i.hart_to_memory_controller
         ~decoded_instruction:(Decoded_instruction.Of_always.value decoded_instruction)
         ~registers:i.registers
-        ~is_ecall
         ~ecall_transaction:i.ecall_transaction
         scope
     in
@@ -528,6 +512,9 @@ struct
                             [ Transaction.Of_always.assign
                                 transaction
                                 { finished = vdd; new_pc; set_rd; new_rd; error }
+                            ; Decoded_instruction.Of_always.assign decoded_instruction
+                                (Decoded_instruction.Of_always.value decoded_instruction
+                                 |> Decoded_instruction.without_enables)
                             ; current_state.set_next Committing
                             ]
                         ])
@@ -541,6 +528,9 @@ struct
                          ~set_rd:transaction.set_rd.value
                          ~new_rd:transaction.new_rd.value
                        |> Registers.For_writeback.of_registers)
+                  ; Decoded_instruction.Of_always.assign
+                      decoded_instruction
+                      (Decoded_instruction.Of_signal.of_int 0)
                   ; current_state.set_next Decoding
                   ] )
               ]
@@ -553,7 +543,7 @@ struct
     ; finished = current_state.is Committing
     ; new_registers = Registers.For_writeback.Of_always.value new_registers
     ; error = transaction.error.value
-    ; is_ecall
+    ; is_ecall = decoded_instruction.is_ecall.value
     }
   ;;
 

@@ -21,6 +21,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate : 'a [@bits register_width]
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
+    ; is_ecall : 'a
+    ; is_store : 'a
+    ; is_load : 'a
     }
   [@@deriving sexp_of, hardcaml ~rtlmangle:true]
 
@@ -55,6 +58,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction
     ; load_address = rs1 +: i_immediate
     ; store_address = rs1 +: s_immediate
+    ; is_ecall
+    ; is_store = Decoder.opcode instruction ==:. Opcodes.store
+    ; is_load = Decoder.opcode instruction ==:. Opcodes.load
     }
   ;;
+
+  let without_enables t = { t with is_ecall = gnd; is_store = gnd; is_load = gnd }
 end
