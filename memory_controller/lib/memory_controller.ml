@@ -31,8 +31,8 @@ struct
 
   module Tx_data = struct
     type 'a t =
-      { address : 'a [@bits M.address_width]
-      ; write : 'a
+      { write : 'a
+      ; address : 'a [@bits M.address_width]
       ; write_data : 'a [@bits M.data_bus_width]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
@@ -72,15 +72,38 @@ struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:true]
   end
 
-  let create scope ({ clock; clear = _; ch_to_controller; controller_to_ch = _ } : _ I.t) =
-    let ( -- ) = Scope.naming scope in
+  let rotate n xs = List.(concat [ drop xs n; take xs n ])
+
+  let round_robin_priority_select ~clock ~ch_to_controller =
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let which_ch =
+    let round_robin =
       reg_fb
         ~width:(Signal.num_bits_to_represent (M.num_channels - 1))
         ~f:(mod_counter ~max:(M.num_channels - 1))
         reg_spec_no_clear
       -- "which_ch"
+    in
+    let channels =
+      List.mapi
+        ~f:(fun (ch : int) (t : Signal.t Tx_bus.Tx.t) : Signal.t With_valid.t ->
+          { With_valid.valid = t.valid
+          ; value = of_int ~width:(num_bits_to_represent (M.num_channels - 1)) ch
+          })
+        ch_to_controller
+    in
+    mux_init
+      ~f:(fun (ch : int) -> (rotate ch channels |> priority_select).value)
+      round_robin
+      M.num_channels
+  ;;
+
+  let create scope ({ clock; clear = _; ch_to_controller; controller_to_ch = _ } : _ I.t) =
+    let ( -- ) = Scope.naming scope in
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let which_ch =
+      if M.num_channels = 1
+      then zero 1
+      else round_robin_priority_select ~clock ~ch_to_controller
     in
     let which_ch_to_controller =
       if M.num_channels = 1

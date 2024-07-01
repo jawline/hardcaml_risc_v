@@ -9,7 +9,8 @@ module Make (M : sig
 struct
   module Tx_data = struct
     type 'a t =
-      { address : 'a [@bits M.address_width]
+      { read : 'a
+      ; address : 'a [@bits M.address_width]
       ; write : 'a
       ; write_data : 'a [@bits M.data_bus_width]
       }

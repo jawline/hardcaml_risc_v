@@ -99,7 +99,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                           { valid = vdd
                           ; data =
                               { address = aligned_address
-                              ; write = zero 1
+                              ; write = gnd
                               ; write_data = zero 32
                               }
                           }

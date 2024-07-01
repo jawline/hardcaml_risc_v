@@ -4,8 +4,8 @@ open Hardcaml_stream
 module type S = sig
   module Tx_data : sig
     type 'a t =
-      { address : 'a
-      ; write : 'a
+      { write : 'a
+      ; address : 'a
       ; write_data : 'a
       }
     [@@deriving sexp_of, hardcaml]

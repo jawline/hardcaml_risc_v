@@ -21,9 +21,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate : 'a [@bits register_width]
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
-    ; is_ecall : 'a
-    ; is_store : 'a
-    ; is_load : 'a
     }
   [@@deriving sexp_of, hardcaml ~rtlmangle:true]
 
@@ -31,12 +28,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
 
   let of_instruction instruction registers scope =
     let ( -- ) = Scope.naming scope in
-    let rs1 = select_register registers (Decoder.rs1 instruction) in
-    let rs2 = select_register registers (Decoder.rs2 instruction) in
-    let i_immediate =
-      Decoder.i_immediate ~width:register_width instruction -- "decoded_i_immediate"
-    in
-    let s_immediate = Decoder.s_immediate ~width:register_width instruction in
     let is_ecall =
       let system = Decoder.opcode instruction ==:. Opcodes.system in
       let ecall =
@@ -44,6 +35,12 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       in
       system &: ecall
     in
+    let rs1 = select_register registers (Decoder.rs1 instruction) in
+    let rs2 = select_register registers (Decoder.rs2 instruction) in
+    let i_immediate =
+      Decoder.i_immediate ~width:register_width instruction -- "decoded_i_immediate"
+    in
+    let s_immediate = Decoder.s_immediate ~width:register_width instruction in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction
     ; funct7 = Decoder.funct7 instruction
@@ -58,11 +55,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction
     ; load_address = rs1 +: i_immediate
     ; store_address = rs1 +: s_immediate
-    ; is_ecall
-    ; is_store = Decoder.opcode instruction ==:. Opcodes.store
-    ; is_load = Decoder.opcode instruction ==:. Opcodes.load
     }
   ;;
-
-  let without_enables t = { t with is_ecall = gnd; is_store = gnd; is_load = gnd }
 end

@@ -162,7 +162,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
         { valid = state.is Writing_word -- "data_out_valid"
         ; data =
             { address = current_address.value -- "data_out_address"
-            ; write = vdd
+            ; write = state.is Writing_word
             ; write_data = current_data.value -- "data_out"
             }
         }
