@@ -30,7 +30,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   end
 
   let create _scope (i : _ I.t) =
-    let should_fetch = i.hart_to_memory_controller.ready &: i.should_fetch in
+    let should_fetch = i.should_fetch in
     { O.memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 1
     ; hart_to_memory_controller =
         { Memory.Tx_bus.Tx.valid = should_fetch
