@@ -83,7 +83,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     in
     let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
     let funct3_is_error =
-      Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> zero 1) funct3
+      Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
       -- "funct3_is_error"
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in

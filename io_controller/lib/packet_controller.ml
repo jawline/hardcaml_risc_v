@@ -74,14 +74,12 @@ struct
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let rx_parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let parity_bit_matches =
-      if Config.include_parity_bit
-      then parity_bit.value ==: rx_parity_bit.value
-      else one 1
+      if Config.include_parity_bit then parity_bit.value ==: rx_parity_bit.value else vdd
     in
     let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let data_out_valid = Variable.wire ~default:(zero 1) in
-    let parity_error = Variable.wire ~default:(zero 1) in
+    let data_out_valid = Variable.wire ~default:gnd in
+    let parity_error = Variable.wire ~default:gnd in
     compile
       [ current_state.switch
           [ ( State.Waiting_for_start_bit

@@ -36,13 +36,13 @@ module Make (Hart_config : Hart_config_intf.S) = struct
               let error = funct7 >:. 1 in
               let is_subtract = select funct7 5 5 -- "is_subtract" in
               mux2 is_subtract (lhs -: rhs) (lhs +: rhs), error)
-            else lhs +: rhs, zero 1
-          | Slt -> uresize (lhs <+ rhs) 32, zero 1
-          | Sltu -> uresize (lhs <: rhs) 32, zero 1
-          | Sll -> Util.sll lhs rhs, zero 1
-          | Xor -> lhs ^: rhs, zero 1
-          | Or -> lhs |: rhs, zero 1
-          | And -> lhs &: rhs, zero 1
+            else lhs +: rhs, gnd
+          | Slt -> uresize (lhs <+ rhs) 32, gnd
+          | Sltu -> uresize (lhs <: rhs) 32, gnd
+          | Sll -> Util.sll lhs rhs, gnd
+          | Xor -> lhs ^: rhs, gnd
+          | Or -> lhs |: rhs, gnd
+          | And -> lhs &: rhs, gnd
           | Srl_or_sra ->
             let error = funct7 >:. 1 in
             (* TODO: Not sure if this is correct for SRA *)

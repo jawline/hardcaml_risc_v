@@ -134,7 +134,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let is_load_word = Util.is (module Funct3.Store) funct3 Funct3.Store.Sw in
     let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
     let funct3_is_error =
-      Util.switch (module Funct3.Store) ~if_not_found:vdd ~f:(fun _ -> zero 1) funct3
+      Util.switch (module Funct3.Store) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
       -- "funct3_is_error"
     in
     let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
@@ -145,7 +145,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
          with the desire write to produce the word to write back. *)
       Variable.reg ~width:register_width reg_spec_no_clear
     in
-    let store_finished = Variable.wire ~default:(zero 1) in
+    let store_finished = Variable.wire ~default:gnd in
     compile
       [ when_
           (enable &: ~:inputs_are_error)
@@ -164,7 +164,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                           { valid = vdd
                           ; data =
                               { address = aligned_address
-                              ; write = zero 1
+                              ; write = gnd
                               ; write_data = zero 32
                               }
                           }

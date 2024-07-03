@@ -63,8 +63,8 @@ module Make (C : Config_intf.S) = struct
     let current_state = State_machine.create (module State) reg_spec in
     (* When we are transmitting we hold our output at the value stored in a
        register. *)
-    let current_output_wire = Variable.wire ~default:(zero 1) in
-    let reset_switch_cycle = Variable.wire ~default:(zero 1) in
+    let current_output_wire = Variable.wire ~default:gnd in
+    let reset_switch_cycle = Variable.wire ~default:gnd in
     let current_output_reg = Variable.reg ~width:1 reg_spec_no_clear in
     let switch_cycle =
       switch_cycle ~reset_when:reset_switch_cycle.value reg_spec_no_clear

@@ -34,8 +34,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     { O.memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 1
     ; hart_to_memory_controller =
         { Memory.Tx_bus.Tx.valid = should_fetch
-        ; data =
-            { Memory.Tx_data.address = i.address; write = zero 1; write_data = zero 32 }
+        ; data = { Memory.Tx_data.address = i.address; write = gnd; write_data = zero 32 }
         }
     ; has_fetched =
         i.memory_controller_to_hart.valid &: ~:(i.memory_controller_to_hart.data.error)

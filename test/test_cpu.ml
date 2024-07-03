@@ -749,10 +749,10 @@ module With_manually_programmed_ram = Make (struct
     ;;
 
     let clear_registers ~(inputs : Bits.t ref Cpu_with_no_io_controller.I.t) sim =
-      inputs.clear := Bits.one 1;
+      inputs.clear := Bits.vdd;
       Cyclesim.cycle sim;
       Cyclesim.cycle sim;
-      inputs.clear := Bits.zero 1
+      inputs.clear := Bits.gnd
     ;;
 
     let test_and_registers ~instructions sim =
@@ -892,9 +892,9 @@ module With_dma_ram = Make (struct
     ;;
 
     let clear_registers ~(inputs : Bits.t ref With_transmitter.I.t) sim =
-      inputs.clear := Bits.one 1;
+      inputs.clear := Bits.vdd;
       Cyclesim.cycle sim;
-      inputs.clear := Bits.zero 1
+      inputs.clear := Bits.gnd
     ;;
 
     let send_bits sim whole_packet =

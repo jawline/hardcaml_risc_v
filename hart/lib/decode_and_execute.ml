@@ -154,7 +154,7 @@ struct
         { Transaction.finished = vdd
         ; set_rd = vdd
         ; new_rd = decoded_instruction.u_immediate
-        ; error = zero 1
+        ; error = gnd
         ; new_pc = registers.pc +:. 4
         }
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
@@ -173,7 +173,7 @@ struct
         { Transaction.finished = vdd
         ; set_rd = vdd
         ; new_rd = registers.pc +:. 4
-        ; error = zero 1
+        ; error = gnd
         ; new_pc = registers.pc +: decoded_instruction.u_immediate
         }
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
@@ -219,7 +219,7 @@ struct
         { Transaction.finished = vdd
         ; set_rd = vdd
         ; new_rd = zero register_width
-        ; error = zero 1
+        ; error = gnd
         ; new_pc = registers.pc +:. 4
         }
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
@@ -327,7 +327,7 @@ struct
       { Transaction.finished = vdd
       ; set_rd = gnd
       ; new_rd = zero 32
-      ; error = one 1
+      ; error = vdd
       ; new_pc = registers.pc +:. 4
       }
     in

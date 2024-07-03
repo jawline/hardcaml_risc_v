@@ -59,8 +59,8 @@ struct
            serial input bus"];
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
-    let should_write_packet_buffer = Variable.wire ~default:(zero 1) in
-    let reading_packet_buffer = Variable.wire ~default:(zero 1) in
+    let should_write_packet_buffer = Variable.wire ~default:gnd in
+    let reading_packet_buffer = Variable.wire ~default:gnd in
     let reading_length = Variable.reg ~width:16 reg_spec_no_clear in
     let which_length_packet = Variable.reg ~width:4 reg_spec_no_clear in
     let num_length_packets =

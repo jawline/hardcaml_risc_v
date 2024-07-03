@@ -39,7 +39,7 @@ let s_immediate ~width t =
     (8-11) for imm(1:4), bits 25-30 for imm(5:10), bit 7 for imm(11) and bit 31
     for imm(12). imm(0) is always 0 (inclusive). *)
 let b_immediate ~width t =
-  concat_msb [ select t 31 31; select t 7 7; select t 30 25; select t 11 8; zero 1 ]
+  concat_msb [ select t 31 31; select t 7 7; select t 30 25; select t 11 8; gnd ]
   |> sign_extend ~width
 ;;
 
@@ -47,6 +47,6 @@ let b_immediate ~width t =
     bits 21-30 => imm(1:10), bit 20 => imm(11), bits 12-19 => imm(12:19), bits
     31 => imm(20) (The sign extend bit). *)
 let j_immediate ~width t =
-  concat_msb [ select t 31 31; select t 19 12; select t 20 20; select t 30 21; zero 1 ]
+  concat_msb [ select t 31 31; select t 19 12; select t 20 20; select t 30 21; gnd ]
   |> sign_extend ~width
 ;;

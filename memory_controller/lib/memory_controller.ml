@@ -102,7 +102,7 @@ struct
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let which_ch =
       if M.num_channels = 1
-      then zero 1
+      then gnd
       else round_robin_priority_select ~clock ~ch_to_controller
     in
     let which_ch_to_controller =

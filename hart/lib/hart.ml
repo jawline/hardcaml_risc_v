@@ -64,7 +64,7 @@ struct
     let registers = Registers.For_writeback.Of_always.reg reg_spec in
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
-    let error = Variable.wire ~default:(zero 1) in
+    let error = Variable.wire ~default:gnd in
     let fetched_instruction =
       Variable.reg
         ~width:(Register_width.bits Hart_config.register_width)

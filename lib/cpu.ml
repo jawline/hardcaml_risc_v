@@ -106,7 +106,7 @@ struct
           ; set_rd = vdd
           ; new_rd = uresize not_busy 32
           ; new_pc = hart0.registers.pc +:. 4
-          ; error = zero 1
+          ; error = gnd
           });
     (* Default the remainders *)
     List.zip_exn harts hart_ecall_transactions

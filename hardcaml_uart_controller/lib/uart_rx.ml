@@ -80,8 +80,8 @@ module Make (C : Config_intf.S) = struct
     in
     let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let data_out_valid = Variable.wire ~default:(zero 1) in
-    let parity_error = Variable.wire ~default:(zero 1) in
+    let data_out_valid = Variable.wire ~default:gnd in
+    let parity_error = Variable.wire ~default:gnd in
     compile
       [ current_state.switch
           [ ( State.Waiting_for_start_bit

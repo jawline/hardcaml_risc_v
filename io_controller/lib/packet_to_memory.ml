@@ -84,7 +84,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
     then raise_s [%message "BUG: Memory width must be a multiple of DMA stream input"];
     (* We assume that memory address width is data width here *)
     let num_cycle_to_buffer = Memory.data_bus_width / width in_.data.data in
-    let input_ready = Variable.wire ~default:(zero 1) in
+    let input_ready = Variable.wire ~default:gnd in
     let address_buffer =
       buffer_n_elements
       (* Reset when last so we don't get stuck with a mis-sized packet. *)

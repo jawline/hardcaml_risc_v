@@ -84,6 +84,7 @@ struct
             , [ when_ in_.data.last [ state.set_next Waiting_for_start_of_packet ] ] )
           ]
       ];
+    (* TODO: Register the router *)
     { O.in_ = { ready = selected_out_ready }
     ; outs =
         List.init

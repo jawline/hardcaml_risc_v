@@ -25,7 +25,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   end
 
   let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; b_immediate } : _ I.t) =
-    let branch_when ~f = mux2 (f lhs rhs) (pc +: b_immediate) (pc +:. 4), zero 1 in
+    let branch_when ~f = mux2 (f lhs rhs) (pc +: b_immediate) (pc +:. 4), gnd in
     let new_pc, error =
       Util.switch2
         (module Funct3.Branch)

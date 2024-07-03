@@ -108,7 +108,7 @@ let test ~address ~funct3 sim =
     Cyclesim.outputs ~clock_edge:Side.Before sim
   in
   let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
-  inputs.enable := of_int ~width:1 1;
+  inputs.enable := Bits.vdd;
   inputs.address := of_int ~width:32 address;
   inputs.funct3 := of_int ~width:3 funct3;
   let rec loop_until_finished max =

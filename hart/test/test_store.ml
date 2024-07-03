@@ -125,7 +125,7 @@ let test ~destination ~value ~funct3 sim =
        Cyclesim.outputs ~clock_edge:Side.Before sim
      in
      let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
-     inputs.enable := of_int ~width:1 1;
+     inputs.enable := Bits.vdd;
      inputs.destination := of_int ~width:32 destination;
      inputs.value := of_int ~width:32 value;
      inputs.funct3 := of_int ~width:3 funct3;
