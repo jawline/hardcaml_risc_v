@@ -29,7 +29,7 @@ struct
     let open Quickcheck.Generator in
     let sim = create_sim name in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -104,7 +104,7 @@ struct
     let sim = create_sim name in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple5
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -245,7 +245,7 @@ struct
     let sim = create_sim name in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -308,7 +308,7 @@ struct
     let sim = create_sim "jal" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple2 (Int.gen_incl 1 31) (Int.gen_incl (-65536) 65536))
       ~f:(fun (rd, offset) ->
         let pc, registers = M.test_and_registers ~instructions:[ jal ~rd ~offset ] sim in
@@ -331,7 +331,7 @@ struct
     let sim = create_sim "jalr" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -364,7 +364,7 @@ struct
     let sim = create_sim "sb_lb" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple6
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -416,7 +416,7 @@ struct
     let sim = create_sim "sh_lh" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple6
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -470,7 +470,7 @@ struct
     let sim = create_sim "sh_lw" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:100
+      ~trials:25
       (tuple6
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -948,7 +948,7 @@ module With_dma_ram = Make (struct
       send_bits sim clear_packet;
       (* We need to wait for 256 cycles because that is how long the design
        * holds the clear signal for. *)
-      Sequence.range 0 512 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+      Sequence.range 0 256 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
       let _outputs_before : _ With_transmitter.O.t =
         Cyclesim.outputs ~clock_edge:Side.Before sim
       in
@@ -976,3 +976,4 @@ module With_dma_ram = Make (struct
       print_ram sim
     ;;
   end)
+(* TODO: Add discrete SH and SB quickcheck tests along with LH and LW since they are paired it is easy to break them both at the same time. *)

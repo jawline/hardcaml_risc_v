@@ -30,7 +30,7 @@ struct
       ; registers : 'a Registers.t
       ; ecall_transaction : 'a Transaction.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -42,7 +42,7 @@ struct
       ; error : 'a
       ; is_ecall : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let op_imm_instructions
@@ -320,20 +320,21 @@ struct
     ~ecall_transaction
     ~(enables : _ Enables.t)
     (_decoded_instruction : _ Decoded_instruction.t)
-    _scope
+    scope
     =
+    let ( -- ) = Scope.naming scope in
     (* TODO: Support hardware registers *)
     let unsupported_increment_pc =
       { Transaction.finished = vdd
-      ; set_rd = gnd
-      ; new_rd = zero 32
+      ; set_rd = vdd
+      ; new_rd = one 32
       ; error = vdd
       ; new_pc = registers.pc +:. 4
       }
     in
     { Opcode_output.transaction =
         Transaction.Of_signal.mux2
-          enables.is_ecall
+          (enables.is_ecall -- "is_ecall")
           ecall_transaction
           unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
@@ -469,7 +470,7 @@ struct
       Registers.set_pc i.registers new_pc
       |> Registers.assign_when
            ~when_:set_rd
-           ~index_signal:decoded_instruction.rd.value
+           ~index_signal:(decoded_instruction.rd.value -- "t$rd")
            ~value_signal:new_rd
     in
     let instruction_table =
@@ -484,6 +485,7 @@ struct
         ~ecall_transaction:i.ecall_transaction
         scope
     in
+    let decoded_opcode = decoded_instruction.opcode.value -- "opcode" in
     compile
       [ when_
           i.enable
@@ -512,7 +514,7 @@ struct
                         }
                       ->
                       when_
-                        (decoded_instruction.opcode.value -- "opcode" ==:. opcode)
+                        (decoded_opcode ==:. opcode)
                         [ Memory.Rx_bus.Rx.Of_always.assign
                             memory_controller_to_hart
                             mem_ctrl_to_op
@@ -536,9 +538,9 @@ struct
                 , [ Registers.For_writeback.Of_always.assign
                       new_registers
                       (commit_transaction
-                         ~new_pc:transaction.new_pc.value
-                         ~set_rd:transaction.set_rd.value
-                         ~new_rd:transaction.new_rd.value
+                         ~new_pc:(transaction.new_pc.value -- "t$new_pc")
+                         ~set_rd:(transaction.set_rd.value -- "t$set_rd")
+                         ~new_rd:(transaction.new_rd.value -- "t$new_rd")
                        |> Registers.For_writeback.of_registers)
                   ; Decoded_instruction.Of_always.assign
                       decoded_instruction

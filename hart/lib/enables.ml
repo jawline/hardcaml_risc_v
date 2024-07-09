@@ -7,7 +7,7 @@ type 'a t =
   ; is_store : 'a
   ; is_load : 'a
   }
-[@@deriving sexp_of, hardcaml ~rtlmangle:true]
+[@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
 
 let of_instruction instruction _registers _scope =
   let is_ecall =

@@ -37,7 +37,7 @@ struct
            they should hold ecall finished low, do the work, then raise finished. *)
         ecall_transaction : 'a Transaction.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -51,7 +51,7 @@ struct
       ; (* Set high when the hart is in an ecall and is delagating behaviour to
            the user design. *) is_ecall : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let create scope (i : _ I.t) =

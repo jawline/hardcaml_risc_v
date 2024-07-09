@@ -10,6 +10,8 @@ module Make
     (Memory_config : Cpu_intf.Memory_config)
     (General_config : Cpu_intf.Config) =
 struct
+  let register_width = Register_width.bits Hart_config.register_width
+
   let system_non_hart_memory_channels =
     match General_config.include_io_controller with
     | No_io_controller -> 0
@@ -40,7 +42,7 @@ struct
       ; (* ignored if include_io_controller = Uart_io. *)
         uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -53,13 +55,13 @@ struct
       ; stop_bit_unstable : 'a
       ; serial_to_packet_valid : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let default_transaction (hart : _ Hart.O.t) =
     { Transaction.finished = vdd
     ; set_rd = vdd
-    ; new_rd = zero 32
+    ; new_rd = zero register_width
     ; new_pc = hart.registers.pc +:. 4
     ; error = gnd
     }
@@ -78,11 +80,13 @@ struct
     (harts : _ Hart.O.t list)
     hart_ecall_transactions
     { Dma.tx_input; tx_busy; _ }
+    scope
     =
     (* For now we only allow Hart0 to do IO. This isn't
        necessary, but it makes it easier to stop them both
        issuing commands at the same time and entering a weird
        state. *)
+    let ( -- ) = Scope.naming scope in
     let hart0 = List.nth_exn harts 0 in
     let should_do_dma =
       hart0.is_ecall &: (List.nth_exn hart0.registers.general 5 ==:. 0)
@@ -92,11 +96,12 @@ struct
       tx_input
       <== { valid = should_do_dma &: not_busy
           ; value =
-              { address = List.nth_exn hart0.registers.general 6
+              { address = List.nth_exn hart0.registers.general 6 -- "dma$address"
               ; length =
                   uresize
                     (List.nth_exn hart0.registers.general 7)
                     (width tx_input.value.length)
+                  -- "dma$length"
               }
           });
     (* Assign the Hart0 transaction *)
@@ -104,7 +109,7 @@ struct
       List.hd_exn hart_ecall_transactions
       <== { Transaction.finished = vdd
           ; set_rd = vdd
-          ; new_rd = uresize not_busy 32
+          ; new_rd = uresize not_busy register_width
           ; new_pc = hart0.registers.pc +:. 4
           ; error = gnd
           });
@@ -114,11 +119,11 @@ struct
     |> List.iter ~f:assign_non_io_ecall
   ;;
 
-  let assign_ecalls maybe_dma_controller harts hart_ecall_transactions =
+  let assign_ecalls maybe_dma_controller harts hart_ecall_transactions scope =
     (* If a DMA controller is in the design then wire up DMA related ecalls
        otherwise do not include any ecalls *)
     match maybe_dma_controller with
-    | Some config -> assign_dma_io_ecall harts hart_ecall_transactions config
+    | Some config -> assign_dma_io_ecall harts hart_ecall_transactions config scope
     | None -> assign_empty_ecalls harts hart_ecall_transactions
   ;;
 
@@ -186,7 +191,7 @@ struct
           hart)
         General_config.num_harts
     in
-    assign_ecalls maybe_dma_controller harts hart_ecall_transactions;
+    assign_ecalls maybe_dma_controller harts hart_ecall_transactions scope;
     compile
       ([ List.map
            ~f:(fun (hart, ch_to_controller_per_hart) ->

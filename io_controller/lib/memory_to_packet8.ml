@@ -42,7 +42,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
       ; memory : 'a Memory.Tx_bus.Rx.t
       ; memory_response : 'a Memory.Rx_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -53,7 +53,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
       ; memory : 'a Memory.Tx_bus.Tx.t [@rtlprefix "memory$"]
       ; memory_response : 'a Memory.Rx_bus.Rx.t [@rtlprefix "mem_response$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct

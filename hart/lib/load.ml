@@ -23,7 +23,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -36,7 +36,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
@@ -120,10 +120,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         (let alignment_bits = (address &:. 0b11) -- "alignment_bits" in
          let full_word = memory_controller_to_hart.data.read_data -- "full_word" in
          let half_word =
-           mux2 (alignment_bits ==:. 0) (sel_top full_word 16) (sel_bottom full_word 16)
-           -- "half_word"
+           mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word) -- "half_word"
          in
-         let byte = mux alignment_bits (split_msb ~part_width:8 full_word) -- "byte" in
+         let byte = mux alignment_bits (split_lsb ~part_width:8 full_word) -- "byte" in
          Util.switch
            (module Funct3.Load)
            ~if_not_found:(zero register_width)
