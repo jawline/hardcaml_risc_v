@@ -88,7 +88,7 @@ struct
         ; clear = i.clear
         ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
-        ; enable = current_state.is State.Decode_and_execute
+        ; process_instruction = current_state.is State.Decode_and_execute
         ; instruction = fetched_instruction.value
         ; registers =
             Registers.For_writeback.Of_always.value registers
