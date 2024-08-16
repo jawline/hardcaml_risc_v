@@ -751,16 +751,7 @@ module With_manually_programmed_ram = Make (struct
     let test_and_registers ~instructions sim =
       let sim, _, _ = sim in
       (* Initialize the main memory to some known values for testing. *)
-      let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-      Array.iter
-        ~f:(fun tgt -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:8 0) ~dst:tgt)
-        initial_ram;
-      Array.iteri
-        ~f:(fun index tgt ->
-          match List.nth instructions index with
-          | Some instruction -> Bits.Mutable.copy_bits ~src:instruction ~dst:tgt
-          | None -> ())
-        initial_ram;
+      Test_util.program_ram sim (Array.of_list instructions);
       let inputs : _ Cpu_with_no_io_controller.I.t = Cyclesim.inputs sim in
       let _outputs_before : _ Cpu_with_no_io_controller.O.t =
         Cyclesim.outputs ~clock_edge:Side.Before sim
@@ -784,10 +775,12 @@ module With_manually_programmed_ram = Make (struct
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
     ;;
 
+    let print_ram (sim, _, _) = Test_util.print_ram sim
+
     let test ~instructions sim =
       let pc, registers = test_and_registers ~instructions sim in
       print_s [%message "" ~_:(pc : int) ~_:(registers : int list)];
-      Util.print_ram sim
+      print_ram sim
     ;;
   end)
 
@@ -877,12 +870,7 @@ module With_dma_ram = Make (struct
       else ()
     ;;
 
-    let print_ram (sim, _, _) =
-      let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-      Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut |> Bits.to_int) ram
-      |> Array.iter ~f:(fun v -> printf "%02x " v);
-      printf "\n"
-    ;;
+    let print_ram (sim, _, _) = Test_util.print_ram sim
 
     let clear_registers ~(inputs : Bits.t ref With_transmitter.I.t) sim =
       inputs.clear := Bits.vdd;
@@ -922,11 +910,6 @@ module With_dma_ram = Make (struct
     let test_and_registers ~instructions sim =
       let sim, _, _ = sim in
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
-      (* Initialize the main memory to some known values for testing. *)
-      let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-      Array.iter
-        ~f:(fun tgt -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:8 0) ~dst:tgt)
-        initial_ram;
       (* Send a clear signal to initialize any CPU IO controller state back to
        * default so we're ready to receive. *)
       clear_registers ~inputs sim;
