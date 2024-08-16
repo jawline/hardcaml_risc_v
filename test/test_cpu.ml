@@ -741,13 +741,6 @@ module With_manually_programmed_ram = Make (struct
       else ()
     ;;
 
-    let print_ram (sim, _, _) =
-      let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-      Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut |> Bits.to_int) ram
-      |> Array.iter ~f:(fun v -> printf "%02x " v);
-      printf "\n"
-    ;;
-
     let clear_registers ~(inputs : Bits.t ref Cpu_with_no_io_controller.I.t) sim =
       inputs.clear := Bits.vdd;
       Cyclesim.cycle sim;
@@ -794,7 +787,7 @@ module With_manually_programmed_ram = Make (struct
     let test ~instructions sim =
       let pc, registers = test_and_registers ~instructions sim in
       print_s [%message "" ~_:(pc : int) ~_:(registers : int list)];
-      print_ram sim
+      Util.print_ram sim
     ;;
   end)
 
