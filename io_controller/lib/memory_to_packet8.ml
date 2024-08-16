@@ -142,13 +142,13 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                       [ (* If the address was unaligned, set which_step to the
                            offset here to align it. *)
                         which_step
-                        <-- (uresize address.value (width alignment_mask)
+                        <-- (uresize ~width:(width alignment_mask) address.value 
                              &: alignment_mask)
                       ; (* Align the address we read. Which step will
                            make sure we do not write the lower bytes. *)
                         address
                         <-- (address.value
-                             &: ~:(uresize alignment_mask (width address.value)))
+                             &: ~:(uresize ~width:(width address.value) alignment_mask ))
                       ; state.set_next Reading_data
                       ]
                   ]

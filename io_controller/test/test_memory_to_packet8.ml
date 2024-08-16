@@ -8,7 +8,7 @@ open! Bits
 let debug = false
 
 let write_packet_to_memory ~packet sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+  let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
   let packet = String.to_array packet in
   for i = 0 to Array.length packet / 4 do
     let m = Array.get ram i in

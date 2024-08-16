@@ -95,8 +95,9 @@ struct
               { address = List.nth_exn hart0.registers.general 6
               ; length =
                   uresize
+
+                    ~width:(width tx_input.value.length)
                     (List.nth_exn hart0.registers.general 7)
-                    (width tx_input.value.length)
               }
           });
     (* Assign the Hart0 transaction *)
@@ -104,7 +105,7 @@ struct
       List.hd_exn hart_ecall_transactions
       <== { Transaction.finished = vdd
           ; set_rd = vdd
-          ; new_rd = uresize not_busy 32
+          ; new_rd = uresize ~width:32 not_busy 
           ; new_pc = hart0.registers.pc +:. 4
           ; error = gnd
           });

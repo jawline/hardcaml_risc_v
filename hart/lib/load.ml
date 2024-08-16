@@ -75,8 +75,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         (module Funct3.Load)
         ~if_not_found:(zero 2)
         ~f:(function
-          | Funct3.Load.Lw -> uresize address 2 &:. 0b11
-          | Lh | Lhu -> uresize address 2 &:. 0b1
+          | Funct3.Load.Lw -> sel_bottom ~width:2 address &:. 0b11
+          | Lh | Lhu -> sel_bottom ~width:2 address &:. 0b1
           | Lb | Lbu -> zero 2)
         funct3
       -- "unaligned_bits"
@@ -120,7 +120,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         (let alignment_bits = (address &:. 0b11) -- "alignment_bits" in
          let full_word = memory_controller_to_hart.data.read_data -- "full_word" in
          let half_word =
-           mux2 (alignment_bits ==:. 0) (sel_top full_word 16) (sel_bottom full_word 16)
+           mux2 (alignment_bits ==:. 0) (sel_top ~width:16 full_word ) (sel_bottom ~width:16 full_word )
            -- "half_word"
          in
          let byte = mux alignment_bits (split_msb ~part_width:8 full_word) -- "byte" in
@@ -130,9 +130,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            ~f:(function
              | Funct3.Load.Lw -> memory_controller_to_hart.data.read_data
              | Lh -> Decoder.sign_extend ~width:register_width half_word
-             | Lhu -> uresize half_word register_width
+             | Lhu -> uresize ~width:register_width half_word 
              | Lb -> Decoder.sign_extend ~width:register_width byte
-             | Lbu -> uresize byte register_width)
+             | Lbu -> uresize ~width:register_width byte )
            funct3)
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
     ; finished = enable &: (is_unaligned |: memory_controller_to_hart.valid)

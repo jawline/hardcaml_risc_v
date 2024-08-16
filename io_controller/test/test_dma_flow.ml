@@ -16,7 +16,7 @@ module Memory_controller = Memory_controller.Make (struct
   end)
 
 let print_ram sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
+  let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
   let as_str =
     Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut) ram
     |> Array.to_list

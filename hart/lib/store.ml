@@ -77,7 +77,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               then zero register_width
               else
                 (let alignment = alignment / 2 in
-                 let write_word = sel_bottom new_word 16 in
+                 let write_word = sel_bottom ~width:16 new_word in
                  let parts = split_msb ~part_width:16 old_word in
                  concat_msb
                    (List.take parts alignment
@@ -86,12 +86,12 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                 -- [%string "sb_%{alignment#Int}"]
             | Sb ->
               (* We don't have any alignment requirements for byte writes. *)
-              let byte = sel_bottom new_word 8 in
+              let byte = sel_bottom ~width:8 new_word in
               let parts = split_msb ~part_width:8 old_word in
               concat_msb
                 (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
           funct3)
-      (uresize destination (Int.floor_log2 (register_width / 8)) -- "unaligned_portion")
+      (uresize ~width:(Int.floor_log2 (register_width / 8)) destination  -- "unaligned_portion")
       (register_width / 8)
   ;;
 
@@ -125,8 +125,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         (module Funct3.Store)
         ~if_not_found:(zero 2)
         ~f:(function
-          | Funct3.Store.Sw -> uresize destination 2 &:. 0b11
-          | Sh -> uresize destination 2 &:. 0b1
+          | Funct3.Store.Sw -> uresize ~width:2 destination &:. 0b11
+          | Sh -> uresize ~width:2 destination &:. 0b1
           | Sb -> zero 2)
         funct3
       -- "unaligned_bits"

@@ -113,7 +113,7 @@ struct
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
     (* We truncate the address by unaligned bits to get the address in words. *)
     let real_address =
-      srl which_ch_to_controller.data.address unaligned_bits -- "real_address"
+      srl ~by:unaligned_bits which_ch_to_controller.data.address -- "real_address"
     in
     let is_operation = which_ch_to_controller.valid -- "is_operation" in
     let illegal_operation =

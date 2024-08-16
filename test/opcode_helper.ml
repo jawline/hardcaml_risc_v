@@ -12,28 +12,28 @@ let assemble_r_type ~opcode ~funct3 ~funct7 ~rs1 ~rs2 ~rd =
 ;;
 
 let assemble_s_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
-  concat_msb [ sel_top immediate 7; rs2; rs1; funct3; sel_bottom immediate 5; opcode ]
+  concat_msb [ sel_top ~width:7 immediate ; rs2; rs1; funct3; sel_bottom ~width:5 immediate ; opcode ]
 ;;
 
 let assemble_b_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
   concat_msb
-    [ bit immediate 12
-    ; select immediate 10 5
+    [ immediate.:(12)
+    ; immediate.:[10,5]
     ; rs2
     ; rs1
     ; funct3
-    ; select immediate 4 1
-    ; bit immediate 11
+    ; immediate.:[4,1]
+    ; immediate.:(11)
     ; opcode
     ]
 ;;
 
 let assemble_j_type ~opcode ~rd ~immediate =
   concat_msb
-    [ bit immediate 19
-    ; select immediate 10 1
-    ; bit immediate 11
-    ; select immediate 19 12
+    [ immediate.:(19)
+    ; immediate.:[10,1]
+    ; immediate.:(11)
+    ; immediate.:[19,12]
     ; rd
     ; opcode
     ]
