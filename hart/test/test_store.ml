@@ -1,5 +1,6 @@
 open! Core
 open Hardcaml
+module Test_util = Util
 open Hardcaml_waveterm
 open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
@@ -105,20 +106,11 @@ let create_sim () =
        (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
 ;;
 
-let print_ram sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut |> Bits.to_int) ram
-  |> Array.iter ~f:(fun v -> printf "%02x " v);
-  printf "\n"
-;;
-
 let test ~destination ~value ~funct3 sim =
   (* Initialize the main memory to some known values for testing. *)
-  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.iter
-    ~f:(fun mut ->
-      Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:32 0xFFFFFFFF) ~dst:mut)
-    initial_ram;
+  Test_util.program_ram
+    sim
+    (Array.init ~f:(Fn.const (Bits.of_int ~width:64 0xFFFFFFFF)) 1024);
   (try
      let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
      let outputs_before : _ Test_machine.O.t =
@@ -140,7 +132,7 @@ let test ~destination ~value ~funct3 sim =
      print_s [%message (outputs : Bits.t ref Test_machine.O.t)]
    with
    | _ -> print_s [%message "BUG: Timed out"]);
-  print_ram sim
+  Test_util.print_ram sim
 ;;
 
 let%expect_test "lw" =

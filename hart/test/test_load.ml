@@ -1,5 +1,6 @@
 open! Core
 open Hardcaml
+module Test_util = Util
 open Hardcaml_waveterm
 open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
@@ -123,10 +124,7 @@ let test ~address ~funct3 sim =
 let%expect_test "lw" =
   let sim = create_sim () in
   (* Initialize the main memory to some known values for testing. *)
-  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.iteri
-    ~f:(fun i mut -> Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:32 (i + 1)) ~dst:mut)
-    initial_ram;
+  Test_util.program_ram sim (Array.init ~f:(fun i -> Bits.of_int ~width:32 (i + 1)) 1024);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
@@ -343,15 +341,13 @@ let%expect_test "lw" =
 let%expect_test "lh" =
   let sim = create_sim () in
   (* Initialize the main memory to some known values for testing. *)
-  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.iteri
-    ~f:(fun i mut ->
-      let i = i * 2 in
-      let test_value =
-        Bits.concat_msb [ Bits.of_int ~width:16 (i + 1); Bits.of_int ~width:16 (i + 2) ]
-      in
-      Bits.Mutable.copy_bits ~src:test_value ~dst:mut)
-    initial_ram;
+  Test_util.program_ram
+    sim
+    (Array.init
+       ~f:(fun i ->
+         let i = i * 2 in
+         Bits.concat_msb [ Bits.of_int ~width:16 (i + 1); Bits.of_int ~width:16 (i + 2) ])
+       1024);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
@@ -518,20 +514,18 @@ let%expect_test "lh" =
 let%expect_test "lb" =
   let sim = create_sim () in
   (* Initialize the main memory to some known values for testing. *)
-  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.iteri
-    ~f:(fun i mut ->
-      let i = i * 4 in
-      let test_value =
-        Bits.concat_msb
-          [ Bits.of_int ~width:8 (i + 1)
-          ; Bits.of_int ~width:8 (i + 2)
-          ; Bits.of_int ~width:8 (i + 3)
-          ; Bits.of_int ~width:8 (i + 4)
-          ]
-      in
-      Bits.Mutable.copy_bits ~src:test_value ~dst:mut)
-    initial_ram;
+  Test_util.program_ram
+    sim
+    (Array.init
+       ~f:(fun i ->
+         let i = i * 4 in
+         Bits.concat_msb
+           [ Bits.of_int ~width:8 (i + 1)
+           ; Bits.of_int ~width:8 (i + 2)
+           ; Bits.of_int ~width:8 (i + 3)
+           ; Bits.of_int ~width:8 (i + 4)
+           ])
+       1024);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with

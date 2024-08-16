@@ -15,18 +15,6 @@ module Memory_controller = Memory_controller.Make (struct
     let data_bus_width = 32
   end)
 
-let print_ram sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  let as_str =
-    Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut) ram
-    |> Array.to_list
-    |> List.map ~f:(fun t -> Bits.split_lsb ~part_width:8 t |> List.map ~f:Bits.to_char)
-    |> List.concat
-    |> String.of_char_list
-  in
-  print_s [%message "" ~_:(as_str : String.Hexdump.t)]
-;;
-
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
   =
   let all_inputs =
@@ -253,7 +241,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     all_inputs;
   loop_for 100;
   printf "Printing ram (not DMA response):\n";
-  print_ram sim;
+  Util.print_ram sim;
   printf "Doing a DMA read:\n";
   let issue_read ~address ~length =
     inputs.dma_out_enable := Bits.vdd;

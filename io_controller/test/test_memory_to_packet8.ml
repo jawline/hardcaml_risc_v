@@ -7,20 +7,6 @@ open! Bits
 
 let debug = false
 
-let write_packet_to_memory ~packet sim =
-  let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
-  let packet = String.to_array packet in
-  for i = 0 to Array.length packet / 4 do
-    let m = Array.get ram i in
-    let start = i * 4 in
-    let sel idx =
-      if start + idx < Array.length packet then packet.(start + idx) else '\x00'
-    in
-    let new_bits = List.init ~f:sel 4 |> List.map ~f:Bits.of_char |> Bits.concat_lsb in
-    Bits.Mutable.copy_bits ~src:new_bits ~dst:m
-  done
-;;
-
 let test ~name ~load_memory ~dma_address ~dma_length =
   let module Packet =
     Packet.Make (struct
@@ -101,7 +87,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   in
   let sim = create_sim () in
-  write_packet_to_memory ~packet:load_memory sim;
+  Util.write_packet_to_memory ~packet:load_memory sim;
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in

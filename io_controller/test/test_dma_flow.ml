@@ -16,10 +16,13 @@ module Memory_controller = Memory_controller.Make (struct
   end)
 
 let print_ram sim =
-  let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
+  let ram =
+    Cyclesim.lookup_mem_by_name sim "main_memory_bram"
+    |> Option.value_exn
+    |> Cyclesim.Memory.read_all
+  in
   let as_str =
-    Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut) ram
-    |> Array.to_list
+    Array.to_list ram
     |> List.map ~f:(fun t -> Bits.split_lsb ~part_width:8 t |> List.map ~f:Bits.to_char)
     |> List.concat
     |> String.of_char_list
