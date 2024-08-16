@@ -178,7 +178,7 @@ let%expect_test "lw" =
         ((valid 0)
          (data ((error 0) (read_data 11111111111111111111111111111111)))))
        (hart_to_memory_controller ((ready 1)))))
-     ababffff ffffffff ffffffff ffffffff |}];
+     ffffabab ffffffff ffffffff ffffffff |}];
   test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
@@ -188,7 +188,7 @@ let%expect_test "lw" =
         ((valid 0)
          (data ((error 0) (read_data 11111111111111111111111111111111)))))
        (hart_to_memory_controller ((ready 1)))))
-     ffffedab ffffffff ffffffff ffffffff |}];
+     edabffff ffffffff ffffffff ffffffff |}];
   (* Test unaligned Sh, we expect these to fail *)
   test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
@@ -220,7 +220,7 @@ let%expect_test "lw" =
         ((valid 0)
          (data ((error 0) (read_data 11111111111111111111111111111111)))))
        (hart_to_memory_controller ((ready 1)))))
-     aaffffff ffffffff ffffffff ffffffff |}];
+     ffffffaa ffffffff ffffffff ffffffff |}];
   test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
@@ -230,7 +230,7 @@ let%expect_test "lw" =
         ((valid 0)
          (data ((error 0) (read_data 11111111111111111111111111111111)))))
        (hart_to_memory_controller ((ready 1)))))
-     ffaaffff ffffffff ffffffff ffffffff |}];
+     ffffaaff ffffffff ffffffff ffffffff |}];
   test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
@@ -240,7 +240,7 @@ let%expect_test "lw" =
         ((valid 0)
          (data ((error 0) (read_data 11111111111111111111111111111111)))))
        (hart_to_memory_controller ((ready 1)))))
-     ffffaaff ffffffff ffffffff ffffffff |}];
+     ffaaffff ffffffff ffffffff ffffffff |}];
   test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
@@ -250,7 +250,7 @@ let%expect_test "lw" =
         ((valid 0)
          (data ((error 0) (read_data 11111111111111111111111111111111)))))
        (hart_to_memory_controller ((ready 1)))))
-     ffffffaa ffffffff ffffffff ffffffff |}];
+     aaffffff ffffffff ffffffff ffffffff |}];
   Waveform.expect
     ~serialize_to:"/tmp/test_store"
     ~display_width:150
@@ -300,7 +300,7 @@ let%expect_test "lw" =
     │memory_controller$││        ┌───────┐                               ┌───────┐                       ┌───────┐                                       │
     │                  ││────────┘       └───────────────────────────────┘       └───────────────────────┘       └───────────────────────────────────────│
     │                  ││────────┬───────┬───────────────────────────────┬───────┬───────────────────────┬───────┬───────────────────────────────────────│
-    │memory_controller$││ 000000.│DEADBE.│00000000                       │ABABFF.│00000000               │FFFFED.│00000000                               │
+    │memory_controller$││ 000000.│DEADBE.│00000000                       │FFFFAB.│00000000               │EDABFF.│00000000                               │
     │                  ││────────┴───────┴───────────────────────────────┴───────┴───────────────────────┴───────┴───────────────────────────────────────│
     │memory_controller$││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
@@ -333,12 +333,14 @@ let%expect_test "lw" =
     │memory_controller$││ 00000000                                                                                                                       │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │                  ││────────┬───────┬───────────────────────────────┬───────┬───────────────────────┬───────┬───────────────────────────────────────│
-    │memory_controller$││ 000000.│DEADBE.│00000000                       │ABABFF.│00000000               │FFFFED.│00000000                               │
+    │memory_controller$││ 000000.│DEADBE.│00000000                       │FFFFAB.│00000000               │EDABFF.│00000000                               │
     │                  ││────────┴───────┴───────────────────────────────┴───────┴───────────────────────┴───────┴───────────────────────────────────────│
     │memory_controller$││        ┌───────┐                               ┌───────┐                       ┌───────┐                                       │
     │                  ││────────┘       └───────────────────────────────┘       └───────────────────────┘       └───────────────────────────────────────│
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │memory_controller$││ 00000000                                                                                                                       │
+    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+    │memory_controller$││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │memory_controller$││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
@@ -355,8 +357,6 @@ let%expect_test "lw" =
     │store$i$clock     ││                                                                                                                                │
     │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
     │                  ││────────────────────────┬───────┬───────────────────────────────┬───────────────────────────────┬───────┬───────┬───────────────│
-    │store$i$destinatio││ 00000000               │000000.│00000000                       │00000002                       │000000.│000000.│00000000       │
-    │                  ││────────────────────────┴───────┴───────────────────────────────┴───────────────────────────────┴───────┴───────┴───────────────│
     └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    5bfc777f78d1c418aadfd7a9dfd2975b |}]
+    633189d38a210651f7ec632afc591f16 |}]
 ;;

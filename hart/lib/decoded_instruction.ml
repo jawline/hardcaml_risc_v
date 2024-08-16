@@ -22,7 +22,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
     }
-  [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+  [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
@@ -46,7 +46,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7 = Decoder.funct7 instruction
     ; rs1
     ; rs2
-    ; rd = mux2 is_ecall (of_int ~width:5 0) (Decoder.rd instruction)
+    ; rd = mux2 is_ecall (of_int ~width:5 5) (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; i_immediate
     ; s_immediate

@@ -25,12 +25,13 @@ struct
       ; clear : 'a
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-      ; enable : 'a
       ; instruction : 'a [@bits register_width]
       ; registers : 'a Registers.t
       ; ecall_transaction : 'a Transaction.t
+      ; process_instruction : 'a
+      (** Set high when decode and execute should process an instruction. *)
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -42,7 +43,7 @@ struct
       ; error : 'a
       ; is_ecall : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let op_imm_instructions
@@ -320,20 +321,21 @@ struct
     ~ecall_transaction
     ~(enables : _ Enables.t)
     (_decoded_instruction : _ Decoded_instruction.t)
-    _scope
+    scope
     =
+    let ( -- ) = Scope.naming scope in
     (* TODO: Support hardware registers *)
     let unsupported_increment_pc =
       { Transaction.finished = vdd
-      ; set_rd = gnd
-      ; new_rd = zero 32
+      ; set_rd = vdd
+      ; new_rd = one 32
       ; error = vdd
       ; new_pc = registers.pc +:. 4
       }
     in
     { Opcode_output.transaction =
         Transaction.Of_signal.mux2
-          enables.is_ecall
+          (enables.is_ecall -- "is_ecall")
           ecall_transaction
           unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
@@ -469,7 +471,7 @@ struct
       Registers.set_pc i.registers new_pc
       |> Registers.assign_when
            ~when_:set_rd
-           ~index_signal:decoded_instruction.rd.value
+           ~index_signal:(decoded_instruction.rd.value -- "t$rd")
            ~value_signal:new_rd
     in
     let instruction_table =
@@ -484,68 +486,67 @@ struct
         ~ecall_transaction:i.ecall_transaction
         scope
     in
+    let decoded_opcode = decoded_instruction.opcode.value -- "opcode" in
     compile
-      [ when_
-          i.enable
-          [ current_state.switch
-              [ ( State.Decoding
-                , [ Decoded_instruction.Of_always.assign
+      [ current_state.switch
+          [ ( State.Decoding
+            , [ when_
+                  i.process_instruction
+                  [ Decoded_instruction.Of_always.assign
                       decoded_instruction
                       (Decoded_instruction.of_instruction i.instruction i.registers scope)
                   ; Enables.Of_always.assign
                       enables
                       (Enables.of_instruction i.instruction i.registers scope)
                   ; current_state.set_next Executing
-                  ] )
-              ; ( State.Executing
-                , List.map
-                    ~f:
-                      (fun
-                        { Table_entry.finished
-                        ; opcode
-                        ; new_pc
-                        ; set_rd
-                        ; new_rd
-                        ; error
-                        ; hart_to_memory_controller = op_to_mem_ctrl
-                        ; memory_controller_to_hart = mem_ctrl_to_op
-                        }
-                      ->
-                      when_
-                        (decoded_instruction.opcode.value -- "opcode" ==:. opcode)
-                        [ Memory.Rx_bus.Rx.Of_always.assign
-                            memory_controller_to_hart
-                            mem_ctrl_to_op
-                        ; Memory.Tx_bus.Tx.Of_always.assign
-                            hart_to_memory_controller
-                            op_to_mem_ctrl
-                        ; when_
-                            finished
-                            [ Transaction.Of_always.assign
-                                transaction
-                                { finished = vdd; new_pc; set_rd; new_rd; error }
-                            ; Enables.Of_always.assign
-                                enables
-                                (Enables.Of_signal.of_int 0)
-                            ; current_state.set_next Committing
-                            ]
-                        ])
-                    instruction_table )
-                (* TODO: Trap when no opcode matches *)
-              ; ( Committing
-                , [ Registers.For_writeback.Of_always.assign
-                      new_registers
-                      (commit_transaction
-                         ~new_pc:transaction.new_pc.value
-                         ~set_rd:transaction.set_rd.value
-                         ~new_rd:transaction.new_rd.value
-                       |> Registers.For_writeback.of_registers)
-                  ; Decoded_instruction.Of_always.assign
-                      decoded_instruction
-                      (Decoded_instruction.Of_signal.of_int 0)
-                  ; current_state.set_next Decoding
-                  ] )
-              ]
+                  ]
+              ] )
+          ; ( State.Executing
+            , List.map
+                ~f:
+                  (fun
+                    { Table_entry.finished
+                    ; opcode
+                    ; new_pc
+                    ; set_rd
+                    ; new_rd
+                    ; error
+                    ; hart_to_memory_controller = op_to_mem_ctrl
+                    ; memory_controller_to_hart = mem_ctrl_to_op
+                    }
+                  ->
+                  when_
+                    (decoded_opcode ==:. opcode)
+                    [ Memory.Rx_bus.Rx.Of_always.assign
+                        memory_controller_to_hart
+                        mem_ctrl_to_op
+                    ; Memory.Tx_bus.Tx.Of_always.assign
+                        hart_to_memory_controller
+                        op_to_mem_ctrl
+                    ; when_
+                        finished
+                        [ Transaction.Of_always.assign
+                            transaction
+                            { finished = vdd; new_pc; set_rd; new_rd; error }
+                        ; Enables.Of_always.assign enables (Enables.Of_signal.of_int 0)
+                        ; current_state.set_next Committing
+                        ]
+                    ])
+                instruction_table )
+            (* TODO: Trap when no opcode matches *)
+          ; ( Committing
+            , [ Registers.For_writeback.Of_always.assign
+                  new_registers
+                  (commit_transaction
+                     ~new_pc:(transaction.new_pc.value -- "t$new_pc")
+                     ~set_rd:(transaction.set_rd.value -- "t$set_rd")
+                     ~new_rd:(transaction.new_rd.value -- "t$new_rd")
+                   |> Registers.For_writeback.of_registers)
+              ; Decoded_instruction.Of_always.assign
+                  decoded_instruction
+                  (Decoded_instruction.Of_signal.of_int 0)
+              ; current_state.set_next Decoding
+              ] )
           ]
       ];
     { O.memory_controller_to_hart =

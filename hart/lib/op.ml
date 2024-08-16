@@ -12,7 +12,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -20,7 +20,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       { rd : 'a [@bits register_width] [@rtlname "new_rd"]
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let create ~enable_subtract scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =
@@ -36,8 +36,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
               let%hw is_subtract = funct7.:(5) in
               mux2 is_subtract (lhs -: rhs) (lhs +: rhs), error)
             else lhs +: rhs, gnd
-          | Slt -> sel_bottom ~width:32 (lhs <+ rhs) , gnd
-          | Sltu -> sel_bottom ~width:32 (lhs <: rhs) , gnd
+          | Slt -> sel_bottom ~width:32 (lhs <+ rhs), gnd
+          | Sltu -> sel_bottom ~width:32 (lhs <: rhs), gnd
           | Sll -> Util.sll lhs rhs, gnd
           | Xor -> lhs ^: rhs, gnd
           | Or -> lhs |: rhs, gnd
@@ -47,7 +47,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             (* TODO: Not sure if this is correct for SRA *)
             let sra = Util.sra lhs rhs in
             let srl = Util.srl lhs rhs in
-            mux2 (funct7.:(0)) sra srl, error)
+            mux2 funct7.:(0) sra srl, error)
         funct3
     in
     { O.rd; error }

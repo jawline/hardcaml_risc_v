@@ -63,7 +63,7 @@ struct
     compile
       [ state.switch
           [ ( State.Waiting_for_start_of_packet
-            , [ which_tag <-- uresize ~width:(width which_tag.value) in_.data.data 
+            , [ which_tag <-- uresize ~width:(width which_tag.value) in_.data.data
               ; when_
                   in_.valid
                   [ (* If a received tag is out of the range of the

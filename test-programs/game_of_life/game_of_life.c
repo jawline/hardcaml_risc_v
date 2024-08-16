@@ -1,21 +1,21 @@
 #define NULL 0
-#define WIDTH 80
-#define HEIGHT 24
+#define WIDTH 10
+#define HEIGHT 10
 
 // To save memory we use a bitvector
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
 // This function assumes that x5 - x7 are used as the registers
-int system_call(int imode, void* iptr, unsigned int ilength) {
-  register int mode asm("x5") = imode;
-  register void* ptr asm("x6") = iptr;
-  register unsigned int length asm("x7") = ilength;
+int __attribute__((optimize("O0"))) system_call(int imode, void* iptr, unsigned int ilength) {
+  volatile register int mode asm("x5") = imode;
+  volatile register void* ptr asm("x6") = iptr;
+  volatile register unsigned int length asm("x7") = ilength;
   asm volatile ("ecall");
   return mode;
 }
 
 int send_dma_l(char* msg, int len) {
-  return system_call(0, msg, len);
+  while (!system_call(0, msg, len)) {}
 }
 
 // Used when expanding the bitvector into chars 
@@ -64,19 +64,37 @@ void set(char* buffer, unsigned int x, unsigned int y, int value) {
   }
 }
 
+int min(int x1, int x2) {
+  if (x1 > x2) {
+    return x2;
+  } else {
+    return x1;
+  } 
+}
+
+int max(int x1, int x2) {
+  if (x1 < x2) {
+    return x2;
+  } else {
+    return x1;
+  } 
+}
+
 int neighbors(char* buffer, unsigned int x, unsigned int y) {
   // This is a little yucky, but if x or y overflow they will
   // fall out of bounds which will return an empty position upon
   // get.
   int sum = 0;
 
-  for (int yi = y - 1 ; yi <= y + 1; yi++) {
-    for (int xi = x - y; xi <= x + 1; yi++) {
+  for (int yi = min(y - 1, y) ; yi <= min(y + 1, HEIGHT); yi++) {
+    for (int xi = min(x - 1, x); xi <= min(x + 1, WIDTH); xi++) {
       if (xi != x && yi != y) {
         sum += get(buffer, xi, yi);
       }
     }
   }
+
+  send_dma_l("F", 1);
 
   return sum;
 }
@@ -110,8 +128,11 @@ void c_start() {
   char* next = BUFFER2;
 
   for (;;) {
+    send_dma_l("Entering loop", 13);
     cmemset(next, BUFFER_SIZE, 0);
+    send_dma_l("Cleared",7);
     compute(next, current);
+    send_dma_l("Computed", 9); 
     send_rows(next);
     char* tmp = current;
     current = next;

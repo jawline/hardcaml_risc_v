@@ -1,4 +1,3 @@
-// This function assumes that x5 - x7 are used as the registers
 int system_call(int imode, void* iptr, unsigned int ilength) {
   register int mode asm("x5") = imode;
   register void* ptr asm("x6") = iptr;
@@ -21,10 +20,12 @@ int send_dma(char* msg) {
 }
 
 char* hello_world = "Hello world!";
+char* string_in_the_middle = "In the middle!";
 char* goodbye = "Goodbye";
 
 void c_start() {
   while (!send_dma(hello_world)) {}
+  while (!send_dma(string_in_the_middle)) {}
   while (!send_dma(goodbye)) {}
   for (;;) {
   }

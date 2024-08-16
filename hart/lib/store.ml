@@ -31,7 +31,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -43,7 +43,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
@@ -78,8 +78,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               else
                 (let alignment = alignment / 2 in
                  let write_word = sel_bottom ~width:16 new_word in
-                 let parts = split_msb ~part_width:16 old_word in
-                 concat_msb
+                 let parts = split_lsb ~part_width:16 old_word in
+                 concat_lsb
                    (List.take parts alignment
                     @ [ write_word ]
                     @ List.drop parts (alignment + 1)))
@@ -87,11 +87,12 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
             | Sb ->
               (* We don't have any alignment requirements for byte writes. *)
               let byte = sel_bottom ~width:8 new_word in
-              let parts = split_msb ~part_width:8 old_word in
-              concat_msb
+              let parts = split_lsb ~part_width:8 old_word in
+              concat_lsb
                 (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
           funct3)
-      (uresize ~width:(Int.floor_log2 (register_width / 8)) destination  -- "unaligned_portion")
+      (uresize ~width:(Int.floor_log2 (register_width / 8)) destination
+       -- "unaligned_portion")
       (register_width / 8)
   ;;
 

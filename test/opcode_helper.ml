@@ -12,17 +12,24 @@ let assemble_r_type ~opcode ~funct3 ~funct7 ~rs1 ~rs2 ~rd =
 ;;
 
 let assemble_s_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
-  concat_msb [ sel_top ~width:7 immediate ; rs2; rs1; funct3; sel_bottom ~width:5 immediate ; opcode ]
+  concat_msb
+    [ sel_top ~width:7 immediate
+    ; rs2
+    ; rs1
+    ; funct3
+    ; sel_bottom ~width:5 immediate
+    ; opcode
+    ]
 ;;
 
 let assemble_b_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
   concat_msb
     [ immediate.:(12)
-    ; immediate.:[10,5]
+    ; immediate.:[10, 5]
     ; rs2
     ; rs1
     ; funct3
-    ; immediate.:[4,1]
+    ; immediate.:[4, 1]
     ; immediate.:(11)
     ; opcode
     ]
@@ -31,9 +38,9 @@ let assemble_b_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
 let assemble_j_type ~opcode ~rd ~immediate =
   concat_msb
     [ immediate.:(19)
-    ; immediate.:[10,1]
+    ; immediate.:[10, 1]
     ; immediate.:(11)
-    ; immediate.:[19,12]
+    ; immediate.:[19, 12]
     ; rd
     ; opcode
     ]

@@ -35,7 +35,7 @@ struct
       ; address : 'a [@bits M.address_width]
       ; write_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module Rx_data = struct
@@ -43,7 +43,7 @@ struct
       { error : 'a
       ; read_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module Tx_bus = Stream.Make (Tx_data)
@@ -59,7 +59,7 @@ struct
         controller_to_ch : 'a Rx_bus.Rx.t list
            [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -69,7 +69,7 @@ struct
       ; controller_to_ch : 'a Rx_bus.Tx.t list
            [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let rotate n xs = List.(concat [ drop xs n; take xs n ])
@@ -101,9 +101,10 @@ struct
     let ( -- ) = Scope.naming scope in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let which_ch =
-      if M.num_channels = 1
-      then gnd
-      else round_robin_priority_select ~clock ~ch_to_controller
+      (if M.num_channels = 1
+       then gnd
+       else round_robin_priority_select ~clock ~ch_to_controller)
+      -- "which_ch"
     in
     let which_ch_to_controller =
       if M.num_channels = 1

@@ -11,7 +11,7 @@ struct
       { data : 'a [@bits M.data_bus_width]
       ; last : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:true]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module Contents_stream = Stream.Make (Contents)
