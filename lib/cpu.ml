@@ -19,7 +19,7 @@ struct
   ;;
 
   module Memory_controller = Memory_controller.Make (struct
-      let num_bytes = Memory_config.num_bytes
+      let capacity_in_bytes = Memory_config.num_bytes
       let num_channels = system_non_hart_memory_channels + General_config.num_harts
       let address_width = Register_width.bits Hart_config.register_width
       let data_bus_width = 32
@@ -158,11 +158,6 @@ struct
             @ List.map
                 ~f:Memory_controller.Tx_bus.Tx.Of_always.value
                 ch_to_controller_per_hart
-        ; controller_to_ch =
-            of_dma ~default:[] ~f:Dma.memory_controller_to_dma_rx
-            @ List.map
-                ~f:Memory_controller.Rx_bus.Rx.Of_always.value
-                controller_to_ch_per_hart
         }
     in
     let hart_ecall_transactions =

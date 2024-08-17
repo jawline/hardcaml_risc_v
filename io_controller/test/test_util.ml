@@ -5,14 +5,24 @@ open! Bits
 let write_packet_to_memory ~packet sim =
   let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
   let packet = String.to_array packet in
-  for i = 0 to Array.length packet / 4 do
-    let start = i * 4 in
+  for ram_address = 0 to Array.length packet / 4 do
+    let start = ram_address * 4 in
     let sel idx =
       if start + idx < Array.length packet then packet.(start + idx) else '\x00'
     in
     let new_bits = List.init ~f:sel 4 |> List.map ~f:Bits.of_char |> Bits.concat_lsb in
-    Cyclesim.Memory.of_bits ~address:i ram new_bits
-  done
+    Cyclesim.Memory.of_bits ~address:ram_address ram new_bits
+  done;
+  print_s [%message (packet : char array)];
+  let all_memory =
+    Cyclesim.Memory.read_all ram
+    |> Array.to_list
+    |> List.map ~f:(Bits.split_lsb ~part_width:8)
+    |> List.concat
+    |> List.map ~f:Bits.to_int
+    |> List.map ~f:Char.of_int_exn
+  in
+  print_s [%message (all_memory : char list)]
 ;;
 
 let print_ram sim =

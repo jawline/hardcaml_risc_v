@@ -3,7 +3,7 @@ open Hardcaml
 open Signal
 
 let opcode t = t.:[6, 0]
-let rd t = t.:[11, 0]
+let rd t = t.:[11, 7]
 let rs1 t = t.:[19, 15]
 let rs2 t = t.:[24, 20]
 let funct3 t = t.:[14, 12]

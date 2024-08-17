@@ -36,8 +36,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
               let%hw is_subtract = funct7.:(5) in
               mux2 is_subtract (lhs -: rhs) (lhs +: rhs), error)
             else lhs +: rhs, gnd
-          | Slt -> sel_bottom ~width:32 (lhs <+ rhs), gnd
-          | Sltu -> sel_bottom ~width:32 (lhs <: rhs), gnd
+          | Slt -> uresize ~width:32 (lhs <+ rhs), gnd
+          | Sltu -> uresize ~width:32 (lhs <: rhs), gnd
           | Sll -> Util.sll lhs rhs, gnd
           | Xor -> lhs ^: rhs, gnd
           | Or -> lhs |: rhs, gnd

@@ -12,7 +12,7 @@ module Hart_config = struct
 end
 
 module Memory_controller = Memory_controller.Make (struct
-    let num_bytes = 16
+    let capacity_in_bytes = 16
     let num_channels = 1
     let address_width = 32
     let data_bus_width = 32
@@ -77,7 +77,6 @@ module Test_machine = struct
         { Memory_controller.I.clock
         ; clear
         ; ch_to_controller = [ load.hart_to_memory_controller ]
-        ; controller_to_ch = [ load.memory_controller_to_hart ]
         }
     in
     compile
@@ -108,9 +107,7 @@ let create_sim () =
 
 let test ~destination ~value ~funct3 sim =
   (* Initialize the main memory to some known values for testing. *)
-  Test_util.program_ram
-    sim
-    (Array.init ~f:(Fn.const (Bits.of_int ~width:64 0xFFFFFFFF)) 1024);
+  Test_util.program_ram sim (Array.init ~f:(Fn.const (ones 32)) 4);
   (try
      let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
      let outputs_before : _ Test_machine.O.t =

@@ -124,13 +124,10 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
-    let ( -- ) = Scope.naming scope in
     let new_pc =
-      decoded_instruction.rs1
-      -- "jalr_rs1"
-      +: (decoded_instruction.i_immediate -- "jalr_i_immediate")
-      -- "jalr_new_pc"
-      &: ~:(of_int ~width:register_width 1)
+      let%hw jalr_rs1 = decoded_instruction.rs1 in
+      let%hw jalr_i = decoded_instruction.i_immediate in
+      jalr_rs1 +: jalr_i &: ~:(of_int ~width:register_width 1)
     in
     let error = new_pc &:. 0b11 <>:. 0 in
     { Opcode_output.transaction =
@@ -279,7 +276,6 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
-    let ( -- ) = Scope.naming scope in
     let { Store.O.finished; error; memory_controller_to_hart; hart_to_memory_controller } =
       Store.hierarchical
         ~instance:"store"
@@ -301,7 +297,7 @@ struct
         { Transaction.finished
         ; set_rd = gnd
         ; new_rd = zero register_width
-        ; error = error -- "store_error"
+        ; error
         ; new_pc = registers.pc +:. 4
         }
     ; memory_controller_to_hart
@@ -323,7 +319,6 @@ struct
     (_decoded_instruction : _ Decoded_instruction.t)
     scope
     =
-    let ( -- ) = Scope.naming scope in
     (* TODO: Support hardware registers *)
     let unsupported_increment_pc =
       { Transaction.finished = vdd
@@ -333,11 +328,9 @@ struct
       ; new_pc = registers.pc +:. 4
       }
     in
+    let%hw is_ecall = enables.is_ecall in
     { Opcode_output.transaction =
-        Transaction.Of_signal.mux2
-          (enables.is_ecall -- "is_ecall")
-          ecall_transaction
-          unsupported_increment_pc
+        Transaction.Of_signal.mux2 is_ecall ecall_transaction unsupported_increment_pc
     ; memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 0
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     }
@@ -471,7 +464,7 @@ struct
       Registers.set_pc i.registers new_pc
       |> Registers.assign_when
            ~when_:set_rd
-           ~index_signal:(decoded_instruction.rd.value -- "t$rd")
+           ~index_signal:decoded_instruction.rd.value
            ~value_signal:new_rd
     in
     let instruction_table =
@@ -486,7 +479,7 @@ struct
         ~ecall_transaction:i.ecall_transaction
         scope
     in
-    let decoded_opcode = decoded_instruction.opcode.value -- "opcode" in
+    let decoded_opcode = decoded_instruction.opcode.value in
     compile
       [ current_state.switch
           [ ( State.Decoding
@@ -538,9 +531,9 @@ struct
             , [ Registers.For_writeback.Of_always.assign
                   new_registers
                   (commit_transaction
-                     ~new_pc:(transaction.new_pc.value -- "t$new_pc")
-                     ~set_rd:(transaction.set_rd.value -- "t$set_rd")
-                     ~new_rd:(transaction.new_rd.value -- "t$new_rd")
+                     ~new_pc:transaction.new_pc.value
+                     ~set_rd:transaction.set_rd.value
+                     ~new_rd:transaction.new_rd.value
                    |> Registers.For_writeback.of_registers)
               ; Decoded_instruction.Of_always.assign
                   decoded_instruction

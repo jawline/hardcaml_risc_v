@@ -4,7 +4,7 @@ open Hardcaml_stream
 open Signal
 
 module Make (M : sig
-    val num_bytes : int
+    val capacity_in_bytes : int
     val num_channels : int
     val address_width : int
     val data_bus_width : int
@@ -20,14 +20,15 @@ struct
   let data_bus_in_bytes = M.data_bus_width / 8
 
   let () =
-    if M.num_bytes % data_bus_in_bytes <> 0
+    if M.capacity_in_bytes % data_bus_in_bytes <> 0
     then
       raise_s
         [%message
-          "BUG: cannot request num_bytes that is not a multiple of data_bus_width"]
+          "BUG: cannot request a capacity that is not a multiple of data_bus_width"]
   ;;
 
-  let desired_bytes_in_words = M.num_bytes / data_bus_in_bytes
+  let capacity_in_words = M.capacity_in_bytes / data_bus_in_bytes
+  let address_width = num_bits_to_represent (capacity_in_words - 1)
 
   module Tx_data = struct
     type 'a t =
@@ -53,35 +54,28 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; ch_to_controller : 'a Tx_bus.Tx.t list
-           [@length M.num_channels] [@rtlprefix "ch_co_controller$"]
-      ; (* We ignore the ready signal from the ch when responding, we do not permit pushback. Consider dropping this input. *)
-        controller_to_ch : 'a Rx_bus.Rx.t list
-           [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
+      ; ch_to_controller : 'a Tx_bus.Tx.t list [@length M.num_channels]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { ch_to_controller : 'a Tx_bus.Rx.t list
-           [@length M.num_channels] [@rtlprefix "ch_co_controller$"]
-      ; controller_to_ch : 'a Rx_bus.Tx.t list
-           [@length M.num_channels] [@rtlprefix "controller_to_ch$"]
+      { ch_to_controller : 'a Tx_bus.Rx.t list [@length M.num_channels]
+      ; controller_to_ch : 'a Rx_bus.Tx.t list [@length M.num_channels]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let rotate n xs = List.(concat [ drop xs n; take xs n ])
 
-  let round_robin_priority_select ~clock ~ch_to_controller =
+  let round_robin_priority_select ~clock ~ch_to_controller scope =
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let round_robin =
+    let%hw round_robin =
       reg_fb
         ~width:(Signal.num_bits_to_represent (M.num_channels - 1))
         ~f:(mod_counter ~max:(M.num_channels - 1))
         reg_spec_no_clear
-      -- "which_ch"
     in
     let channels =
       List.mapi
@@ -97,14 +91,12 @@ struct
       M.num_channels
   ;;
 
-  let create scope ({ clock; clear = _; ch_to_controller; controller_to_ch = _ } : _ I.t) =
-    let ( -- ) = Scope.naming scope in
+  let create scope ({ clock; clear = _; ch_to_controller } : _ I.t) =
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let which_ch =
-      (if M.num_channels = 1
-       then gnd
-       else round_robin_priority_select ~clock ~ch_to_controller)
-      -- "which_ch"
+    let%hw which_ch =
+      if M.num_channels = 1
+      then gnd
+      else round_robin_priority_select ~clock ~ch_to_controller scope
     in
     let which_ch_to_controller =
       if M.num_channels = 1
@@ -113,43 +105,40 @@ struct
     in
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
     (* We truncate the address by unaligned bits to get the address in words. *)
-    let real_address =
-      srl ~by:unaligned_bits which_ch_to_controller.data.address -- "real_address"
+    let%hw real_address =
+      srl ~by:unaligned_bits which_ch_to_controller.data.address
+      |> uresize ~width:address_width
     in
-    let is_operation = which_ch_to_controller.valid -- "is_operation" in
-    let illegal_operation =
+    let%hw is_operation = which_ch_to_controller.valid in
+    let%hw illegal_operation =
       let is_unaligned = which_ch_to_controller.data.address &:. unaligned_bits <>:. 0 in
-      let is_out_of_range = real_address >:. desired_bytes_in_words in
-      (is_operation &: (is_unaligned |: is_out_of_range)) -- "illegal_operation"
+      let is_out_of_range = real_address >:. capacity_in_words in
+      is_operation &: (is_unaligned |: is_out_of_range)
     in
-    let was_error = reg reg_spec_no_clear illegal_operation -- "was_error" in
-    let is_operation_and_is_legal =
-      (is_operation &: ~:illegal_operation) -- "is_operation_and_is_legal"
-    in
-    let is_write = which_ch_to_controller.data.write -- "is_write_operation" in
+    let was_error = reg reg_spec_no_clear illegal_operation in
+    let%hw is_operation_and_is_legal = is_operation &: ~:illegal_operation in
+    let%hw is_write = which_ch_to_controller.data.write in
     let memory =
       Ram.create
         ~name:"main_memory_bram"
         ~collision_mode:Read_before_write
-        ~size:desired_bytes_in_words
+        ~size:capacity_in_words
         ~write_ports:
-          [| { write_enable =
-                 (is_operation_and_is_legal &: is_write) -- "ram$write_enable"
-             ; write_address = real_address -- "ram$write_address"
-             ; write_data = which_ch_to_controller.data.write_data -- "ram$write_data"
+          [| { write_enable = is_operation_and_is_legal &: is_write
+             ; write_address = real_address
+             ; write_data = which_ch_to_controller.data.write_data
              ; write_clock = clock
              }
           |]
         ~read_ports:
-          [| { read_enable =
-                 (is_operation_and_is_legal &: ~:is_write) -- "ram$read_enable"
-             ; read_address = real_address -- "ram$read_address"
+          [| { read_enable = is_operation_and_is_legal &: ~:is_write
+             ; read_address = real_address
              ; read_clock = clock
              }
           |]
         ()
     in
-    let read_data = memory.(0) -- "ram$read_data" in
+    let%hw read_data = memory.(0) in
     { O.ch_to_controller =
         List.init
           ~f:(fun channel ->
@@ -162,7 +151,7 @@ struct
         List.init
           ~f:(fun channel ->
             { Rx_bus.Tx.valid =
-                reg reg_spec_no_clear (which_ch ==:. channel &: is_operation)
+                reg reg_spec_no_clear (which_ch ==:. channel &: is_operation &: ~:is_write)
             ; data = { error = was_error; read_data }
             })
           M.num_channels

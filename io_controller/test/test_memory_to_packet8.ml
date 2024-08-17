@@ -15,7 +15,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   in
   let module Memory_controller =
     Memory_controller.Make (struct
-      let num_bytes = 256
+      let capacity_in_bytes = 256
       let num_channels = 1
       let address_width = 32
       let data_bus_width = 32
@@ -53,8 +53,6 @@ let test ~name ~load_memory ~dma_address ~dma_length =
           ; clear
           ; ch_to_controller =
               [ Memory_controller.Tx_bus.Tx.Of_always.value ch_to_controller ]
-          ; controller_to_ch =
-              [ Memory_controller.Rx_bus.Rx.Of_always.value controller_to_ch ]
           }
       in
       let output =
@@ -87,7 +85,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   in
   let sim = create_sim () in
-  Util.write_packet_to_memory ~packet:load_memory sim;
+  Test_util.write_packet_to_memory ~packet:load_memory sim;
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in

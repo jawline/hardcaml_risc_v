@@ -241,7 +241,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     all_inputs;
   loop_for 100;
   printf "Printing ram (not DMA response):\n";
-  Util.print_ram sim;
+  Test_util.print_ram sim;
   printf "Doing a DMA read:\n";
   let issue_read ~address ~length =
     inputs.dma_out_enable := Bits.vdd;

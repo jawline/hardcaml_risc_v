@@ -12,7 +12,7 @@ module Hart_config = struct
 end
 
 module Memory_controller = Memory_controller.Make (struct
-    let num_bytes = 128
+    let capacity_in_bytes = 128
     let num_channels = 1
     let address_width = 32
     let data_bus_width = 32
@@ -73,7 +73,6 @@ module Test_machine = struct
         { Memory_controller.I.clock
         ; clear
         ; ch_to_controller = [ load.hart_to_memory_controller ]
-        ; controller_to_ch = [ load.memory_controller_to_hart ]
         }
     in
     compile
@@ -124,7 +123,7 @@ let test ~address ~funct3 sim =
 let%expect_test "lw" =
   let sim = create_sim () in
   (* Initialize the main memory to some known values for testing. *)
-  Test_util.program_ram sim (Array.init ~f:(fun i -> Bits.of_int ~width:32 (i + 1)) 1024);
+  Test_util.program_ram sim (Array.init ~f:(fun i -> Bits.of_int ~width:32 (i + 1)) 32);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
@@ -347,7 +346,7 @@ let%expect_test "lh" =
        ~f:(fun i ->
          let i = i * 2 in
          Bits.concat_msb [ Bits.of_int ~width:16 (i + 1); Bits.of_int ~width:16 (i + 2) ])
-       1024);
+       32);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
@@ -525,7 +524,7 @@ let%expect_test "lb" =
            ; Bits.of_int ~width:8 (i + 3)
            ; Bits.of_int ~width:8 (i + 4)
            ])
-       1024);
+       32);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
