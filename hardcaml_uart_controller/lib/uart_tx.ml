@@ -68,7 +68,6 @@ module Make (C : Config_intf.S) = struct
     let current_output_reg = Variable.reg ~width:1 reg_spec_no_clear in
     let switch_cycle =
       switch_cycle ~reset_when:reset_switch_cycle.value reg_spec_no_clear
-      -- "switch_cycle"
     in
     let data_to_write = Variable.reg ~width:(width data_in) reg_spec_no_clear in
     let which_data_bits = Variable.reg ~width:3 reg_spec_no_clear in
@@ -76,7 +75,6 @@ module Make (C : Config_intf.S) = struct
     let which_stop_bit = Variable.reg ~width:2 reg_spec_no_clear in
     let next_data_bit =
       mux which_data_bits.value (split_lsb ~part_width:1 data_to_write.value)
-      -- "next_data_bit"
     in
     ignore (current_state.current -- "current_state" : Signal.t);
     (* TODO: Get rid of the current output wire and just delay tx by a cycle
@@ -123,7 +121,7 @@ module Make (C : Config_intf.S) = struct
             , [ current_output_wire <-- current_output_reg.value
               ; when_
                   switch_cycle
-                  [ current_output_reg <-- parity_bit.value -- "parity_bit"
+                  [ current_output_reg <-- parity_bit.value
                   ; current_output_wire <-- parity_bit.value
                   ; current_state.set_next Waiting_for_stop_bits
                   ]
@@ -132,7 +130,7 @@ module Make (C : Config_intf.S) = struct
             , [ current_output_wire <-- current_output_reg.value
               ; when_
                   switch_cycle
-                  [ which_stop_bit <-- which_stop_bit.value -- "which_stop_bit" +:. 1
+                  [ which_stop_bit <-- which_stop_bit.value +:. 1
                   ; current_output_reg <--. 1
                   ; (* While unlikely in practice, if the baud rate is equal to
                        clock rate then just setting the register would be wrong as

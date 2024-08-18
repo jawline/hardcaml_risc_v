@@ -327,7 +327,6 @@ struct
                 (rd : int)
                 (offset : int)
                 (registers : int list)])
-  
   ;;
 
   let%expect_test "jalr" =

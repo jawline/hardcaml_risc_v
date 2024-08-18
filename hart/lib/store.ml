@@ -55,8 +55,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     [@@deriving sexp, enumerate, compare]
   end
 
-  let combine_old_and_new_word ~funct3 ~destination ~old_word ~new_word scope =
-    let ( -- ) = Scope.naming scope in
+  let combine_old_and_new_word ~funct3 ~destination ~old_word ~new_word _scope =
     mux_init
       ~f:(fun alignment ->
         Util.switch
@@ -75,15 +74,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                  anyway. *)
               if alignment % 2 <> 0
               then zero register_width
-              else
-                (let alignment = alignment / 2 in
-                 let write_word = sel_bottom ~width:16 new_word in
-                 let parts = split_lsb ~part_width:16 old_word in
-                 concat_lsb
-                   (List.take parts alignment
-                    @ [ write_word ]
-                    @ List.drop parts (alignment + 1)))
-                -- [%string "sb_%{alignment#Int}"]
+              else (
+                let alignment = alignment / 2 in
+                let write_word = sel_bottom ~width:16 new_word in
+                let parts = split_lsb ~part_width:16 old_word in
+                concat_lsb
+                  (List.take parts alignment
+                   @ [ write_word ]
+                   @ List.drop parts (alignment + 1)))
             | Sb ->
               (* We don't have any alignment requirements for byte writes. *)
               let byte = sel_bottom ~width:8 new_word in
@@ -91,8 +89,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               concat_lsb
                 (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
           funct3)
-      (uresize ~width:(Int.floor_log2 (register_width / 8)) destination
-       -- "unaligned_portion")
+      (uresize ~width:(Int.floor_log2 (register_width / 8)) destination)
       (register_width / 8)
   ;;
 
@@ -119,7 +116,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      destination &: ~:(of_int ~width:register_width 0b11) -- "aligned_address"
+      destination &: ~:(of_int ~width:register_width 0b11)
     in
     let unaligned_bits =
       Util.switch
@@ -133,12 +130,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       -- "unaligned_bits"
     in
     let is_load_word = Util.is (module Funct3.Store) funct3 Funct3.Store.Sw in
-    let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
+    let is_unaligned = unaligned_bits <>:. 0 in
     let funct3_is_error =
       Util.switch (module Funct3.Store) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
-      -- "funct3_is_error"
     in
-    let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
+    let inputs_are_error = is_unaligned |: funct3_is_error in
     let word_to_write =
       (* The word to write back to memory during
          Waiting_for_store.  If we are writing a full word, this is set on cycle 0,
@@ -197,7 +193,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                       ; data =
                           { address = aligned_address
                           ; write = vdd
-                          ; write_data = word_to_write.value -- "word_to_write"
+                          ; write_data = word_to_write.value
                           }
                       }
                   ; when_

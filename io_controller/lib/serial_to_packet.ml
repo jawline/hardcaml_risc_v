@@ -74,9 +74,9 @@ struct
         ~capacity:Config.max_packet_length_in_data_widths
         ~clock
         ~clear
-        ~wr:(should_write_packet_buffer.value -- "wr_enable")
-        ~d:(in_data -- "wr_data")
-        ~rd:(reading_packet_buffer.value -- "rd_data")
+        ~wr:should_write_packet_buffer.value
+        ~d:in_data
+        ~rd:reading_packet_buffer.value
         ~scope:(Scope.sub_scope scope "fifo")
         ()
     in
@@ -96,7 +96,7 @@ struct
           new_length)
         num_length_packets
     in
-    let have_buffered_packets = ~:(packet_buffer.empty) -- "have_buffered_packets" in
+    let have_buffered_packets = ~:(packet_buffer.empty) in
     compile
       [ reading_packet_buffer <-- (have_buffered_packets &: out_ready)
       ; state.switch
@@ -132,9 +132,7 @@ struct
         { P.Contents_stream.Tx.valid = have_buffered_packets
         ; data =
             { data = packet_buffer.q
-            ; last =
-                state.is State.Flushing
-                &: (packet_buffer.used -- "packet_buffer_used" ==:. 1)
+            ; last = state.is State.Flushing &: (packet_buffer.used ==:. 1)
             }
         }
     }

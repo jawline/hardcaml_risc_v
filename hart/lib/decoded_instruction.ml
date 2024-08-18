@@ -26,8 +26,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
-  let of_instruction instruction registers scope =
-    let ( -- ) = Scope.naming scope in
+  let of_instruction instruction registers _scope =
     let is_ecall =
       let system = Decoder.opcode instruction ==:. Opcodes.system in
       let ecall =
@@ -37,9 +36,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     in
     let rs1 = select_register registers (Decoder.rs1 instruction) in
     let rs2 = select_register registers (Decoder.rs2 instruction) in
-    let i_immediate =
-      Decoder.i_immediate ~width:register_width instruction -- "decoded_i_immediate"
-    in
+    let i_immediate = Decoder.i_immediate ~width:register_width instruction in
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction

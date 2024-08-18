@@ -117,7 +117,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
             , [ input_ready <--. 1
               ; when_
                   address_buffer.valid
-                  [ current_address <-- address_buffer.value -- "address_buffer"
+                  [ current_address <-- address_buffer.value
                   ; if_
                       (Memory.address_is_word_aligned address_buffer.value)
                       [ state.set_next Buffering_word ]
@@ -133,13 +133,13 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
                    word first. This causes us to loose the last bytes of an unaligned
                    write. *)
                 was_last <-- in_.data.last
-              ; current_data <-- data_buffer.value -- "data_buffer"
+              ; current_data <-- data_buffer.value
               ; when_ in_.data.last [ state.set_next Consume_remaining_buffer ]
               ; when_ data_buffer.valid [ state.set_next Writing_word ]
               ] )
           ; ( Consume_remaining_buffer
             , [ (* We pause a cycle to let the in_.data.data get into the data buffer *)
-                current_data <-- data_buffer.value -- "data_buffer"
+                current_data <-- data_buffer.value
               ; state.set_next Writing_word
               ] )
           ; ( Writing_word
@@ -159,11 +159,11 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       ];
     { O.in_ = { ready = input_ready.value }
     ; out =
-        { valid = state.is Writing_word -- "data_out_valid"
+        { valid = state.is Writing_word
         ; data =
-            { address = current_address.value -- "data_out_address"
+            { address = current_address.value
             ; write = state.is Writing_word
-            ; write_data = current_data.value -- "data_out"
+            ; write_data = current_data.value
             }
         }
     ; out_ack = { ready = vdd }

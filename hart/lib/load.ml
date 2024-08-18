@@ -68,7 +68,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      (address &: ~:(of_int ~width:register_width 0b11)) -- "aligned_address"
+      address &: ~:(of_int ~width:register_width 0b11)
     in
     let unaligned_bits =
       Util.switch
@@ -79,14 +79,12 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           | Lh | Lhu -> sel_bottom ~width:2 address &:. 0b1
           | Lb | Lbu -> zero 2)
         funct3
-      -- "unaligned_bits"
     in
-    let is_unaligned = (unaligned_bits <>:. 0) -- "is_unaligned" in
+    let is_unaligned = unaligned_bits <>:. 0 in
     let funct3_is_error =
       Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
-      -- "funct3_is_error"
     in
-    let inputs_are_error = is_unaligned |: funct3_is_error -- "inputs_are_error" in
+    let inputs_are_error = is_unaligned |: funct3_is_error in
     compile
       [ when_
           enable
@@ -117,12 +115,12 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ]
       ];
     { O.new_rd =
-        (let alignment_bits = (address &:. 0b11) -- "alignment_bits" in
-         let full_word = memory_controller_to_hart.data.read_data -- "full_word" in
+        (let alignment_bits = address &:. 0b11 in
+         let full_word = memory_controller_to_hart.data.read_data in
          let half_word =
-           mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word) -- "half_word"
+           mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word)
          in
-         let byte = mux alignment_bits (split_lsb ~part_width:8 full_word) -- "byte" in
+         let byte = mux alignment_bits (split_lsb ~part_width:8 full_word) in
          Util.switch
            (module Funct3.Load)
            ~if_not_found:(zero register_width)

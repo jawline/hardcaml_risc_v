@@ -62,7 +62,6 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         (Packet)
     in
     let module Pulse = Pulse.Make (Packet) in
-    let ( -- ) = Scope.naming scope in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let rx_dma_to_memory_controller = Memory.Tx_bus.Rx.Of_always.wire zero in
     let rx_memory_controller_to_dma = Memory.Rx_bus.Tx.Of_always.wire zero in
@@ -114,7 +113,6 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
     in
     pulse_ready <== pulse.in_.ready;
     let tx_enable = Tx_input.With_valid.Of_signal.wires () in
-    ignore (tx_enable.valid -- "tx_enable" : Signal.t);
     let tx_dma_to_memory_controller = Memory.Tx_bus.Rx.Of_always.wire zero in
     let tx_memory_controller_to_dma = Memory.Rx_bus.Tx.Of_always.wire zero in
     let uart_tx_ready = wire 1 in
@@ -162,7 +160,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
       ; parity_error
       ; stop_bit_unstable
       ; serial_to_packet_valid = out.valid
-      ; clear_message = (pulse_held <>:. 0) -- "clear_message"
+      ; clear_message = pulse_held <>:. 0
       }
   ;;
 
