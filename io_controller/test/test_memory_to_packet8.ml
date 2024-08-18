@@ -120,13 +120,12 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   Cyclesim.cycle sim;
   inputs.clear := Bits.gnd;
   issue_read ~address:dma_address ~length:dma_length;
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
+  if debug then Waveform.Serialize.marshall waveform name
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_memory_to_packet8"
+    ~name:"/tmp/test_memory_to_packet8_1"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:3
     ~dma_length:9;
@@ -135,7 +134,7 @@ let%expect_test "test" =
     ("00000000  51 00 09 20 71 75 69 63  6b 20 62 72              |Q.. quick br|")
     17 |}];
   test
-    ~name:"/tmp/test_memory_to_packet8"
+    ~name:"/tmp/test_memory_to_packet8_2"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:0
     ~dma_length:(String.length "The quick brown fox jumps over the lazy dog");
@@ -146,7 +145,7 @@ let%expect_test "test" =
      "00000020  72 20 74 68 65 20 6c 61  7a 79 20 64 6f 67        |r the lazy dog|")
     67 |}];
   test
-    ~name:"/tmp/test_memory_to_packet8"
+    ~name:"/tmp/test_memory_to_packet8_3"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:8
     ~dma_length:1;

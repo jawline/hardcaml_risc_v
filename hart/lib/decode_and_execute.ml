@@ -454,7 +454,9 @@ struct
     let memory_controller_to_hart = Memory.Rx_bus.Rx.Of_always.wire zero in
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
     let new_registers = Registers.For_writeback.Of_always.wire zero in
-    let decoded_instruction = Decoded_instruction.Of_always.reg reg_spec_no_clear in
+    let%hw.Decoded_instruction.Of_always decoded_instruction =
+      Decoded_instruction.Of_always.reg reg_spec_no_clear
+    in
     let enables = Enables.Of_always.reg reg_spec_no_clear in
     let transaction = Transaction.Of_always.reg reg_spec_no_clear in
     (* TODO: Staging the muxes into and out of registers might make this slightly cheaper *)

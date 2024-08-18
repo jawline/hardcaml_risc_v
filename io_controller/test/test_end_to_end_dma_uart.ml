@@ -9,7 +9,7 @@ open! Bits
 let debug = false
 
 module Memory_controller = Memory_controller.Make (struct
-    let num_bytes = 128
+    let capacity_in_bytes = 128
     let num_channels = 2
     let address_width = 32
     let data_bus_width = 32
@@ -185,7 +185,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           { Memory_controller.I.clock
           ; clear
           ; ch_to_controller = [ dma.out; dma_out.memory ]
-          ; controller_to_ch = [ dma.out_ack; dma_out.memory_response ]
           }
       in
       compile

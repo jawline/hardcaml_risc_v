@@ -128,8 +128,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       loop_for 11)
     all_inputs;
   loop_for 100;
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
+  if debug then Waveform.Serialize.marshall waveform name
 ;;
 
 let%expect_test "test" =

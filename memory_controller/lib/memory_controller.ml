@@ -106,13 +106,15 @@ struct
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
     (* We truncate the address by unaligned bits to get the address in words. *)
     let%hw real_address =
-      srl ~by:unaligned_bits which_ch_to_controller.data.address
-      |> uresize ~width:address_width
+      let%hw base_address = which_ch_to_controller.data.address in
+      srl ~by:unaligned_bits base_address
     in
     let%hw is_operation = which_ch_to_controller.valid in
     let%hw illegal_operation =
-      let is_unaligned = which_ch_to_controller.data.address &:. unaligned_bits <>:. 0 in
-      let is_out_of_range = real_address >:. capacity_in_words in
+      let%hw is_unaligned =
+        which_ch_to_controller.data.address &:. unaligned_bits <>:. 0
+      in
+      let%hw is_out_of_range = real_address >=:. capacity_in_words in
       is_operation &: (is_unaligned |: is_out_of_range)
     in
     let was_error = reg reg_spec_no_clear illegal_operation in
@@ -125,14 +127,14 @@ struct
         ~size:capacity_in_words
         ~write_ports:
           [| { write_enable = is_operation_and_is_legal &: is_write
-             ; write_address = real_address
+             ; write_address = sel_bottom ~width:address_width real_address
              ; write_data = which_ch_to_controller.data.write_data
              ; write_clock = clock
              }
           |]
         ~read_ports:
           [| { read_enable = is_operation_and_is_legal &: ~:is_write
-             ; read_address = real_address
+             ; read_address = sel_bottom ~width:address_width real_address
              ; read_clock = clock
              }
           |]
@@ -151,7 +153,7 @@ struct
         List.init
           ~f:(fun channel ->
             { Rx_bus.Tx.valid =
-                reg reg_spec_no_clear (which_ch ==:. channel &: is_operation &: ~:is_write)
+                reg reg_spec_no_clear (which_ch ==:. channel &: is_operation)
             ; data = { error = was_error; read_data }
             })
           M.num_channels

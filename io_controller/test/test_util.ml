@@ -12,17 +12,7 @@ let write_packet_to_memory ~packet sim =
     in
     let new_bits = List.init ~f:sel 4 |> List.map ~f:Bits.of_char |> Bits.concat_lsb in
     Cyclesim.Memory.of_bits ~address:ram_address ram new_bits
-  done;
-  print_s [%message (packet : char array)];
-  let all_memory =
-    Cyclesim.Memory.read_all ram
-    |> Array.to_list
-    |> List.map ~f:(Bits.split_lsb ~part_width:8)
-    |> List.concat
-    |> List.map ~f:Bits.to_int
-    |> List.map ~f:Char.of_int_exn
-  in
-  print_s [%message (all_memory : char list)]
+  done
 ;;
 
 let print_ram sim =
