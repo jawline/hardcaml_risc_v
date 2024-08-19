@@ -130,12 +130,13 @@ let%expect_test "lw" =
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
-      (outputs
-       ((new_rd 00000000000000000000000000000001) (error 0) (finished 0)
-        (controller_to_hart
-         ((valid 0)
-          (data ((error 0) (read_data 00000000000000000000000000000001)))))
-        (hart_to_memory_controller ((ready 1))))) |}];
+    (outputs
+     ((new_rd 00000000000000000000000000000001) (error 0) (finished 0)
+      (controller_to_hart
+       ((valid 0)
+        (data ((error 0) (read_data 00000000000000000000000000000001)))))
+      (hart_to_memory_controller ((ready 1)))))
+    |}];
   (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
@@ -247,12 +248,13 @@ let%expect_test "lh" =
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
-      (outputs
-       ((new_rd 00000000000000000000000000000010) (error 0) (finished 0)
-        (controller_to_hart
-         ((valid 0)
-          (data ((error 0) (read_data 00000000000000010000000000000010)))))
-        (hart_to_memory_controller ((ready 1))))) |}];
+    (outputs
+     ((new_rd 00000000000000000000000000000010) (error 0) (finished 0)
+      (controller_to_hart
+       ((valid 0)
+        (data ((error 0) (read_data 00000000000000010000000000000010)))))
+      (hart_to_memory_controller ((ready 1)))))
+    |}];
   (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
@@ -319,12 +321,13 @@ let%expect_test "lb" =
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect
     {|
-      (outputs
-       ((new_rd 00000000000000000000000000000100) (error 0) (finished 0)
-        (controller_to_hart
-         ((valid 0)
-          (data ((error 0) (read_data 00000001000000100000001100000100)))))
-        (hart_to_memory_controller ((ready 1))))) |}];
+    (outputs
+     ((new_rd 00000000000000000000000000000100) (error 0) (finished 0)
+      (controller_to_hart
+       ((valid 0)
+        (data ((error 0) (read_data 00000001000000100000001100000100)))))
+      (hart_to_memory_controller ((ready 1)))))
+    |}];
   (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
    | _ -> print_s [%message "BUG: Timed out or exception"]);
   [%expect

@@ -69,19 +69,23 @@ struct
       ~name:"addi_qcheck"
       ~funct3:Funct3.Op.Add_or_sub
       ~f:( + )
-      ~small_imm_range:false
+      ~small_imm_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "and" =
-    opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false
+    opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "xor" =
-    opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false
+    opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "or" =
-    opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false
+    opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "slt" =
@@ -89,7 +93,8 @@ struct
       ~name:"slt_qcheck"
       ~funct3:Funct3.Op.Slt
       ~f:(fun l r -> if l < r then 1 else 0)
-      ~small_imm_range:false
+      ~small_imm_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "sltu" =
@@ -97,7 +102,8 @@ struct
       ~name:"sltu_qcheck"
       ~funct3:Funct3.Op.Sltu
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
-      ~small_imm_range:false
+      ~small_imm_range:false;
+    [%expect {| |}]
   ;;
 
   let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
@@ -157,7 +163,8 @@ struct
       ~funct3:Funct3.Op.Add_or_sub
       ~funct7:0
       ~f:( + )
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "sub" =
@@ -166,7 +173,8 @@ struct
       ~funct3:Funct3.Op.Add_or_sub
       ~funct7:0b0100000
       ~f:( - )
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "and" =
@@ -175,7 +183,8 @@ struct
       ~funct3:Funct3.Op.And
       ~funct7:0
       ~f:( land )
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "xor" =
@@ -184,7 +193,8 @@ struct
       ~funct3:Funct3.Op.Xor
       ~funct7:0
       ~f:( lxor )
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "or" =
@@ -193,7 +203,8 @@ struct
       ~funct3:Funct3.Op.Or
       ~funct7:0
       ~f:( lor )
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "slt" =
@@ -202,7 +213,8 @@ struct
       ~funct3:Funct3.Op.Slt
       ~funct7:0
       ~f:(fun l r -> if l < r then 1 else 0)
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "sltu" =
@@ -211,7 +223,8 @@ struct
       ~funct3:Funct3.Op.Sltu
       ~funct7:0
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
-      ~small_rs2_range:false
+      ~small_rs2_range:false;
+    [%expect {| |}]
   ;;
 
   let%expect_test "sll" =
@@ -220,7 +233,8 @@ struct
       ~funct3:Funct3.Op.Sll
       ~funct7:0
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
-      ~small_rs2_range:true
+      ~small_rs2_range:true;
+    [%expect {| |}]
   ;;
 
   let%expect_test "srl" =
@@ -229,7 +243,8 @@ struct
       ~funct3:Funct3.Op.Srl_or_sra
       ~funct7:0
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
-      ~small_rs2_range:true
+      ~small_rs2_range:true;
+    [%expect {| |}]
   ;;
 
   let%expect_test "sra" =
@@ -238,7 +253,8 @@ struct
       ~funct3:Funct3.Op.Srl_or_sra
       ~funct7:0b0100_000
       ~f:(fun l r -> Int.shift_right (l land 0xFFFFFFFF) (r land 0xFFFFFFFF))
-      ~small_rs2_range:true
+      ~small_rs2_range:true;
+    [%expect {| |}]
   ;;
 
   let branch_helper ~name ~f ~funct3 =
@@ -289,19 +305,23 @@ struct
   ;;
 
   let%expect_test "beq" =
-    branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = )
+    branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
+    [%expect {| |}]
   ;;
 
   let%expect_test "bne" =
-    branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> )
+    branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
+    [%expect {| |}]
   ;;
 
   let%expect_test "blt" =
-    branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < )
+    branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
+    [%expect {| |}]
   ;;
 
   let%expect_test "bge" =
-    branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= )
+    branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
+    [%expect {| |}]
   ;;
 
   let%expect_test "jal" =
@@ -326,7 +346,8 @@ struct
                 (pc : int)
                 (rd : int)
                 (offset : int)
-                (registers : int list)])
+                (registers : int list)]);
+    [%expect {| |}]
   ;;
 
   let%expect_test "jalr" =
@@ -359,7 +380,8 @@ struct
                 (expectation : int)
                 (rd : int)
                 (rs1 : int)
-                (registers : int list)])
+                (registers : int list)]);
+    [%expect {| |}]
   ;;
 
   let%expect_test "sb/lb" =
@@ -411,7 +433,8 @@ struct
                   (rs2_initial : int)
                   (offset : int)
                   (registers : int list)]))
-        else ())
+        else ());
+    [%expect {| |}]
   ;;
 
   let%expect_test "sh/lh" =
@@ -465,7 +488,8 @@ struct
                   (rs2_initial : int)
                   (offset : int)
                   (registers : int list)]))
-        else ())
+        else ());
+    [%expect {| |}]
   ;;
 
   let%expect_test "sw/lw" =
@@ -520,7 +544,8 @@ struct
                   (rs2_initial : int)
                   (offset : int)
                   (registers : int list)]))
-        else ())
+        else ());
+    [%expect {| |}]
   ;;
 
   let%expect_test "op_imm" =

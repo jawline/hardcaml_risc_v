@@ -112,7 +112,7 @@ struct
     let%hw is_operation = which_ch_to_controller.valid in
     let%hw illegal_operation =
       let%hw is_unaligned =
-        which_ch_to_controller.data.address &:. unaligned_bits <>:. 0
+        sel_bottom ~width:unaligned_bits which_ch_to_controller.data.address <>:. 0
       in
       let%hw is_out_of_range = real_address >=:. capacity_in_words in
       is_operation &: (is_unaligned |: is_out_of_range)

@@ -141,13 +141,14 @@ let%expect_test "store" =
   test ~destination:0 ~value:0xDEADBEEF ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 00000000000000000000000000000000)))))
-       (hart_to_memory_controller ((ready 1)))))
-     deadbeef ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (controller_to_hart
+       ((valid 0)
+        (data ((error 0) (read_data 00000000000000000000000000000000)))))
+      (hart_to_memory_controller ((ready 1)))))
+    deadbeef ffffffff ffffffff ffffffff
+    |}];
   (* Unaligned store, we expect no change *)
   test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
   [%expect

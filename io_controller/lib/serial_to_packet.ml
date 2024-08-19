@@ -109,7 +109,7 @@ struct
           ; ( Waiting_for_length
             , [ when_
                   in_valid
-                  [ which_length_packet <-- which_length_packet.value +:. 1
+                  [ incr which_length_packet
                   ; reading_length <-- length_this_cycle
                   ; when_
                       (which_length_packet.value ==:. num_length_packets - 1)
@@ -120,7 +120,7 @@ struct
             , [ when_
                   in_valid
                   [ should_write_packet_buffer <--. 1
-                  ; reading_length <-- reading_length.value -:. 1
+                  ; incr ~by:(-1) reading_length
                   ; when_ (reading_length.value ==:. 1) [ state.set_next Flushing ]
                   ]
               ] )

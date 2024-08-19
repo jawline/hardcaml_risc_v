@@ -136,7 +136,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   { valid = vdd; data = { data = length_byte; last = gnd } }
               ; when_
                   output_packet_ready
-                  [ which_step <-- which_step.value +:. 1
+                  [ incr which_step
                   ; when_
                       (which_step.value ==:. 1)
                       [ (* If the address was unaligned, set which_step to the
@@ -186,15 +186,15 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   }
               ; when_
                   output_packet_ready
-                  [ length <-- length.value -:. 1
-                  ; which_step <-- which_step.value +:. 1
+                  [ incr ~by:(-1) length
+                  ; incr which_step
                   ; (* TODO: Once we have exhausted our read, we return
                        to reading data. We could prefetch here to speed this
                        up and avoid the stall. *)
                     when_
                       (which_step.value ==:. address_stride - 1)
                       [ which_step <--. 0
-                      ; address <-- address.value +:. address_stride
+                      ; incr ~by:address_stride address
                       ; state.set_next Reading_data
                       ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)

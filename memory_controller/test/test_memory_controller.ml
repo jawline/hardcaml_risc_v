@@ -24,7 +24,24 @@ struct
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   ;;
 
-  let rec write ~address ~value ~ch sim =
+  let rec wait_for_write_ack ~assertion ~ch sim =
+    let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
+    let ch_rx = List.nth_exn outputs.controller_to_ch ch in
+    Cyclesim.cycle sim;
+    if Bits.to_bool !(ch_rx.valid)
+    then (
+      let error = Bits.to_bool !(ch_rx.data.error) in
+      assert (
+        match assertion with
+        | `Error -> error
+        | `No_error -> not error);
+      ())
+    else wait_for_write_ack ~assertion ~ch sim
+  ;;
+
+  let rec write ~assertion ~address ~value ~ch sim =
+    (* Delay a cycle so we know we don't pick up the state of the previous read. *)
+    Cyclesim.cycle sim;
     let inputs : _ Memory_controller.I.t = Cyclesim.inputs sim in
     let ch_tx = List.nth_exn inputs.ch_to_controller ch in
     ch_tx.valid := Bits.vdd;
@@ -47,11 +64,13 @@ struct
           else ())
         outputs.ch_to_controller;
       ch_tx.valid := Bits.gnd;
-      ch_tx.data.write := Bits.gnd)
-    else write ~address ~value ~ch sim
+      ch_tx.data.write := Bits.gnd;
+      wait_for_write_ack ~assertion ~ch sim)
+    else write ~assertion ~address ~value ~ch sim
   ;;
 
-  let rec read ~address ~ch sim =
+  let rec read ~assertion ~address ~ch sim =
+    Cyclesim.cycle sim;
     let inputs : _ Memory_controller.I.t = Cyclesim.inputs sim in
     let ch_tx = List.nth_exn inputs.ch_to_controller ch in
     ch_tx.valid := Bits.vdd;
@@ -62,25 +81,29 @@ struct
     if Bits.to_bool !(ch_rx.valid)
     then (
       ch_tx.valid := Bits.gnd;
-      assert (not (Bits.to_bool !(ch_rx.data.error)));
+      assert (
+        let error = Bits.to_bool !(ch_rx.data.error) in
+        match assertion with
+        | `Error -> error
+        | `No_error -> not error);
       Bits.to_int !(ch_rx.data.read_data))
-    else read ~address ~ch sim
+    else read ~assertion ~address ~ch sim
   ;;
 
-  let read_and_assert ~address ~value ~ch sim =
-    let result = read ~address ~ch sim in
+  let read_and_assert ~assertion ~address ~value ~ch sim =
+    let result = read ~assertion ~address ~ch sim in
     if result <> value
     then print_s [%message "BUG: Expected" (result : int) "received" (value : int)]
   ;;
 
-  let debug = false
+  let debug = true
 
   let%expect_test "read/write" =
     let sim = create_sim () in
     let waveform, sim = Waveform.create sim in
     let random = Splittable_random.of_int 1 in
     Core.protect
-      ~finally:(fun _ ->
+      ~finally:(fun () ->
         if debug then Waveform.Serialize.marshall waveform "/tmp/read_write" else ())
       ~f:(fun _ ->
         for _i = 0 to 1000 do
@@ -88,12 +111,56 @@ struct
             Splittable_random.int ~lo:Int.min_value ~hi:Int.max_value random
             land 0xFFFFFFFF
           in
-          let ch = Splittable_random.int ~lo:0 ~hi:C.num_channels random in
+          let ch = Splittable_random.int ~lo:0 ~hi:(C.num_channels - 1) random in
           let address = Splittable_random.int ~lo:0 ~hi:127 random land lnot 0b11 in
-          write ~address ~value:next ~ch sim;
-          read_and_assert ~address ~value:next ~ch sim
+          write ~assertion:`No_error ~address ~value:next ~ch sim;
+          read_and_assert ~assertion:`No_error ~address ~value:next ~ch sim
         done;
         ());
     [%expect {| |}]
   ;;
+
+  let%expect_test "read unaligned" =
+    let sim = create_sim () in
+    let waveform, sim = Waveform.create sim in
+    Core.protect
+      ~finally:(fun () ->
+        if debug then Waveform.Serialize.marshall waveform "/tmp/read_unaligned" else ())
+      ~f:(fun _ ->
+        let ch = 0 in
+        read_and_assert ~assertion:`Error ~address:1 ~value:0 ~ch sim;
+        read_and_assert ~assertion:`Error ~address:2 ~value:0 ~ch sim;
+        read_and_assert ~assertion:`Error ~address:3 ~value:0 ~ch sim;
+        read_and_assert ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
+        ());
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "write unaligned" =
+    let sim = create_sim () in
+    let waveform, sim = Waveform.create sim in
+    Core.protect
+      ~finally:(fun () ->
+        if debug then Waveform.Serialize.marshall waveform "/tmp/write_unaligned" else ())
+      ~f:(fun _ ->
+        let ch = 0 in
+        write ~assertion:`Error ~address:1 ~value:0 ~ch sim;
+        write ~assertion:`Error ~address:2 ~value:0 ~ch sim;
+        write ~assertion:`Error ~address:3 ~value:0 ~ch sim;
+        write ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
+        ());
+    [%expect {| |}]
+  ;;
 end
+
+include Make_tests (struct
+    let num_channels = 1
+  end)
+
+include Make_tests (struct
+    let num_channels = 2
+  end)
+
+include Make_tests (struct
+    let num_channels = 3
+  end)

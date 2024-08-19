@@ -97,7 +97,7 @@ struct
                   switch_cycle
                   [ parity_bit <-- parity_bit.value +: uart_rx
                   ; data <-- data_with_new_data_bit
-                  ; which_data_bit <-- which_data_bit.value +:. 1
+                  ; incr which_data_bit
                   ; when_
                       (which_data_bit.value ==:. 7)
                       [ (if Config.include_parity_bit
@@ -116,7 +116,7 @@ struct
           ; ( State.Waiting_for_stop_bits
             , [ when_
                   switch_cycle
-                  [ which_stop_bit <-- which_stop_bit.value +:. 1
+                  [ incr which_stop_bit
                   ; when_ (uart_rx ==:. 0) [ stop_bit_not_stable <--. 1 ]
                   ; when_
                       (which_stop_bit.value ==:. Config.stop_bits)
