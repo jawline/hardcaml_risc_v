@@ -109,7 +109,7 @@ module Make (C : Config_intf.S) = struct
                   [ current_output_reg <-- next_data_bit
                   ; current_output_wire <-- next_data_bit
                   ; parity_bit <-- parity_bit.value +: next_data_bit
-                  ; which_data_bits <-- which_data_bits.value +:. 1
+                  ; incr which_data_bits
                   ; when_
                       (which_data_bits.value ==:. 7)
                       (if C.config.include_parity_bit
@@ -130,7 +130,7 @@ module Make (C : Config_intf.S) = struct
             , [ current_output_wire <-- current_output_reg.value
               ; when_
                   switch_cycle
-                  [ which_stop_bit <-- which_stop_bit.value +:. 1
+                  [ incr which_stop_bit
                   ; current_output_reg <--. 1
                   ; (* While unlikely in practice, if the baud rate is equal to
                        clock rate then just setting the register would be wrong as
