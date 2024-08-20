@@ -16,4 +16,13 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     ; error : 'a
     }
   [@@deriving sexp_of, hardcaml]
+
+  let generic_error =
+    let open Signal in
+    { set_rd = gnd
+    ; new_rd = zero register_width
+    ; new_pc = zero register_width
+    ; error = vdd
+    }
+  ;;
 end

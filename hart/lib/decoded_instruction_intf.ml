@@ -17,6 +17,9 @@ module M (Registers : Registers_intf.S) = struct
       ; b_immediate : 'a [@bits register_width]
       ; load_address : 'a [@bits register_width]
       ; store_address : 'a [@bits register_width]
+      ; is_ecall : 'a
+      ; is_store : 'a
+      ; is_load : 'a
       }
     [@@deriving sexp_of, hardcaml]
 

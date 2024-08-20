@@ -11,9 +11,8 @@ module Make
     (Transaction : Transaction_intf.S) =
 struct
   type 'a t =
-    { transaction : 'a Transaction.t
-    ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
-    ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
+    { valid : 'a
+    ; transaction : 'a Transaction.t
     }
   [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
 end
