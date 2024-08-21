@@ -2,7 +2,8 @@
     pipeline is started.  It is restarted with the new state of the registers
     each time the execution pipeline pulses a valid signal with a new set of
     registers. *)
- open! Core
+open! Core
+
 open Hardcaml
 open Hardcaml_memory_controller
 open Signal
@@ -49,24 +50,34 @@ struct
 
   let create scope (i : _ I.t) =
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let start_instruction = wire 1 in
-    let registers = Registers.For_writeback.Of_signal.wires () in
+    let executor_finished = wire 1 in
+    let executor_registers = Registers.For_writeback.Of_signal.wires () in
+    let restarting =
+      reg_fb ~width:1 ~f:(fun _t -> gnd) (Reg_spec.override ~clear_to:vdd reg_spec)
+    in
     let executor =
       Execute_pipeline.hierarchical
         scope
         { Execute_pipeline.I.clock = i.clock
         ; clear = i.clear
-        ; valid = start_instruction
-        ; registers
+        ; valid = executor_finished |: restarting
+        ; registers =
+            Registers.For_writeback.Of_signal.mux2
+              restarting
+              executor_registers
+              (Registers.For_writeback.Of_signal.of_int 0)
         ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
         }
     in
-    start_instruction
-    <== reg_fb ~width:1 ~f:(fun _t -> gnd) (Reg_spec.override ~clear_to:vdd reg_spec) |: executor.valid;
-    Registers.For_writeback.Of_signal.(
-      registers <== reg reg_spec (mux2 executor.valid executor.registers registers));
-    { O.registers = Registers.For_writeback.to_registers registers
+    executor_finished <== executor.valid;
+    Registers.For_writeback.Of_signal.(executor_registers <== executor.registers);
+    { O.registers =
+        Registers.For_writeback.Of_signal.reg
+          ~enable:executor.valid
+          reg_spec
+          executor.registers
+        |> Registers.For_writeback.to_registers
     ; error = executor.error
     ; is_ecall = assert false
     ; hart_to_memory_controller = executor.hart_to_memory_controller
