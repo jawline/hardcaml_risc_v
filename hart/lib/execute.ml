@@ -34,6 +34,7 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
+      ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -318,21 +319,24 @@ struct
         ~ecall_transaction:(assert false)
         scope
     in
+    let transaction =
+      let instruction_mux =
+        List.init
+          ~f:(fun opcode ->
+            match List.find ~f:(fun t -> t.opcode = opcode) instruction_table with
+            | Some t -> t.output
+            | None -> Transaction.generic_error)
+          128
+      in
+      Transaction.Of_signal.reg
+        reg_spec_with_clear
+        (Transaction.Of_signal.mux i.instruction.opcode instruction_mux)
+    in
     { O.valid = reg reg_spec_with_clear i.valid
     ; registers = Registers.For_writeback.Of_signal.reg reg_spec_with_clear i.registers
     ; instruction = Decoded_instruction.Of_signal.reg reg_spec_with_clear i.instruction
-    ; transaction =
-        (let instruction_mux =
-           List.init
-             ~f:(fun opcode ->
-               match List.find ~f:(fun t -> t.opcode = opcode) instruction_table with
-               | Some t -> t.output
-               | None -> Transaction.generic_error)
-             128
-         in
-         Transaction.Of_signal.reg
-           reg_spec_with_clear
-           (Transaction.Of_signal.mux i.instruction.opcode instruction_mux))
+    ; error = transaction.error
+    ; transaction
     }
   ;;
 

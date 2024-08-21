@@ -59,8 +59,7 @@ struct
   end
 
   let default_transaction (hart : _ Hart.O.t) =
-    { Transaction.finished = vdd
-    ; set_rd = vdd
+    { Transaction.set_rd = vdd
     ; new_rd = zero register_width
     ; new_pc = hart.registers.pc +:. 4
     ; error = gnd
@@ -109,8 +108,7 @@ struct
     (* Assign the Hart0 transaction *)
     Transaction.Of_signal.(
       List.hd_exn hart_ecall_transactions
-      <== { Transaction.finished = vdd
-          ; set_rd = vdd
+      <== { Transaction.set_rd = vdd
           ; new_rd = uresize ~width:register_width not_busy
           ; new_pc = hart0.registers.pc +:. 4
           ; error = gnd
@@ -137,11 +135,6 @@ struct
     let ch_to_controller_per_hart =
       List.init
         ~f:(fun _which_hart -> Memory_controller.Tx_bus.Tx.Of_always.wire zero)
-        General_config.num_harts
-    in
-    let controller_to_ch_per_hart =
-      List.init
-        ~f:(fun _which_hart -> Memory_controller.Rx_bus.Rx.Of_always.wire zero)
         General_config.num_harts
     in
     let of_dma ~default ~f =
@@ -198,15 +191,6 @@ struct
            (List.zip_exn
               harts
               (List.take ch_to_controller_per_hart General_config.num_harts))
-         |> proc
-       ; List.map
-           ~f:(fun (hart, controller_to_ch_per_hart) ->
-             Memory_controller.Rx_bus.Rx.Of_always.assign
-               controller_to_ch_per_hart
-               hart.memory_controller_to_hart)
-           (List.zip_exn
-              harts
-              (List.take controller_to_ch_per_hart General_config.num_harts))
          |> proc
        ]
        @
