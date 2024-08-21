@@ -1,4 +1,8 @@
-open! Core
+(** An implementation of a one in flight Risc-V Hart. On clear the execution
+    pipeline is started.  It is restarted with the new state of the registers
+    each time the execution pipeline pulses a valid signal with a new set of
+    registers. *)
+ open! Core
 open Hardcaml
 open Hardcaml_memory_controller
 open Signal
@@ -59,7 +63,7 @@ struct
         }
     in
     start_instruction
-    <== reg_fb ~width:1 ~f:(fun _t -> gnd) (Reg_spec.override ~clear_to:vdd reg_spec);
+    <== reg_fb ~width:1 ~f:(fun _t -> gnd) (Reg_spec.override ~clear_to:vdd reg_spec) |: executor.valid;
     Registers.For_writeback.Of_signal.(
       registers <== reg reg_spec (mux2 executor.valid executor.registers registers));
     { O.registers = Registers.For_writeback.to_registers registers
