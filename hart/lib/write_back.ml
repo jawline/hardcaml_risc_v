@@ -43,12 +43,14 @@ struct
 
   let create _scope (i : _ I.t) =
     let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let commit_transaction ~new_pc ~set_rd ~new_rd =
-      Registers.For_writeback.set_pc i.registers new_pc
-      |> Registers.For_writeback.assign_when
+    let commit_transaction ~new_pc ~set_rd ~new_rd reg =
+      let reg = Registers.For_writeback.to_registers reg in
+      Registers.set_pc reg new_pc
+      |> Registers.assign_when
            ~when_:set_rd
            ~index_signal:i.instruction.rd
            ~value_signal:new_rd
+      |> Registers.For_writeback.of_registers
     in
     { O.valid = reg reg_spec_with_clear i.valid
     ; registers =
@@ -57,7 +59,8 @@ struct
           (commit_transaction
              ~new_pc:i.transaction.new_pc
              ~set_rd:i.transaction.set_rd
-             ~new_rd:i.transaction.new_rd)
+             ~new_rd:i.transaction.new_rd
+             i.registers)
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     ; error = gnd
     }
