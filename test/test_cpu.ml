@@ -926,7 +926,7 @@ module With_manually_programmed_ram = Make (struct
 
     let test ~instructions sim =
       let pc, registers = test_and_registers ~instructions sim in
-      print_s [%message "" ~_:(pc : int) ~_:(registers : int list)];
+      print_s [%message "PC: " ~_:(pc : int) "REG:" ~_:(registers : int list)];
       print_ram sim
     ;;
   end)
@@ -1095,7 +1095,7 @@ module With_dma_ram = Make (struct
 
     let test ~instructions sim =
       let pc, registers = test_and_registers ~instructions sim in
-      print_s [%message "" ~_:(pc : int) ~_:(registers : int list)];
+      print_s [%message "PC: " ~_:(pc : int) "REG:" ~_:(registers : int list)];
       print_ram sim
     ;;
   end)
