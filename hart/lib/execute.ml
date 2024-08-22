@@ -47,6 +47,7 @@ struct
       ; transaction : 'a Transaction.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; error : 'a
+      ; is_ecall : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -384,8 +385,19 @@ struct
         ~registers:(Registers.For_writeback.to_registers i.registers)
         ~memory_controller_to_hart:i.memory_controller_to_hart
         ~hart_to_memory_controller:i.hart_to_memory_controller
-        ~ecall_transaction:(assert false)
+        ~ecall_transaction:i.ecall_transaction
         scope
+    in
+    let valid =
+      let valid_mux =
+        List.init
+          ~f:(fun opcode ->
+            match List.find ~f:(fun t -> t.opcode = opcode) instruction_table with
+            | Some t -> t.output.valid
+            | None -> gnd)
+          128
+      in
+      reg reg_spec_with_clear (mux i.instruction.opcode valid_mux)
     in
     let transaction =
       let instruction_mux =
@@ -400,9 +412,17 @@ struct
         reg_spec_with_clear
         (Transaction.Of_signal.mux i.instruction.opcode instruction_mux)
     in
-    { O.valid = reg reg_spec_with_clear i.valid
-    ; registers = Registers.For_writeback.Of_signal.reg reg_spec_with_clear i.registers
-    ; instruction = Decoded_instruction.Of_signal.reg reg_spec_with_clear i.instruction
+    { O.valid
+    ; registers =
+        Registers.For_writeback.Of_signal.reg
+          ~enable:i.valid
+          reg_spec_with_clear
+          i.registers
+    ; instruction =
+        Decoded_instruction.Of_signal.reg
+          ~enable:i.valid
+          reg_spec_with_clear
+          i.instruction
     ; transaction
     ; hart_to_memory_controller =
         (let combine = Memory.Tx_bus.Tx.map2 ~f:( |: ) in
@@ -410,6 +430,7 @@ struct
          |> List.filter_opt
          |> List.fold ~init:(Memory.Tx_bus.Tx.Of_signal.of_int 0) ~f:combine)
     ; error = transaction.error
+    ; is_ecall = i.instruction.is_ecall
     }
   ;;
 

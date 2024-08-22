@@ -41,6 +41,7 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; error : 'a
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
+      ; is_ecall : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -103,6 +104,7 @@ struct
            (combine
               execute.hart_to_memory_controller
               write_back.hart_to_memory_controller))
+    ; is_ecall = execute.is_ecall
     }
   ;;
 

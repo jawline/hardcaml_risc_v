@@ -7,15 +7,6 @@ module type S = sig
     }
   [@@deriving sexp_of, hardcaml]
 
-  val set_pc : 'a t -> 'a -> 'a t
-
-  val assign_when
-    :  when_:Signal.t
-    -> index_signal:Signal.t
-    -> value_signal:Signal.t
-    -> Signal.t t
-    -> Signal.t t
-
   module For_writeback : sig
     type nonrec 'a registers = 'a t
 
@@ -24,6 +15,15 @@ module type S = sig
       ; general : 'a list
       }
     [@@deriving sexp_of, hardcaml]
+
+    val set_pc : 'a t -> 'a -> 'a t
+
+    val assign_when
+      :  when_:Signal.t
+      -> index_signal:Signal.t
+      -> value_signal:Signal.t
+      -> Signal.t t
+      -> Signal.t t
 
     val to_registers : Signal.t t -> Signal.t registers
     val of_registers : 'a registers -> 'a t

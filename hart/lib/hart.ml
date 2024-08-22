@@ -80,7 +80,7 @@ struct
           executor.registers
         |> Registers.For_writeback.to_registers
     ; error = executor.error
-    ; is_ecall = assert false
+    ; is_ecall = executor.is_ecall
     ; hart_to_memory_controller = executor.hart_to_memory_controller
     }
   ;;

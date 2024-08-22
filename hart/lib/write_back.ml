@@ -1,5 +1,6 @@
 open! Core
 open Hardcaml
+open Signal
 open Hardcaml_memory_controller
 
 module Make
@@ -32,9 +33,7 @@ struct
 
   module O = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
-      ; valid : 'a
+      { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; error : 'a
@@ -42,7 +41,27 @@ struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
-  let create _scope (_i : _ I.t) = assert false
+  let create _scope (i : _ I.t) =
+    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let commit_transaction ~new_pc ~set_rd ~new_rd =
+      Registers.For_writeback.set_pc i.registers new_pc
+      |> Registers.For_writeback.assign_when
+           ~when_:set_rd
+           ~index_signal:i.instruction.rd
+           ~value_signal:new_rd
+    in
+    { O.valid = reg reg_spec_with_clear i.valid
+    ; registers =
+        Registers.For_writeback.Of_signal.reg
+          reg_spec_with_clear
+          (commit_transaction
+             ~new_pc:i.transaction.new_pc
+             ~set_rd:i.transaction.set_rd
+             ~new_rd:i.transaction.new_rd)
+    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
+    ; error = gnd
+    }
+  ;;
 
   let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
