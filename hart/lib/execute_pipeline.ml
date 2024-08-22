@@ -28,6 +28,7 @@ struct
       ; clear : 'a
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
+      ; ecall_transaction : 'a Transaction.t
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
       }
@@ -74,6 +75,9 @@ struct
         ; valid = decode.valid
         ; registers = decode.registers
         ; instruction = decode.instruction
+        ; ecall_transaction = i.ecall_transaction
+        ; memory_controller_to_hart = i.memory_controller_to_hart
+        ; hart_to_memory_controller = i.hart_to_memory_controller
         }
     in
     let write_back =
@@ -93,10 +97,12 @@ struct
     ; registers = write_back.registers
     ; error = fetch.error |: execute.error |: write_back.error
     ; hart_to_memory_controller =
-        Memory.Tx_bus.Tx.map2
-          ~f:( |: )
-          fetch.hart_to_memory_controller
-          write_back.hart_to_memory_controller
+        (let combine = Memory.Tx_bus.Tx.map2 ~f:( |: ) in
+         combine
+           fetch.hart_to_memory_controller
+           (combine
+              execute.hart_to_memory_controller
+              write_back.hart_to_memory_controller))
     }
   ;;
 

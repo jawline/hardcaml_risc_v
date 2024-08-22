@@ -38,8 +38,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     type 'a t =
       { error : 'a
       ; finished : 'a
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
-           [@rtlprefix "memory_controller_to_hart$"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller$"]
       }
@@ -214,7 +212,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            write finished signal OR immediately with error if we are unaligned.
         *)
         is_unaligned |: store_finished.value
-    ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = vdd }
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     }

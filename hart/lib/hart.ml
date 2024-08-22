@@ -66,6 +66,7 @@ struct
               restarting
               executor_registers
               (Registers.For_writeback.Of_signal.of_int 0)
+        ; ecall_transaction = i.ecall_transaction
         ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
         }

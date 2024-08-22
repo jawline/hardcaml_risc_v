@@ -31,8 +31,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       { new_rd : 'a [@bits register_width] [@rtlname "new_rd"]
       ; error : 'a
       ; finished : 'a
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
-           [@rtlprefix "memory_controller_to_hart$"]
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller$"]
       }
@@ -133,7 +131,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            funct3)
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
     ; finished = enable &: (is_unaligned |: memory_controller_to_hart.valid)
-    ; memory_controller_to_hart = { Memory.Rx_bus.Rx.ready = vdd }
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     }
