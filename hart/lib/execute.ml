@@ -30,41 +30,55 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a Decoded_instruction.t
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
       ; ecall_transaction : 'a Transaction.t
+      ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
       { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; error : 'a
       ; is_ecall : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let op_imm_instructions
+    ~valid
     ~(registers : _ Registers.t)
     scope
-    ({ funct3; funct7; rs1; i_immediate; _ } : _ Decoded_instruction.t)
+    ({ funct3
+     ; rs1
+     ; i_immediate
+     ; funct7_switch
+     ; funct7_bit_other_than_switch_is_selected
+     ; _
+     } :
+      _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical (* There is no SUBI since a signed addi is sufficient. *)
         ~enable_subtract:false
         ~instance:"op_imm"
         scope
-        { Op.I.funct3; funct7; lhs = rs1; rhs = i_immediate }
+        { Op.I.funct3
+        ; funct7_switch
+        ; funct7_error = funct7_bit_other_than_switch_is_selected
+        ; lhs = rs1
+        ; rhs = i_immediate
+        }
     in
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
@@ -72,18 +86,25 @@ struct
   ;;
 
   let op_instructions
+    ~valid
     ~(registers : _ Registers.t)
     scope
-    ({ funct3; funct7; rs1; rs2; _ } : _ Decoded_instruction.t)
+    ({ funct3; rs1; rs2; funct7_switch; funct7_bit_other_than_switch_is_selected; _ } :
+      _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical
         ~instance:"op"
         ~enable_subtract:true
         scope
-        { Op.I.funct3; funct7; lhs = rs1; rhs = rs2 }
+        { Op.I.funct3
+        ; funct7_switch
+        ; funct7_error = funct7_bit_other_than_switch_is_selected
+        ; lhs = rs1
+        ; rhs = rs2
+        }
     in
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
@@ -93,17 +114,20 @@ struct
   (** JAL (jump and link) adds the signed J-immediate value to the current PC
       after storing the current PC + 4 in the destination register. *)
   let jal_instruction
+    ~valid
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
+    scope
     =
-    let new_pc = registers.pc +: decoded_instruction.j_immediate in
-    let error = new_pc &:. 0b11 <>:. 0 in
-    { Opcode_output.valid = vdd
+    let%hw new_pc = registers.pc +: decoded_instruction.j_immediate in
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
-        { Transaction.set_rd = vdd; new_rd = registers.pc +:. 4; new_pc; error }
+        { Transaction.set_rd = vdd; new_rd = registers.pc +:. 4; new_pc; error = gnd }
     }
   ;;
+
+  let drop_lsb t = concat_msb [ sel_top ~width:(width t - 1) t; gnd ]
 
   (** JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
       sets the LSB of that result to zero (e.g, result = result & (!1)), and
@@ -111,6 +135,7 @@ struct
       (the start of the next instruction).  Regiser 0 can be used to discard the
       result. *)
   let jalr_instruction
+    ~valid
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     scope
@@ -118,23 +143,23 @@ struct
     let new_pc =
       let%hw jalr_rs1 = decoded_instruction.rs1 in
       let%hw jalr_i = decoded_instruction.i_immediate in
-      jalr_rs1 +: jalr_i &: ~:(of_int ~width:register_width 1)
+      jalr_rs1 +: jalr_i |> drop_lsb
     in
-    let error = new_pc &:. 0b11 <>:. 0 in
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
-        { Transaction.set_rd = vdd; new_pc; error; new_rd = registers.pc +:. 4 }
+        { Transaction.set_rd = vdd; new_pc; error = gnd; new_rd = registers.pc +:. 4 }
     }
   ;;
 
   (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
       value from the msb with zeros for the lower 12. *)
   let lui_instruction
+    ~valid
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         { Transaction.set_rd = vdd
@@ -149,10 +174,11 @@ struct
       current the program counter and places it in RD. This can be used to compute
       addresses for JALR instructions. *)
   let auipc_instruction
+    ~valid
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         { Transaction.set_rd = vdd
@@ -167,6 +193,7 @@ struct
       either adds a b immediate to the PC or skips to the next instruction
       based on the result. *)
   let branch_instruction
+    ~valid
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     scope
@@ -182,17 +209,21 @@ struct
         ; pc = registers.pc
         }
     in
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         { Transaction.set_rd = gnd; new_rd = zero register_width; error; new_pc }
     }
   ;;
 
-  let fence ~(registers : _ Registers.t) (_decoded_instruction : _ Decoded_instruction.t) =
+  let fence
+    ~valid
+    ~(registers : _ Registers.t)
+    (_decoded_instruction : _ Decoded_instruction.t)
+    =
     (* TODO: Currently all memory transactions are atomic so I'm not sure if I
      * need to implement this. Figure it out. *)
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         { Transaction.set_rd = vdd
@@ -207,6 +238,7 @@ struct
   let load_instruction
     ~clock
     ~clear
+    ~valid
     ~memory_controller_to_hart
     ~hart_to_memory_controller
     ~(registers : _ Registers.t)
@@ -222,7 +254,7 @@ struct
         ; enable =
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            decoded_instruction.is_load
+            valid &: decoded_instruction.is_load
         ; funct3 = decoded_instruction.funct3
         ; address = decoded_instruction.load_address
         ; memory_controller_to_hart
@@ -240,6 +272,7 @@ struct
   let store_instruction
     ~clock
     ~clear
+    ~valid
     ~memory_controller_to_hart
     ~hart_to_memory_controller
     ~(registers : _ Registers.t)
@@ -255,7 +288,7 @@ struct
         ; enable =
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            decoded_instruction.is_store
+            valid &: decoded_instruction.is_store
         ; funct3 = decoded_instruction.funct3
         ; destination = decoded_instruction.store_address
         ; value = decoded_instruction.rs2
@@ -280,6 +313,7 @@ struct
   let system_instruction
     ~clock:_
     ~clear:_
+    ~valid
     ~(registers : _ Registers.t)
     ~ecall_transaction
     (decoded_instruction : _ Decoded_instruction.t)
@@ -294,7 +328,7 @@ struct
       }
     in
     let%hw is_ecall = decoded_instruction.is_ecall in
-    { Opcode_output.valid = vdd
+    { Opcode_output.valid
     ; hart_to_memory_controller = None
     ; transaction =
         Transaction.Of_signal.mux2 is_ecall ecall_transaction unsupported_increment_pc
@@ -314,6 +348,7 @@ struct
   let instruction_table
     ~clock
     ~clear
+    ~valid
     ~registers
     ~decoded_instruction
     ~ecall_transaction
@@ -323,31 +358,38 @@ struct
     =
     [ Table_entry.create
         ~opcode:Opcodes.op
-        (op_instructions ~registers scope decoded_instruction)
+        (op_instructions ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
         ~opcode:Opcodes.op_imm
-        (op_imm_instructions ~registers scope decoded_instruction)
+        (op_imm_instructions ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
         ~opcode:Opcodes.jal
-        (jal_instruction ~registers decoded_instruction)
+        (jal_instruction
+           ~valid
+           ~registers
+           decoded_instruction
+           (Scope.sub_scope scope "jal"))
     ; Table_entry.create
         ~opcode:Opcodes.jalr
-        (jalr_instruction ~registers decoded_instruction scope)
+        (jalr_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
         ~opcode:Opcodes.lui
-        (lui_instruction ~registers decoded_instruction)
+        (lui_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
         ~opcode:Opcodes.auipc
-        (auipc_instruction ~registers decoded_instruction)
-    ; Table_entry.create ~opcode:Opcodes.fence (fence ~registers decoded_instruction)
+        (auipc_instruction ~valid ~registers decoded_instruction)
+    ; Table_entry.create
+        ~opcode:Opcodes.fence
+        (fence ~valid ~registers decoded_instruction)
     ; Table_entry.create
         ~opcode:Opcodes.branch
-        (branch_instruction ~registers decoded_instruction scope)
+        (branch_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
         ~opcode:Opcodes.load
         (load_instruction
            ~clock
            ~clear
+           ~valid
            ~memory_controller_to_hart
            ~hart_to_memory_controller
            ~registers
@@ -358,6 +400,7 @@ struct
         (store_instruction
            ~clock
            ~clear
+           ~valid
            ~memory_controller_to_hart
            ~hart_to_memory_controller
            ~registers
@@ -368,6 +411,7 @@ struct
         (system_instruction
            ~clock
            ~clear
+           ~valid
            ~registers
            ~ecall_transaction
            decoded_instruction
@@ -381,6 +425,7 @@ struct
       instruction_table
         ~clock:i.clock
         ~clear:i.clear
+        ~valid:i.valid
         ~decoded_instruction:i.instruction
         ~registers:(Registers.For_writeback.to_registers i.registers)
         ~memory_controller_to_hart:i.memory_controller_to_hart
@@ -429,7 +474,7 @@ struct
          List.map ~f:(fun t -> t.output.hart_to_memory_controller) instruction_table
          |> List.filter_opt
          |> List.fold ~init:(Memory.Tx_bus.Tx.Of_signal.of_int 0) ~f:combine)
-    ; error = transaction.error
+    ; error = reg ~enable:i.error reg_spec_with_clear i.error |: transaction.error
     ; is_ecall = i.instruction.is_ecall
     }
   ;;

@@ -8,7 +8,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   module I = struct
     type 'a t =
       { funct3 : 'a [@bits 3]
-      ; funct7 : 'a [@bits 7]
+      ; funct7_switch : 'a
+      ; funct7_error : 'a
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
       }
@@ -23,7 +24,11 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
-  let create ~enable_subtract scope ({ I.funct3; funct7; lhs; rhs } : _ I.t) =
+  let create
+    ~enable_subtract
+    _scope
+    ({ I.funct3; funct7_switch; funct7_error; lhs; rhs } : _ I.t)
+    =
     let rd, error =
       Util.switch2
         (module Funct3.Op)
@@ -31,10 +36,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
         ~f:(function
           | Funct3.Op.Add_or_sub ->
             if enable_subtract
-            then (
-              let error = funct7 >:. 1 in
-              let%hw is_subtract = funct7.:(5) in
-              mux2 is_subtract (lhs -: rhs) (lhs +: rhs), error)
+            then mux2 funct7_switch (lhs -: rhs) (lhs +: rhs), funct7_error
             else lhs +: rhs, gnd
           | Slt -> uresize ~width:32 (lhs <+ rhs), gnd
           | Sltu -> uresize ~width:32 (lhs <: rhs), gnd
@@ -43,11 +45,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
           | Or -> lhs |: rhs, gnd
           | And -> lhs &: rhs, gnd
           | Srl_or_sra ->
-            let error = funct7 >:. 1 in
             (* TODO: Not sure if this is correct for SRA *)
             let sra = Util.sra lhs rhs in
             let srl = Util.srl lhs rhs in
-            mux2 funct7.:(0) sra srl, error)
+            mux2 funct7_switch sra srl, funct7_error)
         funct3
     in
     { O.rd; error }

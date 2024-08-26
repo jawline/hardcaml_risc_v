@@ -49,11 +49,14 @@ struct
   end
 
   let create scope (i : _ I.t) =
-    let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let executor_finished = wire 1 in
+    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
-    let restarting =
-      reg_fb ~width:1 ~f:(fun _t -> gnd) (Reg_spec.override ~clear_to:vdd reg_spec)
+    let%hw restarting =
+      reg_fb
+        ~width:1
+        ~f:(fun _t -> gnd)
+        (Reg_spec.override ~clear_to:vdd reg_spec_with_clear)
     in
     let executor =
       Execute_pipeline.hierarchical
@@ -64,22 +67,22 @@ struct
         ; registers =
             Registers.For_writeback.Of_signal.mux2
               restarting
-              executor_registers
               (Registers.For_writeback.Of_signal.of_int 0)
+              executor_registers
         ; ecall_transaction = i.ecall_transaction
         ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
         }
     in
-    executor_finished <== executor.valid;
+    executor_finished <== (executor.valid &: ~:(executor.error));
     Registers.For_writeback.Of_signal.(executor_registers <== executor.registers);
     { O.registers =
         Registers.For_writeback.Of_signal.reg
-          ~enable:executor.valid
-          reg_spec
+          ~enable:(executor.valid &: ~:(executor.error))
+          reg_spec_with_clear
           executor.registers
         |> Registers.For_writeback.to_registers
-    ; error = executor.error
+    ; error = reg ~enable:executor.valid reg_spec_with_clear executor.error
     ; is_ecall = executor.is_ecall
     ; hart_to_memory_controller = executor.hart_to_memory_controller
     }

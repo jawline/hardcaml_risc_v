@@ -17,9 +17,9 @@ struct
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
            [@rtlprefix "hart_to_memory_controller"]
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -27,11 +27,11 @@ struct
       { hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
            [@rtlprefix "hart_to_memory_controller"]
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a [@bits 32]
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let create scope (i : _ I.t) =

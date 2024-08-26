@@ -46,6 +46,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   module State = struct
     type t =
+      | Idle
       | Preparing_load
       | Waiting_for_load
       | Preparing_store
@@ -141,77 +142,81 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       Variable.reg ~width:register_width reg_spec_no_clear
     in
     let store_finished = Variable.wire ~default:gnd in
+    let idle_or_starting =
+      proc
+        [ (* If we are loading a whole word and it is aligned
+             we do not need to read from the memory controller,
+             we can just write the whole thing skipping the
+             load step.
+          *)
+          Memory.Tx_bus.Tx.Of_always.assign
+            hart_to_memory_controller
+            { valid = vdd
+            ; data = { address = aligned_address; write = gnd; write_data = zero 32 }
+            }
+        ; when_ memory_controller_ready [ current_state.set_next Waiting_for_load ]
+        ]
+    in
+    (* TODO: Error signal is not correctly propagated here. *)
     compile
-      [ when_
-          (enable &: ~:inputs_are_error)
-          [ current_state.switch
-              [ ( State.Preparing_load
-                , [ (* If we are loading a whole word and it is aligned
-                       we do not need to read from the memory controller,
-                       we can just write the whole thing skipping the
-                       load step.
-                    *)
-                    if_
-                      is_load_word
-                      [ word_to_write <-- value; current_state.set_next Preparing_store ]
-                      [ Memory.Tx_bus.Tx.Of_always.assign
-                          hart_to_memory_controller
-                          { valid = vdd
-                          ; data =
-                              { address = aligned_address
-                              ; write = gnd
-                              ; write_data = zero 32
-                              }
-                          }
-                      ; when_
-                          memory_controller_ready
-                          [ current_state.set_next Waiting_for_load ]
+      [ current_state.switch
+          [ ( State.Idle
+            , [ when_
+                  enable
+                  [ if_
+                      inputs_are_error
+                      [ store_finished <-- vdd ]
+                      [ if_
+                          is_load_word
+                          [ word_to_write <-- value
+                          ; current_state.set_next Preparing_store
+                          ]
+                          [ idle_or_starting ]
                       ]
-                  ] )
-              ; ( Waiting_for_load
-                , [ when_
-                      memory_controller_to_hart.valid
-                      [ word_to_write
-                        <-- combine_old_and_new_word
-                            (* Here we supply the
-                               unaligned destination as it is used to decide how to
-                               rewrite the word. *)
-                              ~funct3
-                              ~destination
-                              ~old_word:memory_controller_to_hart.data.read_data
-                              ~new_word:value
-                              scope
-                      ; current_state.set_next Preparing_store
-                      ]
-                  ] )
-              ; ( Preparing_store
-                , [ Memory.Tx_bus.Tx.Of_always.assign
-                      hart_to_memory_controller
-                      { valid = vdd
-                      ; data =
-                          { address = aligned_address
-                          ; write = vdd
-                          ; write_data = word_to_write.value
-                          }
+                  ]
+              ] )
+          ; Preparing_load, [ idle_or_starting ]
+          ; ( Waiting_for_load
+            , [ when_
+                  memory_controller_to_hart.valid
+                  [ word_to_write
+                    <-- combine_old_and_new_word
+                        (* Here we supply the
+                           unaligned destination as it is used to decide how to
+                           rewrite the word. *)
+                          ~funct3
+                          ~destination
+                          ~old_word:memory_controller_to_hart.data.read_data
+                          ~new_word:value
+                          scope
+                  ; current_state.set_next Preparing_store
+                  ]
+              ] )
+          ; ( Preparing_store
+            , [ Memory.Tx_bus.Tx.Of_always.assign
+                  hart_to_memory_controller
+                  { valid = vdd
+                  ; data =
+                      { address = aligned_address
+                      ; write = vdd
+                      ; write_data = word_to_write.value
                       }
-                  ; when_
-                      memory_controller_ready
-                      [ current_state.set_next Waiting_for_store ]
-                  ] )
-              ; ( Waiting_for_store
-                , [ when_
-                      memory_controller_to_hart.valid
-                      [ store_finished <--. 1; current_state.set_next Preparing_load ]
-                  ] )
-              ]
+                  }
+              ; when_ memory_controller_ready [ current_state.set_next Waiting_for_store ]
+              ] )
+          ; ( Waiting_for_store
+            , [ when_
+                  memory_controller_to_hart.valid
+                  [ store_finished <--. 1; current_state.set_next Idle ]
+              ] )
           ]
       ];
-    { O.error = memory_controller_to_hart.data.error |: inputs_are_error
+    { O.error = inputs_are_error
     ; finished =
         (* We are finished either once the memory controller responds with a
            write finished signal OR immediately with error if we are unaligned.
         *)
-        is_unaligned |: store_finished.value
+        store_finished.value
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     }

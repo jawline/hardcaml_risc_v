@@ -109,52 +109,55 @@ struct
   let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
     let sim = create_sim name in
     let open Quickcheck.Generator in
-    Quickcheck.test
-      ~trials:25
-      (tuple5
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl
-            (if small_rs2_range then 0 else -2047)
-            (if small_rs2_range then 10 else 2047)))
-      ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial) ->
-        if rs1 <> rs2
-        then (
-          let _pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs1
-                    ~immediate:rs1_initial
-                ; op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs2
-                    ~immediate:rs2_initial
-                ; op ~rs1 ~rs2 ~rd ~funct3 ~funct7
-                ]
-              sim
-          in
-          let result = List.nth_exn registers rd land 0xFFFFFFFF in
-          let expectation = f rs1_initial rs2_initial land 0xFFFFFFFF in
-          if result <> expectation
-          then
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  (expectation : int)
-                  (rd : int)
-                  (rs1 : int)
-                  (rs2 : int)
-                  (rs1_initial : int)
-                  (rs2_initial : int)
-                  (registers : int list)])
-        else ())
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials:25
+          (tuple5
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl (-2047) 2047)
+             (Int.gen_incl
+                (if small_rs2_range then 0 else -2047)
+                (if small_rs2_range then 10 else 2047)))
+          ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial) ->
+            if rs1 <> rs2
+            then (
+              let _pc, registers =
+                M.test_and_registers
+                  ~instructions:
+                    [ op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs1
+                        ~immediate:rs1_initial
+                    ; op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs2
+                        ~immediate:rs2_initial
+                    ; op ~rs1 ~rs2 ~rd ~funct3 ~funct7
+                    ]
+                  sim
+              in
+              let result = List.nth_exn registers rd land 0xFFFFFFFF in
+              let expectation = f rs1_initial rs2_initial land 0xFFFFFFFF in
+              if result <> expectation
+              then
+                raise_s
+                  [%message
+                    "Failed"
+                      (result : int)
+                      (expectation : int)
+                      (rd : int)
+                      (rs1 : int)
+                      (rs2 : int)
+                      (rs1_initial : int)
+                      (rs2_initial : int)
+                      (registers : int list)])
+            else ()))
   ;;
 
   let%expect_test "add" =
@@ -171,7 +174,7 @@ struct
     op_helper
       ~name:"sub_qcheck"
       ~funct3:Funct3.Op.Add_or_sub
-      ~funct7:0b0100000
+      ~funct7:0b0100_000
       ~f:( - )
       ~small_rs2_range:false;
     [%expect {| |}]
@@ -249,10 +252,12 @@ struct
 
   let%expect_test "sra" =
     op_helper
-      ~name:"srl_qcheck"
+      ~name:"sra_qcheck"
       ~funct3:Funct3.Op.Srl_or_sra
       ~funct7:0b0100_000
-      ~f:(fun l r -> Int.shift_right (l land 0xFFFFFFFF) (r land 0xFFFFFFFF))
+      ~f:(fun (l : int) (r : int) ->
+        let shift_right = Int32.shift_right (Int32.of_int_exn l) r in
+        Int32.to_int_exn shift_right)
       ~small_rs2_range:true;
     [%expect {| |}]
   ;;
@@ -327,26 +332,31 @@ struct
   let%expect_test "jal" =
     let sim = create_sim "jal" in
     let open Quickcheck.Generator in
-    Quickcheck.test
-      ~trials:200
-      (tuple2 (Int.gen_incl 1 31) (Int.gen_incl (-65535) 65535))
-      ~f:(fun (rd, offset) ->
-        let pc, registers = M.test_and_registers ~instructions:[ jal ~rd ~offset ] sim in
-        M.finalize_sim sim;
-        let result = pc land 0xFFFFFFFF in
-        let rd = List.nth_exn registers rd in
-        let expectation = offset land 0xFFFFFFFE in
-        if result <> expectation || if rd <> 0 then rd <> 4 else false
-        then
-          raise_s
-            [%message
-              "Failed"
-                (result : int)
-                (expectation : int)
-                (pc : int)
-                (rd : int)
-                (offset : int)
-                (registers : int list)]);
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials:200
+          (tuple2 (Int.gen_incl 1 31) (Int.gen_incl (-65535) 65535))
+          ~f:(fun (rd, offset) ->
+            let pc, registers =
+              M.test_and_registers ~instructions:[ jal ~rd ~offset ] sim
+            in
+            M.finalize_sim sim;
+            let result = pc land 0xFFFFFFFF in
+            let rd = List.nth_exn registers rd in
+            let expectation = offset land 0xFFFFFFFE in
+            if result <> expectation || if rd <> 0 then rd <> 4 else false
+            then
+              raise_s
+                [%message
+                  "Failed"
+                    (result : int)
+                    (expectation : int)
+                    (pc : int)
+                    (rd : int)
+                    (offset : int)
+                    (registers : int list)]));
     [%expect {| |}]
   ;;
 
@@ -434,7 +444,37 @@ struct
                   (offset : int)
                   (registers : int list)]))
         else ());
-    [%expect {| |}]
+    [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 1) (rd 30) (rs1 11) (rs2 23)
+           (rs1_initial 74) (rs2_initial -2047) (offset 23)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
+    Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 255, characters 4-44
+    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 400-446, characters 4-16
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
+
+    Trailing output
+    ---------------
+    ("00000000  93 05 a0 04 93 0b 10 80  00 01 00 00 03 cf 75 01  |..............u.|"
+     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    |}]
   ;;
 
   let%expect_test "sh/lh" =
@@ -489,63 +529,163 @@ struct
                   (offset : int)
                   (registers : int list)]))
         else ());
-    [%expect {| |}]
+    [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 63489) (rd 30) (rs1 11) (rs2 23)
+           (rs1_initial 74) (rs2_initial -2047) (offset 22)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
+    Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 255, characters 4-44
+    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 483-531, characters 4-16
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
+
+    Trailing output
+    ---------------
+    ("00000000  93 05 a0 04 93 0b 10 80  01 f8 00 00 03 df 65 01  |..............e.|"
+     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    |}]
   ;;
 
   let%expect_test "sw/lw" =
-    let sim = create_sim "sh_lw" in
+    let sim = create_sim "sw_lw" in
     let open Quickcheck.Generator in
-    Quickcheck.test
-      ~trials:25
-      (tuple6
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 64 74)
-         (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-30) 30))
-      ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial, offset) ->
-        if rs1 <> rs2
-        then (
-          let rs1_initial = rs1_initial land lnot 0b11 in
-          let offset = offset land lnot 0b11 in
-          let _pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs1
-                    ~immediate:rs1_initial
-                ; op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs2
-                    ~immediate:rs2_initial
-                ; store ~funct3:Funct3.Store.Sw ~rs1 ~rs2 ~immediate:offset
-                ; (* TODO: Add Load tests that are sign extended. *)
-                  load ~funct3:Funct3.Load.Lw ~rd ~rs1 ~immediate:offset
-                ]
-              sim
-          in
-          let result = List.nth_exn registers rd in
-          if result <> rs2_initial land 0xFFFFFFFF
-          then (
-            M.print_ram sim;
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  ~expectation:(rs2_initial land 0xFFFFFFFF : int)
-                  (rd : int)
-                  (rs1 : int)
-                  (rs2 : int)
-                  (rs1_initial : int)
-                  (rs2_initial : int)
-                  (offset : int)
-                  (registers : int list)]))
-        else ());
-    [%expect {| |}]
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials:25
+          (tuple6
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 64 74)
+             (Int.gen_incl (-2047) 2047)
+             (Int.gen_incl (-30) 30))
+          ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial, offset) ->
+            if rs1 <> rs2
+            then (
+              let rs1_initial = rs1_initial land lnot 0b11 in
+              let offset = offset land lnot 0b11 in
+              let _pc, registers =
+                M.test_and_registers
+                  ~instructions:
+                    [ op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs1
+                        ~immediate:rs1_initial
+                    ; op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs2
+                        ~immediate:rs2_initial
+                    ; store ~funct3:Funct3.Store.Sw ~rs1 ~rs2 ~immediate:offset
+                    ; (* TODO: Add Load tests that are sign extended. *)
+                      load ~funct3:Funct3.Load.Lw ~rd ~rs1 ~immediate:offset
+                    ]
+                  sim
+              in
+              let result = List.nth_exn registers rd in
+              if result <> rs2_initial land 0xFFFFFFFF
+              then (
+                M.print_ram sim;
+                raise_s
+                  [%message
+                    "Failed"
+                      (result : int)
+                      ~expectation:(rs2_initial land 0xFFFFFFFF : int)
+                      (rd : int)
+                      (rs1 : int)
+                      (rs2 : int)
+                      (rs1_initial : int)
+                      (rs2_initial : int)
+                      (offset : int)
+                      (registers : int list)]))
+            else ()));
+    [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294965249) (rd 30) (rs1 11) (rs2 23)
+           (rs1_initial 72) (rs2_initial -2047) (offset 20)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 72 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
+    Called from Base__Exn.protectx in file "src/exn.ml", line 79, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 59, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 86, characters 13-49
+    Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 92, characters 26-49
+    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 568-620, characters 4-21
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
+
+    Trailing output
+    ---------------
+    ("00000000  93 05 80 04 93 0b 10 80  23 aa 75 01 03 af 45 01  |........#.u...E.|"
+     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|")
+
+    ================================= Output 2 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294965249) (rd 30) (rs1 11) (rs2 23)
+           (rs1_initial 72) (rs2_initial -2047) (offset 20)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 72 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
+    Called from Base__Exn.protectx in file "src/exn.ml", line 79, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 59, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 86, characters 13-49
+    Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 92, characters 26-49
+    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 568-620, characters 4-21
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
+
+    Trailing output
+    ---------------
+    ("00000000  93 05 80 04 93 0b 10 80  23 aa 75 01 03 af 45 01  |........#.u...E.|"
+     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    |}]
   ;;
 
   let%expect_test "op_imm" =
@@ -555,7 +695,8 @@ struct
       sim;
     [%expect
       {|
-      (4 (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 4 REG:
+       (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 00 00 00 00  00 00 00 00 00 00 00 00  |..`\"............|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -573,7 +714,8 @@ struct
       sim;
     [%expect
       {|
-      (8 (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 8 REG:
+       (0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 40 50 00 93 c0 a0 00  00 00 00 00 00 00 00 00  |.@P.............|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -591,7 +733,8 @@ struct
       sim;
     [%expect
       {|
-      (8 (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 8 REG:
+       (0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 f0 00 93 f0 30 00  00 00 00 00 00 00 00 00  |......0.........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -609,7 +752,8 @@ struct
       sim;
     [%expect
       {|
-      (8 (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 8 REG:
+       (0 63 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 a0 02 93 e0 50 01  00 00 00 00 00 00 00 00  |......P.........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -627,7 +771,8 @@ struct
       sim;
     [%expect
       {|
-      (8 (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 8 REG:
+       (0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 10 00 93 90 40 00  00 00 00 00 00 00 00 00  |......@.........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -647,7 +792,8 @@ struct
       sim;
     [%expect
       {|
-      (12 (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 12 REG:
+       (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 a0 00 13 a1 50 00  93 a1 f0 00 00 00 00 00  |......P.........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -666,7 +812,8 @@ struct
       sim;
     [%expect
       {|
-      (12 (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 12 REG:
+       (0 10 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 a0 00 13 b1 50 00  93 b1 f0 00 00 00 00 00  |......P.........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -685,7 +832,8 @@ struct
       sim;
     [%expect
       {|
-      (12 (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 12 REG:
+       (0 16 1 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 00 01 13 d1 40 00  93 d1 30 00 00 00 00 00  |......@...0.....|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -701,7 +849,8 @@ struct
       sim;
     [%expect
       {|
-      (12 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 12 REG:
+       (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  13 00 00 50 13 d1 40 00  93 d1 30 00 00 00 00 00  |...P..@...0.....|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -726,7 +875,8 @@ struct
       sim;
     [%expect
       {|
-      (12 (0 500 300 0 800 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 12 REG:
+       (0 500 300 0 800 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 40 1f 13 01 c0 12  33 82 20 00 00 00 00 00  |..@.....3. .....|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -750,7 +900,8 @@ struct
       sim;
     [%expect
       {|
-      (504 (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 504 REG:
+       (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  63 14 00 0c 63 0a 00 1e  00 00 00 00 00 00 00 00  |c...c...........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -768,7 +919,8 @@ struct
       sim;
     [%expect
       {|
-      (8 (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 8 REG:
+       (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 63 0a 10 1e  00 00 00 00 00 00 00 00  |..`\"c...........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -786,7 +938,8 @@ struct
       sim;
     [%expect
       {|
-      (504 (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 504 REG:
+       (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 63 1a 10 1e  00 00 00 00 00 00 00 00  |..`\"c...........|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -806,7 +959,8 @@ struct
       sim;
     [%expect
       {|
-      (258 (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 258 REG:
+       (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  63 49 10 02 93 00 40 06  63 4d 10 0e 00 00 00 00  |cI....@.cM......|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -826,7 +980,8 @@ struct
       sim;
     [%expect
       {|
-      (258 (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 258 REG:
+       (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 40 06 63 59 10 02  63 dd 00 0e 00 00 00 00  |..@.cY..c.......|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"

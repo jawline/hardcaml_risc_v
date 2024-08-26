@@ -39,6 +39,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   module State = struct
     type t =
+      | Idle
       | Waiting_for_memory_controller
       | Waiting_for_load
     [@@deriving sexp, enumerate, compare]
@@ -64,11 +65,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
     let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
-    let aligned_address =
+    let%hw aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
       address &: ~:(of_int ~width:register_width 0b11)
     in
-    let unaligned_bits =
+    let%hw unaligned_bits =
       Util.switch
         (module Funct3.Load)
         ~if_not_found:(zero 2)
@@ -83,42 +84,48 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
     in
     let inputs_are_error = is_unaligned |: funct3_is_error in
+    let issue_load =
+      proc
+        [ Memory.Tx_bus.Tx.Of_always.assign
+            hart_to_memory_controller
+            { valid = vdd
+            ; data = { address = aligned_address; write = gnd; write_data = zero 32 }
+            }
+        ; when_ memory_controller_ready [ current_state.set_next Waiting_for_load ]
+        ]
+    in
+    let finished = Variable.wire ~default:gnd in
     compile
       [ when_
           enable
           [ current_state.switch
-              [ ( State.Waiting_for_memory_controller
+              [ ( State.Idle
                 , [ when_
-                      ~:inputs_are_error
-                      [ Memory.Tx_bus.Tx.Of_always.assign
-                          hart_to_memory_controller
-                          { valid = vdd
-                          ; data =
-                              { address = aligned_address
-                              ; write = gnd
-                              ; write_data = zero 32
-                              }
-                          }
-                      ; when_
-                          memory_controller_ready
-                          [ current_state.set_next Waiting_for_load ]
+                      enable
+                      [ if_
+                          inputs_are_error
+                          [ finished <-- vdd ]
+                          [ current_state.set_next Waiting_for_memory_controller
+                          ; issue_load
+                          ]
                       ]
                   ] )
+              ; Waiting_for_memory_controller, [ issue_load ]
               ; ( Waiting_for_load
                 , [ when_
                       memory_controller_to_hart.valid
-                      [ current_state.set_next Waiting_for_memory_controller ]
+                      [ finished <-- vdd; current_state.set_next Idle ]
                   ] )
               ]
           ]
       ];
     { O.new_rd =
-        (let alignment_bits = address &:. 0b11 in
-         let full_word = memory_controller_to_hart.data.read_data in
-         let half_word =
+        (let%hw alignment_bits = address &:. 0b11 in
+         let%hw full_word = memory_controller_to_hart.data.read_data in
+         let%hw half_word =
            mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word)
          in
-         let byte = mux alignment_bits (split_lsb ~part_width:8 full_word) in
+         let%hw byte = mux alignment_bits (split_lsb ~part_width:8 full_word) in
          Util.switch
            (module Funct3.Load)
            ~if_not_found:(zero register_width)
@@ -130,7 +137,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              | Lbu -> uresize ~width:register_width byte)
            funct3)
     ; error = memory_controller_to_hart.data.error |: inputs_are_error
-    ; finished = enable &: (is_unaligned |: memory_controller_to_hart.valid)
+    ; finished = finished.value
     ; hart_to_memory_controller =
         Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
     }

@@ -12,8 +12,9 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a [@bits 32]
+      ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -21,8 +22,9 @@ struct
   module O = struct
     type 'a t =
       { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a Decoded_instruction.t
+      ; error : 'a
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -39,6 +41,7 @@ struct
              i.instruction
              (Registers.For_writeback.to_registers i.registers)
              scope)
+    ; error = reg reg_spec_with_clear i.error
     }
   ;;
 

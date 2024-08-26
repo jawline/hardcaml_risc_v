@@ -27,6 +27,7 @@ struct
       ; transaction : 'a Transaction.t
       ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
+      ; error : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -62,7 +63,7 @@ struct
              ~new_rd:i.transaction.new_rd
              i.registers)
     ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
-    ; error = gnd
+    ; error = reg reg_spec_with_clear ~enable:i.valid i.error
     }
   ;;
 

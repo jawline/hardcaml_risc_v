@@ -21,6 +21,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate : 'a [@bits register_width]
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
+    ; funct7_switch : 'a
+    ; funct7_bit_other_than_switch_is_selected : 'a
     ; is_ecall : 'a
     ; is_store : 'a
     ; is_load : 'a
@@ -41,9 +43,10 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let rs2 = select_register registers (Decoder.rs2 instruction) in
     let i_immediate = Decoder.i_immediate ~width:register_width instruction in
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
+    let funct7 = Decoder.funct7 instruction in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction
-    ; funct7 = Decoder.funct7 instruction
+    ; funct7
     ; rs1
     ; rs2
     ; rd = mux2 is_ecall (of_int ~width:5 5) (Decoder.rd instruction)
@@ -55,6 +58,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction
     ; load_address = rs1 +: i_immediate
     ; store_address = rs1 +: s_immediate
+    ; funct7_switch = funct7.:(5)
+    ; funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0
     ; is_ecall
     ; is_store = Decoder.opcode instruction ==:. Opcodes.store
     ; is_load = Decoder.opcode instruction ==:. Opcodes.load

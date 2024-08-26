@@ -39,9 +39,9 @@ struct
     type 'a t =
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
-      ; error : 'a
       ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; is_ecall : 'a
+      ; error : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -66,6 +66,7 @@ struct
         ; valid = fetch.valid
         ; registers = fetch.registers
         ; instruction = fetch.instruction
+        ; error = fetch.error
         }
     in
     let execute =
@@ -79,6 +80,7 @@ struct
         ; ecall_transaction = i.ecall_transaction
         ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
+        ; error = decode.error
         }
     in
     let write_back =
@@ -92,6 +94,7 @@ struct
         ; transaction = execute.transaction
         ; memory_controller_to_hart = i.memory_controller_to_hart
         ; hart_to_memory_controller = i.hart_to_memory_controller
+        ; error = execute.error
         }
     in
     { O.valid = write_back.valid
