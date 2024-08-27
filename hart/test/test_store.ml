@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 module Hart_config = struct
   let register_width = Register_width.B32
