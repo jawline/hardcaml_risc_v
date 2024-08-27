@@ -7,7 +7,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = false
+let debug = true
 
 module Make (M : sig
     type sim
@@ -397,84 +397,57 @@ struct
   let%expect_test "sb/lb" =
     let sim = create_sim "sb_lb" in
     let open Quickcheck.Generator in
-    Quickcheck.test
-      ~trials:25
-      (tuple6
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 64 74)
-         (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-30) 30))
-      ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial, offset) ->
-        if rs1 <> rs2
-        then (
-          let _pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs1
-                    ~immediate:rs1_initial
-                ; op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs2
-                    ~immediate:rs2_initial
-                ; store ~funct3:Funct3.Store.Sb ~rs1 ~rs2 ~immediate:offset
-                ; load ~funct3:Funct3.Load.Lbu ~rd ~rs1 ~immediate:offset
-                ]
-              sim
-          in
-          let result = List.nth_exn registers rd in
-          if result <> rs2_initial land 0xFF
-          then (
-            M.print_ram sim;
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  ~expectation:(rs2_initial land 0xFF : int)
-                  (rd : int)
-                  (rs1 : int)
-                  (rs2 : int)
-                  (rs1_initial : int)
-                  (rs2_initial : int)
-                  (offset : int)
-                  (registers : int list)]))
-        else ());
-    [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-       This is strongly discouraged as backtraces are fragile.
-       Please change this test to not include a backtrace. *)
-    ("Base_quickcheck.Test.run: test failed" (input _)
-      (error
-        ((Failed (result 0) (expectation 1) (rd 30) (rs1 11) (rs2 23)
-           (rs1_initial 74) (rs2_initial -2047) (offset 23)
-           (registers
-             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
-          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
-            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
-    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 255, characters 4-44
-    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 400-446, characters 4-16
-    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
-
-    Trailing output
-    ---------------
-    ("00000000  93 05 a0 04 93 0b 10 80  00 01 00 00 03 cf 75 01  |..............u.|"
-     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    |}]
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials:25
+          (tuple6
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 64 74)
+             (Int.gen_incl (-2047) 2047)
+             (Int.gen_incl (-30) 30))
+          ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial, offset) ->
+            if rs1 <> rs2
+            then (
+              let _pc, registers =
+                M.test_and_registers
+                  ~instructions:
+                    [ op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs1
+                        ~immediate:rs1_initial
+                    ; op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs2
+                        ~immediate:rs2_initial
+                    ; store ~funct3:Funct3.Store.Sb ~rs1 ~rs2 ~immediate:offset
+                    ; load ~funct3:Funct3.Load.Lbu ~rd ~rs1 ~immediate:offset
+                    ]
+                  sim
+              in
+              let result = List.nth_exn registers rd in
+              if result <> rs2_initial land 0xFF
+              then (
+                M.print_ram sim;
+                raise_s
+                  [%message
+                    "Failed"
+                      (result : int)
+                      ~expectation:(rs2_initial land 0xFF : int)
+                      (rd : int)
+                      (rs1 : int)
+                      (rs2 : int)
+                      (rs1_initial : int)
+                      (rs2_initial : int)
+                      (offset : int)
+                      (registers : int list)]))
+            else ()));
+    [%expect {| |}]
   ;;
 
   let%expect_test "sh/lh" =
@@ -529,37 +502,7 @@ struct
                   (offset : int)
                   (registers : int list)]))
         else ());
-    [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-       This is strongly discouraged as backtraces are fragile.
-       Please change this test to not include a backtrace. *)
-    ("Base_quickcheck.Test.run: test failed" (input _)
-      (error
-        ((Failed (result 0) (expectation 63489) (rd 30) (rs1 11) (rs2 23)
-           (rs1_initial 74) (rs2_initial -2047) (offset 22)
-           (registers
-             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
-          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
-            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
-    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 255, characters 4-44
-    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 483-531, characters 4-16
-    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
-
-    Trailing output
-    ---------------
-    ("00000000  93 05 a0 04 93 0b 10 80  01 f8 00 00 03 df 65 01  |..............e.|"
-     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "sw/lw" =
@@ -618,74 +561,7 @@ struct
                       (offset : int)
                       (registers : int list)]))
             else ()));
-    [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
-    ================================= Output 1 / 2 =================================
-    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-       This is strongly discouraged as backtraces are fragile.
-       Please change this test to not include a backtrace. *)
-    ("Base_quickcheck.Test.run: test failed" (input _)
-      (error
-        ((Failed (result 0) (expectation 4294965249) (rd 30) (rs1 11) (rs2 23)
-           (rs1_initial 72) (rs2_initial -2047) (offset 20)
-           (registers
-             (0 0 0 0 0 0 0 0 0 0 0 72 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
-          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
-            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
-    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Base__Exn.protectx in file "src/exn.ml", line 79, characters 8-11
-    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 59, characters 2-50
-    Called from Base__Exn.protectx in file "src/exn.ml", line 86, characters 13-49
-    Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 92, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 568-620, characters 4-21
-    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
-
-    Trailing output
-    ---------------
-    ("00000000  93 05 80 04 93 0b 10 80  23 aa 75 01 03 af 45 01  |........#.u...E.|"
-     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|"
-     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|")
-
-    ================================= Output 2 / 2 =================================
-    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-       This is strongly discouraged as backtraces are fragile.
-       Please change this test to not include a backtrace. *)
-    ("Base_quickcheck.Test.run: test failed" (input _)
-      (error
-        ((Failed (result 0) (expectation 4294965249) (rd 30) (rs1 11) (rs2 23)
-           (rs1_initial 72) (rs2_initial -2047) (offset 20)
-           (registers
-             (0 0 0 0 0 0 0 0 0 0 0 72 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
-          ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
-            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
-    Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Base__Exn.protectx in file "src/exn.ml", line 79, characters 8-11
-    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 59, characters 2-50
-    Called from Base__Exn.protectx in file "src/exn.ml", line 86, characters 13-49
-    Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 92, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_cpu.Make.(fun) in file "test/test_cpu.ml", lines 568-620, characters 4-21
-    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
-
-    Trailing output
-    ---------------
-    ("00000000  93 05 80 04 93 0b 10 80  23 aa 75 01 03 af 45 01  |........#.u...E.|"
-     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|"
-     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "op_imm" =

@@ -41,8 +41,14 @@ struct
       i.valid
       |: reg_fb
            ~width:1
-           ~f:(fun t -> mux2 i.hart_to_memory_controller.ready gnd (t |: vdd))
+           ~f:(fun t -> mux2 i.hart_to_memory_controller.ready gnd (t |: i.valid))
            reg_spec_with_clear
+    in
+    let%hw awaiting_result =
+      reg_fb
+        ~width:1
+        ~f:(fun t -> mux2 i.valid vdd (mux2 i.memory_controller_to_hart.valid gnd t))
+        reg_spec_with_clear
     in
     let registers =
       Registers.For_writeback.Of_signal.reg ~enable:i.valid reg_spec_no_clear i.registers
@@ -55,7 +61,7 @@ struct
             ; write_data = zero 32
             }
         }
-    ; valid = ~:fetching &: i.memory_controller_to_hart.valid
+    ; valid = ~:fetching &: awaiting_result &: i.memory_controller_to_hart.valid
     ; registers
     ; instruction = i.memory_controller_to_hart.data.read_data
     ; error = i.memory_controller_to_hart.data.error

@@ -33,9 +33,14 @@ struct
     let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     { O.valid = reg reg_spec_with_clear i.valid
-    ; registers = Registers.For_writeback.Of_signal.reg reg_spec_no_clear i.registers
+    ; registers =
+        Registers.For_writeback.Of_signal.reg
+          ~enable:i.valid
+          reg_spec_no_clear
+          i.registers
     ; instruction =
         Decoded_instruction.Of_signal.reg
+          ~enable:i.valid
           reg_spec_no_clear
           (Decoded_instruction.of_instruction
              i.instruction

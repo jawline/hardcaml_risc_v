@@ -471,8 +471,12 @@ struct
     ; transaction
     ; hart_to_memory_controller =
         (let combine = Memory.Tx_bus.Tx.map2 ~f:( |: ) in
+         let gate (t : _ Memory.Tx_bus.Tx.t) =
+           Memory.Tx_bus.Tx.Of_signal.mux2 t.valid t (Memory.Tx_bus.Tx.Of_signal.of_int 0)
+         in
          List.map ~f:(fun t -> t.output.hart_to_memory_controller) instruction_table
          |> List.filter_opt
+         |> List.map ~f:gate
          |> List.fold ~init:(Memory.Tx_bus.Tx.Of_signal.of_int 0) ~f:combine)
     ; error = reg ~enable:i.error reg_spec_with_clear i.error |: transaction.error
     ; is_ecall = i.instruction.is_ecall

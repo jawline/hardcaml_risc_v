@@ -99,14 +99,17 @@ struct
     in
     { O.valid = write_back.valid
     ; registers = write_back.registers
-    ; error = fetch.error |: execute.error |: write_back.error
+    ; error = write_back.error
     ; hart_to_memory_controller =
         (let combine = Memory.Tx_bus.Tx.map2 ~f:( |: ) in
+         let gate (t : _ Memory.Tx_bus.Tx.t) =
+           Memory.Tx_bus.Tx.Of_signal.mux2 t.valid t (Memory.Tx_bus.Tx.Of_signal.of_int 0)
+         in
          combine
-           fetch.hart_to_memory_controller
+           (gate fetch.hart_to_memory_controller)
            (combine
-              execute.hart_to_memory_controller
-              write_back.hart_to_memory_controller))
+              (gate execute.hart_to_memory_controller)
+              (gate write_back.hart_to_memory_controller)))
     ; is_ecall = execute.is_ecall
     }
   ;;

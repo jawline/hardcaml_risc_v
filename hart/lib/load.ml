@@ -96,27 +96,22 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     in
     let finished = Variable.wire ~default:gnd in
     compile
-      [ when_
-          enable
-          [ current_state.switch
-              [ ( State.Idle
-                , [ when_
-                      enable
-                      [ if_
-                          inputs_are_error
-                          [ finished <-- vdd ]
-                          [ current_state.set_next Waiting_for_memory_controller
-                          ; issue_load
-                          ]
-                      ]
-                  ] )
-              ; Waiting_for_memory_controller, [ issue_load ]
-              ; ( Waiting_for_load
-                , [ when_
-                      memory_controller_to_hart.valid
-                      [ finished <-- vdd; current_state.set_next Idle ]
-                  ] )
-              ]
+      [ current_state.switch
+          [ ( State.Idle
+            , [ when_
+                  enable
+                  [ if_
+                      inputs_are_error
+                      [ finished <-- vdd ]
+                      [ current_state.set_next Waiting_for_memory_controller; issue_load ]
+                  ]
+              ] )
+          ; Waiting_for_memory_controller, [ issue_load ]
+          ; ( Waiting_for_load
+            , [ when_
+                  memory_controller_to_hart.valid
+                  [ finished <-- vdd; current_state.set_next Idle ]
+              ] )
           ]
       ];
     { O.new_rd =
