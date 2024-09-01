@@ -62,7 +62,10 @@ struct
       then List.hd_exn ch_to_controller
       else S.Tx.Of_signal.mux which_ch ch_to_controller
     in
-    { O.which_ch; selected_ch; acks = assert false }
+    { O.which_ch
+    ; selected_ch
+    ; acks = List.init ~f:(fun i -> { S.Rx.ready = which_ch ==:. i }) M.num_channels
+    }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =

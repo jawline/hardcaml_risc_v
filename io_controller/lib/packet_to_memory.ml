@@ -10,8 +10,8 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       { clock : 'a
       ; clear : 'a
       ; in_ : 'a P.Contents_stream.Tx.t
-      ; out : 'a Memory.Tx_bus.Rx.t
-      ; out_ack : 'a Memory.Rx_bus.Tx.t
+      ; out : 'a Memory.Write_bus.Rx.t
+      ; out_ack : 'a Memory.Write_response.With_valid.t
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -19,8 +19,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
   module O = struct
     type 'a t =
       { in_ : 'a P.Contents_stream.Rx.t
-      ; out : 'a Memory.Tx_bus.Tx.t
-      ; out_ack : 'a Memory.Rx_bus.Rx.t
+      ; out : 'a Memory.Write_bus.Tx.t
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -162,11 +161,9 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
         { valid = state.is Writing_word
         ; data =
             { address = current_address.value
-            ; write = state.is Writing_word
             ; write_data = current_data.value
             }
         }
-    ; out_ack = { ready = vdd }
     }
   ;;
 
