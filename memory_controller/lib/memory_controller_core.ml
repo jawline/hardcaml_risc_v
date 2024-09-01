@@ -55,7 +55,7 @@ struct
 
   let real_address ~scope address =
     let%hw base_address = address in
-    srl ~by:unaligned_bits base_address |> sel_bottom ~width:address_width
+    srl ~by:unaligned_bits base_address 
   ;;
 
   let illegal_operation ~scope address =
@@ -79,7 +79,7 @@ struct
           [| { write_enable =
                  selected_write_ch.valid
                  &: ~:(illegal_operation ~scope selected_write_ch.data.address)
-             ; write_address = real_address ~scope selected_write_ch.data.address
+             ; write_address = real_address ~scope selected_write_ch.data.address |> sel_bottom ~width:address_width
              ; write_data = selected_write_ch.data.write_data
              ; write_clock = clock
              }
@@ -88,7 +88,7 @@ struct
           [| { read_enable =
                  selected_read_ch.valid
                  &: ~:(illegal_operation ~scope selected_read_ch.data.address)
-             ; read_address = real_address ~scope selected_read_ch.data.address
+             ; read_address = real_address ~scope selected_read_ch.data.address |> sel_bottom ~width:address_width
              ; read_clock = clock
              }
           |]
