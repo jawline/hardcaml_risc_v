@@ -10,7 +10,8 @@ let debug = false
 
 module Memory_controller = Memory_controller.Make (struct
     let capacity_in_bytes = 128
-    let num_channels = 1
+    let num_read_channels = 1
+    let num_write_channels = 1
     let address_width = 32
     let data_bus_width = 32
   end)
@@ -61,7 +62,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       let data_bus_width = 8
     end)
   in
-  let module Dma = Packet_to_memory.Make (Memory_controller) (Packet) in
+  let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Packet) in
   let module Uart_tx = Uart_tx.Make (Config) in
   let module Uart_rx = Uart_rx.Make (Config) in
   let module Serial_to_packet =

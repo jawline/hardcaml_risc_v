@@ -16,7 +16,8 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   let module Memory_controller =
     Memory_controller.Make (struct
       let capacity_in_bytes = 256
-      let num_channels = 1
+      let num_write_channels = 1
+      let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
     end)
@@ -26,7 +27,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
       (struct
         let header = Some 'Q'
       end)
-      (Memory_controller)
+      (Memory_controller.Memory_bus)
   in
   let module Machine = struct
     module I = struct
