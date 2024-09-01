@@ -10,7 +10,7 @@ let debug = false
 
 module Memory_controller = Memory_controller.Make (struct
     let capacity_in_bytes = 128
-    let num_read_channels = 1
+    let num_read_channels = 0
     let num_write_channels = 1
     let address_width = 32
     let data_bus_width = 32
@@ -77,6 +77,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   let module Machine = struct
     open Signal
     open Always
+    open Memory_controller.Memory_bus
 
     module I = struct
       type 'a t =
@@ -92,8 +93,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       type 'a t =
         { parity_error : 'a
         ; stop_bit_unstable : 'a
-        ; out : 'a Memory_controller.Tx_bus.Rx.t
-        ; out_ack : 'a Memory_controller.Rx_bus.Tx.t
         }
       [@@deriving sexp_of, hardcaml]
     end
@@ -122,8 +121,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; out = { ready = vdd }
           }
       in
-      let dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
-      let memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
+      let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
+      let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
         Dma.hierarchical
           ~instance:"dma"
@@ -131,30 +130,29 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           { Dma.I.clock
           ; clear
           ; in_ = out
-          ; out = Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
-          ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
+          ; out = Write_bus.Rx.Of_always.value dma_to_memory_controller
+          ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
       in
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
           scope
-          { Memory_controller.I.clock; clear; ch_to_controller = [ dma.out ] }
+          { Memory_controller.I.clock
+          ; clear
+          ; read_to_controller = []
+          ; write_to_controller = [ dma.out ]
+          }
       in
       compile
-        [ Memory_controller.Tx_bus.Rx.Of_always.assign
+        [ Write_bus.Rx.Of_always.assign
             dma_to_memory_controller
-            (List.nth_exn controller.ch_to_controller 0)
-        ; Memory_controller.Rx_bus.Tx.Of_always.assign
+            (List.nth_exn controller.write_to_controller 0)
+        ; Write_response.With_valid.Of_always.assign
             memory_controller_to_dma
-            (List.nth_exn controller.controller_to_ch 0)
+            (List.nth_exn controller.write_response 0)
         ];
-      { O.parity_error
-      ; stop_bit_unstable
-      ; (* Throw these in to avoid dead code elimination *) out =
-          Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
-      ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
-      }
+      { O.parity_error; stop_bit_unstable }
     ;;
   end
   in

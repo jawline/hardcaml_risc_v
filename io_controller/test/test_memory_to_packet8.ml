@@ -16,7 +16,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   let module Memory_controller =
     Memory_controller.Make (struct
       let capacity_in_bytes = 256
-      let num_write_channels = 1
+      let num_write_channels = 0
       let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
@@ -30,6 +30,8 @@ let test ~name ~load_memory ~dma_address ~dma_length =
       (Memory_controller.Memory_bus)
   in
   let module Machine = struct
+    open Memory_controller.Memory_bus
+
     module I = struct
       type 'a t =
         { clock : 'a
@@ -44,16 +46,15 @@ let test ~name ~load_memory ~dma_address ~dma_length =
     module O = Memory_to_packet8.O
 
     let create (scope : Scope.t) { I.clock; clear; enable; address; length } =
-      let ch_to_controller = Memory_controller.Tx_bus.Tx.Of_always.wire Signal.zero in
-      let controller_to_ch = Memory_controller.Rx_bus.Rx.Of_always.wire Signal.zero in
+      let ch_to_controller = Read_bus.Tx.Of_always.wire Signal.zero in
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
           scope
           { Memory_controller.I.clock
           ; clear
-          ; ch_to_controller =
-              [ Memory_controller.Tx_bus.Tx.Of_always.value ch_to_controller ]
+          ; read_to_controller = [ Read_bus.Tx.Of_always.value ch_to_controller ]
+          ; write_to_controller = []
           }
       in
       let output =
@@ -64,16 +65,11 @@ let test ~name ~load_memory ~dma_address ~dma_length =
           ; clear
           ; enable = { valid = enable; value = { address; length } }
           ; output_packet = { ready = Signal.vdd }
-          ; memory = List.nth_exn controller.ch_to_controller 0
-          ; memory_response = List.nth_exn controller.controller_to_ch 0
+          ; memory = List.nth_exn controller.read_to_controller 0
+          ; memory_response = List.nth_exn controller.read_response 0
           }
       in
-      Always.compile
-        [ Memory_controller.Tx_bus.Tx.Of_always.assign ch_to_controller output.memory
-        ; Memory_controller.Rx_bus.Rx.Of_always.assign
-            controller_to_ch
-            output.memory_response
-        ];
+      Always.compile [ Read_bus.Tx.Of_always.assign ch_to_controller output.memory ];
       output
     ;;
   end
