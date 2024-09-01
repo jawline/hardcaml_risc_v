@@ -155,11 +155,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
           ; ( Reading_data
             , [ Memory.Read_bus.Tx.Of_always.assign
                   memory
-                  { valid = vdd
-                  ; data =
-                      { address = address.value
-                      }
-                  }
+                  { valid = vdd; data = { address = address.value } }
               ; when_
                   (memory_response.valid -- "is_memory_response_valid")
                   [ (* Memory read can fail, if they do return zero. *)
@@ -206,7 +202,6 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     ; done_ = done_.value
     ; output_packet = Packet8.Contents_stream.Tx.Of_always.value output_packet
     ; memory = Memory.Read_bus.Tx.Of_always.value memory
-    
     }
   ;;
 
