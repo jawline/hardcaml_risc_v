@@ -6,7 +6,8 @@ module Make
     (Memory_bus : Memory_bus_intf.S)
     (M : sig
        val capacity_in_bytes : int
-       val num_channels : int
+       val num_read_channels : int
+       val num_write_channels : int
        val data_bus_width : int
      end) =
 struct
@@ -35,9 +36,9 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; which_read_ch : 'a [@bits num_bits_to_represent M.num_channels - 1]
+      ; which_read_ch : 'a [@bits num_bits_to_represent M.num_read_channels - 1]
       ; selected_read_ch : 'a Memory_bus.Read_bus.Tx.t
-      ; which_write_ch : 'a [@bits num_bits_to_represent M.num_channels - 1]
+      ; which_write_ch : 'a [@bits num_bits_to_represent M.num_write_channels - 1]
       ; selected_write_ch : 'a Memory_bus.Write_bus.Tx.t
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
@@ -45,8 +46,9 @@ struct
 
   module O = struct
     type 'a t =
-      { read_response : 'a Read_response.With_valid.t list [@length M.num_channels]
-      ; write_response : 'a Write_response.With_valid.t list [@length M.num_channels]
+      { read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
+      ; write_response : 'a Write_response.With_valid.t list
+           [@length M.num_write_channels]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -105,7 +107,7 @@ struct
                 ; read_data
                 }
             })
-          M.num_channels
+          M.num_read_channels
     ; write_response =
         List.init
           ~f:(fun channel ->
@@ -117,7 +119,7 @@ struct
                       (illegal_operation ~scope selected_write_ch.data.address)
                 }
             })
-          M.num_channels
+          M.num_write_channels
     }
   ;;
 

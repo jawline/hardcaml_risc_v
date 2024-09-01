@@ -42,6 +42,8 @@ struct
     module With_valid = With_valid.Wrap.Make (T)
   end
 
+  let data_bus_width = M.data_bus_width
+
   let address_is_word_aligned address =
     let open Signal in
     let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8) in
