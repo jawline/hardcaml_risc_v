@@ -10,7 +10,7 @@ let debug = false
 
 module Memory_controller = Memory_controller.Make (struct
     let capacity_in_bytes = 128
-    let num_read_channels = 0
+    let num_read_channels = 1
     let num_write_channels = 1
     let address_width = 32
     let data_bus_width = 32
@@ -86,15 +86,17 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
         ; data_in_valid : 'a
         ; data_in : 'a [@bits 8]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
     end
 
     module O = struct
       type 'a t =
         { parity_error : 'a
         ; stop_bit_unstable : 'a
+        ; write_response : 'a Write_response.With_valid.t
+        ; read_response : 'a Read_response.With_valid.t
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
     end
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
@@ -140,7 +142,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           scope
           { Memory_controller.I.clock
           ; clear
-          ; read_to_controller = []
+          ; read_to_controller = [ Read_bus.Tx.Of_signal.of_int 0 ]
           ; write_to_controller = [ dma.out ]
           }
       in
@@ -152,7 +154,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
             memory_controller_to_dma
             (List.nth_exn controller.write_response 0)
         ];
-      { O.parity_error; stop_bit_unstable }
+      (* We echo the read and write responses to avoid dead code elimination
+         deleting the entire BRAM *)
+      { O.parity_error
+      ; stop_bit_unstable
+      ; write_response = List.nth_exn controller.write_response 0
+      ; read_response = List.nth_exn controller.read_response 0
+      }
     ;;
   end
   in

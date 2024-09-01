@@ -16,7 +16,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   let module Memory_controller =
     Memory_controller.Make (struct
       let capacity_in_bytes = 256
-      let num_write_channels = 0
+      let num_write_channels = 1
       let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
@@ -54,7 +54,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
           { Memory_controller.I.clock
           ; clear
           ; read_to_controller = [ Read_bus.Tx.Of_always.value ch_to_controller ]
-          ; write_to_controller = []
+          ; write_to_controller = [ Write_bus.Tx.Of_signal.of_int 0 ]
           }
       in
       let output =

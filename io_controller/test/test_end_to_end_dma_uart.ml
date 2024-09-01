@@ -16,6 +16,8 @@ module Memory_controller = Memory_controller.Make (struct
     let data_bus_width = 32
   end)
 
+open Memory_controller.Memory_bus
+
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
   =
   let all_inputs =
@@ -125,8 +127,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; out = { ready = vdd }
           }
       in
-      let dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
-      let memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
+      let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
+      let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
         Dma.hierarchical
           ~instance:"dma"
@@ -134,16 +136,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           { Dma.I.clock
           ; clear
           ; in_ = out
-          ; out = Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
-          ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
+          ; out = Write_bus.Rx.Of_always.value dma_to_memory_controller
+          ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
       in
-      let dma_out_to_memory_controller =
-        Memory_controller.Tx_bus.Rx.Of_always.wire zero
-      in
-      let memory_controller_to_dma_out =
-        Memory_controller.Rx_bus.Tx.Of_always.wire zero
-      in
+      let dma_out_to_memory_controller = Read_bus.Rx.Of_always.wire zero in
+      let memory_controller_to_dma_out = Read_response.With_valid.Of_always.wire zero in
       let uart_tx_ready = wire 1 in
       let dma_out =
         Memory_to_packet8.hierarchical
@@ -155,10 +153,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
               { valid = dma_out_enable
               ; value = { address = dma_out_address; length = dma_out_length }
               }
-          ; memory =
-              Memory_controller.Tx_bus.Rx.Of_always.value dma_out_to_memory_controller
+          ; memory = Read_bus.Rx.Of_always.value dma_out_to_memory_controller
           ; memory_response =
-              Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma_out
+              Read_response.With_valid.Of_always.value memory_controller_to_dma_out
           ; output_packet = { ready = uart_tx_ready }
           }
       in
@@ -185,22 +182,23 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           scope
           { Memory_controller.I.clock
           ; clear
-          ; ch_to_controller = [ dma.out; dma_out.memory ]
+          ; write_to_controller = [ dma.out ]
+          ; read_to_controller = [ dma_out.memory ]
           }
       in
       compile
-        [ Memory_controller.Tx_bus.Rx.Of_always.assign
+        [ Write_bus.Rx.Of_always.assign
             dma_to_memory_controller
-            (List.nth_exn controller.ch_to_controller 0)
-        ; Memory_controller.Rx_bus.Tx.Of_always.assign
+            (List.nth_exn controller.write_to_controller 0)
+        ; Write_response.With_valid.Of_always.assign
             memory_controller_to_dma
-            (List.nth_exn controller.controller_to_ch 0)
-        ; Memory_controller.Tx_bus.Rx.Of_always.assign
+            (List.nth_exn controller.write_response 0)
+        ; Read_bus.Rx.Of_always.assign
             dma_out_to_memory_controller
-            (List.nth_exn controller.ch_to_controller 1)
-        ; Memory_controller.Rx_bus.Tx.Of_always.assign
+            (List.nth_exn controller.read_to_controller 0)
+        ; Read_response.With_valid.Of_always.assign
             memory_controller_to_dma_out
-            (List.nth_exn controller.controller_to_ch 1)
+            (List.nth_exn controller.read_response 0)
         ];
       { O.out_valid = dma_out_uart_rx.data_out_valid
       ; out_data = dma_out_uart_rx.data_out
