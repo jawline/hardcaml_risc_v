@@ -69,8 +69,6 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
     let write_bus = Memory.Write_bus.Rx.Of_always.wire zero in
     let read_response = Memory.Read_response.With_valid.Of_always.wire zero in
     let write_response = Memory.Write_response.With_valid.Of_always.wire zero in
-    let read_request = Memory.Read_bus.Tx.Of_always.wire zero in
-    let write_request = Memory.Write_bus.Tx.Of_always.wire zero in
     let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
       Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
     in
@@ -151,8 +149,8 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         reg_spec_no_clear
     in
     Some
-      { write_request = Memory.Write_bus.Tx.Of_always.value write_request
-      ; read_request = Memory.Read_bus.Tx.Of_always.value read_request
+      { write_request = dma.out
+      ; read_request = dma_out.memory
       ; read_response
       ; write_response
       ; write_bus
