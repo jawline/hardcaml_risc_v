@@ -80,10 +80,7 @@ module Test_machine = struct
           read_response
           (List.nth_exn controller.read_response 0)
       ];
-    { O.new_rd = load.new_rd
-    ; error = load.error
-    ; finished = load.finished
-    }
+    { O.new_rd = load.new_rd; error = load.error; finished = load.finished }
   ;;
 end
 

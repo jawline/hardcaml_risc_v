@@ -97,7 +97,10 @@ module Test_machine = struct
           write_response
           (List.nth_exn controller.write_response 0)
       ];
-    { O.error = store.error; finished = store.finished ; read_response = List.nth_exn controller.read_response 0}
+    { O.error = store.error
+    ; finished = store.finished
+    ; read_response = List.nth_exn controller.read_response 0
+    }
   ;;
 end
 
