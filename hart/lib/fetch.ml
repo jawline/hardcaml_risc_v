@@ -12,24 +12,21 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart"]
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller"]
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller"]
-      ; valid : 'a
+      { valid : 'a
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a [@bits 32]
       ; error : 'a
+      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -41,30 +38,26 @@ struct
       i.valid
       |: reg_fb
            ~width:1
-           ~f:(fun t -> mux2 i.hart_to_memory_controller.ready gnd (t |: i.valid))
+           ~f:(fun t -> mux2 i.read_bus.ready gnd (t |: i.valid))
            reg_spec_with_clear
     in
     let%hw awaiting_result =
       reg_fb
         ~width:1
-        ~f:(fun t -> mux2 i.valid vdd (mux2 i.memory_controller_to_hart.valid gnd t))
+        ~f:(fun t -> mux2 i.valid vdd (mux2 i.read_response.valid gnd t))
         reg_spec_with_clear
     in
     let registers =
       Registers.For_writeback.Of_signal.reg ~enable:i.valid reg_spec_no_clear i.registers
     in
-    { O.hart_to_memory_controller =
-        { Memory.Tx_bus.Tx.valid = fetching
-        ; data =
-            { Memory.Tx_data.address = mux2 i.valid i.registers.pc registers.pc
-            ; write = gnd
-            ; write_data = zero 32
-            }
+    { O.read_bus =
+        { Memory.Read_bus.Tx.valid = fetching
+        ; data = { address = mux2 i.valid i.registers.pc registers.pc }
         }
-    ; valid = ~:fetching &: awaiting_result &: i.memory_controller_to_hart.valid
+    ; valid = ~:fetching &: awaiting_result &: i.read_response.valid
     ; registers
-    ; instruction = i.memory_controller_to_hart.data.read_data
-    ; error = i.memory_controller_to_hart.data.error
+    ; instruction = i.read_response.value.read_data
+    ; error = i.read_response.value.error
     }
   ;;
 

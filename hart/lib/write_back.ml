@@ -25,8 +25,6 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
       ; error : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
@@ -36,7 +34,6 @@ struct
     type 'a t =
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; error : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
@@ -62,7 +59,6 @@ struct
              ~set_rd:i.transaction.set_rd
              ~new_rd:i.transaction.new_rd
              i.registers)
-    ; hart_to_memory_controller = Memory.Tx_bus.Tx.Of_signal.of_int 0
     ; error = reg reg_spec_with_clear ~enable:i.valid i.error
     }
   ;;

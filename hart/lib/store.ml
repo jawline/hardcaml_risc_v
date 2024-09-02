@@ -26,10 +26,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; funct3 : 'a [@bits 3]
       ; destination : 'a [@bits register_width]
       ; value : 'a [@bits register_width]
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart$"]
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller$"]
+      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; write_response : 'a Memory.Write_response.With_valid.t
+           [@rtlprefix "write_response$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -38,8 +39,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     type 'a t =
       { error : 'a
       ; finished : 'a
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller$"]
+      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -100,8 +101,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
      ; funct3
      ; destination
      ; value
-     ; memory_controller_to_hart
-     ; hart_to_memory_controller = { ready = memory_controller_ready }
+     ; write_bus
+     ; read_bus
+     ; write_response
+     ; read_response
      } :
       _ I.t)
     =
@@ -112,7 +115,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
+    let write_request = Memory.Write_bus.Tx.Of_always.wire zero in
+    let read_request = Memory.Read_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
       destination &: ~:(of_int ~width:register_width 0b11)
@@ -149,12 +153,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              we can just write the whole thing skipping the
              load step.
           *)
-          Memory.Tx_bus.Tx.Of_always.assign
-            hart_to_memory_controller
-            { valid = vdd
-            ; data = { address = aligned_address; write = gnd; write_data = zero 32 }
-            }
-        ; when_ memory_controller_ready [ current_state.set_next Waiting_for_load ]
+          Memory.Read_bus.Tx.Of_always.assign
+            read_request
+            { valid = vdd; data = { address = aligned_address } }
+        ; when_ read_bus.ready [ current_state.set_next Waiting_for_load ]
         ]
     in
     (* TODO: Error signal is not correctly propagated here. *)
@@ -178,7 +180,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ; Preparing_load, [ idle_or_starting ]
           ; ( Waiting_for_load
             , [ when_
-                  memory_controller_to_hart.valid
+                  read_response.valid
                   [ word_to_write
                     <-- combine_old_and_new_word
                         (* Here we supply the
@@ -186,27 +188,23 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                            rewrite the word. *)
                           ~funct3
                           ~destination
-                          ~old_word:memory_controller_to_hart.data.read_data
+                          ~old_word:read_response.value.read_data
                           ~new_word:value
                           scope
                   ; current_state.set_next Preparing_store
                   ]
               ] )
           ; ( Preparing_store
-            , [ Memory.Tx_bus.Tx.Of_always.assign
-                  hart_to_memory_controller
+            , [ Memory.Write_bus.Tx.Of_always.assign
+                  write_request
                   { valid = vdd
-                  ; data =
-                      { address = aligned_address
-                      ; write = vdd
-                      ; write_data = word_to_write.value
-                      }
+                  ; data = { address = aligned_address; write_data = word_to_write.value }
                   }
-              ; when_ memory_controller_ready [ current_state.set_next Waiting_for_store ]
+              ; when_ write_bus.ready [ current_state.set_next Waiting_for_store ]
               ] )
           ; ( Waiting_for_store
             , [ when_
-                  memory_controller_to_hart.valid
+                  write_response.valid
                   [ store_finished <--. 1; current_state.set_next Idle ]
               ] )
           ]
@@ -217,8 +215,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            write finished signal OR immediately with error if we are unaligned.
         *)
         store_finished.value
-    ; hart_to_memory_controller =
-        Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
+    ; write_bus = Memory.Write_bus.Tx.Of_always.value write_request
+    ; read_bus = Memory.Read_bus.Tx.Of_always.value read_request
     }
   ;;
 

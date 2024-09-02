@@ -29,8 +29,11 @@ struct
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; ecall_transaction : 'a Transaction.t
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
+      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; write_response : 'a Memory.Write_response.With_valid.t
+           [@rtlprefix "write_response$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -39,9 +42,10 @@ struct
     type 'a t =
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; is_ecall : 'a
       ; error : 'a
+      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -54,8 +58,8 @@ struct
         ; clear = i.clear
         ; valid = i.valid
         ; registers = i.registers
-        ; memory_controller_to_hart = i.memory_controller_to_hart
-        ; hart_to_memory_controller = i.hart_to_memory_controller
+        ; read_bus = i.read_bus
+        ; read_response = i.read_response
         }
     in
     let decode =
@@ -78,9 +82,11 @@ struct
         ; registers = decode.registers
         ; instruction = decode.instruction
         ; ecall_transaction = i.ecall_transaction
-        ; memory_controller_to_hart = i.memory_controller_to_hart
-        ; hart_to_memory_controller = i.hart_to_memory_controller
         ; error = decode.error
+        ; read_bus = i.read_bus
+        ; read_response = i.read_response
+        ; write_bus = i.write_bus
+        ; write_response = i.write_response
         }
     in
     let write_back =
@@ -92,24 +98,22 @@ struct
         ; registers = execute.registers
         ; instruction = execute.instruction
         ; transaction = execute.transaction
-        ; memory_controller_to_hart = i.memory_controller_to_hart
-        ; hart_to_memory_controller = i.hart_to_memory_controller
         ; error = execute.error
         }
     in
     { O.valid = write_back.valid
     ; registers = write_back.registers
     ; error = write_back.error
-    ; hart_to_memory_controller =
-        (let combine = Memory.Tx_bus.Tx.map2 ~f:( |: ) in
-         let gate (t : _ Memory.Tx_bus.Tx.t) =
-           Memory.Tx_bus.Tx.Of_signal.mux2 t.valid t (Memory.Tx_bus.Tx.Of_signal.of_int 0)
+    ; read_bus =
+        (let combine = Memory.Read_bus.Tx.map2 ~f:( |: ) in
+         let gate (t : _ Memory.Read_bus.Tx.t) =
+           Memory.Read_bus.Tx.Of_signal.mux2
+             t.valid
+             t
+             (Memory.Read_bus.Tx.Of_signal.of_int 0)
          in
-         combine
-           (gate fetch.hart_to_memory_controller)
-           (combine
-              (gate execute.hart_to_memory_controller)
-              (gate write_back.hart_to_memory_controller)))
+         combine (gate fetch.read_bus) (gate execute.read_bus))
+    ; write_bus = execute.write_bus
     ; is_ecall = execute.is_ecall
     }
   ;;

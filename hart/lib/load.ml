@@ -18,10 +18,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; enable : 'a
       ; funct3 : 'a [@bits 3]
       ; address : 'a [@bits register_width]
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart$"]
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -31,8 +29,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       { new_rd : 'a [@bits register_width] [@rtlname "new_rd"]
       ; error : 'a
       ; finished : 'a
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -47,15 +44,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let create
     (scope : Scope.t)
-    ({ I.clock
-     ; clear
-     ; enable
-     ; funct3
-     ; address
-     ; memory_controller_to_hart
-     ; hart_to_memory_controller = { ready = memory_controller_ready }
-     } :
-      _ I.t)
+    ({ I.clock; clear; enable; funct3; address; read_bus; read_response } : _ I.t)
     =
     (* TODO: We currently disallow loads that are not aligned on a {load width}
        boundary. We could support this by loading a second word and muxing the
@@ -64,7 +53,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let hart_to_memory_controller = Memory.Tx_bus.Tx.Of_always.wire zero in
+    let read_request = Memory.Read_bus.Tx.Of_always.wire zero in
     let%hw aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
       address &: ~:(of_int ~width:register_width 0b11)
@@ -86,12 +75,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let inputs_are_error = is_unaligned |: funct3_is_error in
     let issue_load =
       proc
-        [ Memory.Tx_bus.Tx.Of_always.assign
-            hart_to_memory_controller
-            { valid = vdd
-            ; data = { address = aligned_address; write = gnd; write_data = zero 32 }
-            }
-        ; when_ memory_controller_ready [ current_state.set_next Waiting_for_load ]
+        [ Memory.Read_bus.Tx.Of_always.assign
+            read_request
+            { valid = vdd; data = { address = aligned_address } }
+        ; when_ read_bus.ready [ current_state.set_next Waiting_for_load ]
         ]
     in
     let finished = Variable.wire ~default:gnd in
@@ -109,14 +96,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ; Waiting_for_memory_controller, [ issue_load ]
           ; ( Waiting_for_load
             , [ when_
-                  memory_controller_to_hart.valid
+                  read_response.valid
                   [ finished <-- vdd; current_state.set_next Idle ]
               ] )
           ]
       ];
     { O.new_rd =
         (let%hw alignment_bits = address &:. 0b11 in
-         let%hw full_word = memory_controller_to_hart.data.read_data in
+         let%hw full_word = read_response.value.read_data in
          let%hw half_word =
            mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word)
          in
@@ -125,16 +112,15 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            (module Funct3.Load)
            ~if_not_found:(zero register_width)
            ~f:(function
-             | Funct3.Load.Lw -> memory_controller_to_hart.data.read_data
+             | Funct3.Load.Lw -> full_word
              | Lh -> Decoder.sign_extend ~width:register_width half_word
              | Lhu -> uresize ~width:register_width half_word
              | Lb -> Decoder.sign_extend ~width:register_width byte
              | Lbu -> uresize ~width:register_width byte)
            funct3)
-    ; error = memory_controller_to_hart.data.error |: inputs_are_error
+    ; error = read_response.value.error |: inputs_are_error
     ; finished = finished.value
-    ; hart_to_memory_controller =
-        Memory.Tx_bus.Tx.Of_always.value hart_to_memory_controller
+    ; read_bus = Memory.Read_bus.Tx.Of_always.value read_request
     }
   ;;
 

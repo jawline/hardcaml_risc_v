@@ -27,10 +27,12 @@ struct
           (* When is_ecall is high the opcode will be considered finished when
              ecall_transaction is finished. If a user wants custom behaviour on ecall
              they should hold ecall finished low, do the work, then raise finished. *)
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart"]
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller"]
+
+      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; write_response : 'a Memory.Write_response.With_valid.t
+           [@rtlprefix "write_response$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -42,8 +44,9 @@ struct
       ; is_ecall : 'a
       (** Set high when the hart is in an ecall and is delagating behaviour to
           the user design. *)
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller"]
+
+      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -70,8 +73,10 @@ struct
               (Registers.For_writeback.Of_signal.of_int 0)
               executor_registers
         ; ecall_transaction = i.ecall_transaction
-        ; memory_controller_to_hart = i.memory_controller_to_hart
-        ; hart_to_memory_controller = i.hart_to_memory_controller
+        ; read_bus = i.read_bus
+        ; read_response = i.read_response
+        ; write_bus = i.write_bus
+        ; write_response = i.write_response
         }
     in
     executor_finished <== (executor.valid &: ~:(executor.error));
@@ -84,7 +89,8 @@ struct
         |> Registers.For_writeback.to_registers
     ; error = reg ~enable:executor.valid reg_spec_with_clear executor.error
     ; is_ecall = executor.is_ecall
-    ; hart_to_memory_controller = executor.hart_to_memory_controller
+    ; read_bus = executor.read_bus
+    ; write_bus = executor.write_bus
     }
   ;;
 

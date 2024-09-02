@@ -21,7 +21,8 @@ struct
     type 'a t =
       { valid : 'a
       ; transaction : 'a Transaction.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t option
+      ; write_bus : 'a Memory.Write_bus.Tx.t option
+      ; read_bus : 'a Memory.Read_bus.Tx.t option
       }
   end
 
@@ -32,10 +33,13 @@ struct
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a Decoded_instruction.t
-      ; memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
       ; ecall_transaction : 'a Transaction.t
       ; error : 'a
+      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; write_response : 'a Memory.Write_response.With_valid.t
+           [@rtlprefix "write_response$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -46,9 +50,10 @@ struct
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
       ; error : 'a
       ; is_ecall : 'a
+      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -79,7 +84,8 @@ struct
         }
     in
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
     }
@@ -105,7 +111,8 @@ struct
         }
     in
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
     }
@@ -121,7 +128,8 @@ struct
     =
     let%hw new_pc = registers.pc +: decoded_instruction.j_immediate in
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd; new_rd = registers.pc +:. 4; new_pc; error = gnd }
     }
@@ -146,7 +154,8 @@ struct
       jalr_rs1 +: jalr_i |> drop_lsb
     in
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd; new_pc; error = gnd; new_rd = registers.pc +:. 4 }
     }
@@ -160,7 +169,8 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     =
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd
         ; new_rd = decoded_instruction.u_immediate
@@ -179,7 +189,8 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     =
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd
         ; new_rd = registers.pc +:. 4
@@ -210,7 +221,8 @@ struct
         }
     in
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = gnd; new_rd = zero register_width; error; new_pc }
     }
@@ -224,7 +236,8 @@ struct
     (* TODO: Currently all memory transactions are atomic so I'm not sure if I
      * need to implement this. Figure it out. *)
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; read_bus = None
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd
         ; new_rd = zero register_width
@@ -239,13 +252,13 @@ struct
     ~clock
     ~clear
     ~valid
-    ~memory_controller_to_hart
-    ~hart_to_memory_controller
+    ~read_bus
+    ~read_response
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
-    let { Load.O.finished; new_rd; error; hart_to_memory_controller } =
+    let { Load.O.finished; new_rd; error; read_bus } =
       Load.hierarchical
         ~instance:"load"
         scope
@@ -257,14 +270,15 @@ struct
             valid &: decoded_instruction.is_load
         ; funct3 = decoded_instruction.funct3
         ; address = decoded_instruction.load_address
-        ; memory_controller_to_hart
-        ; hart_to_memory_controller
+        ; read_bus
+        ; read_response
         }
     in
     { Opcode_output.valid = finished
+    ; read_bus = Some read_bus
+    ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
-    ; hart_to_memory_controller = Some hart_to_memory_controller
     }
   ;;
 
@@ -273,13 +287,15 @@ struct
     ~clock
     ~clear
     ~valid
-    ~memory_controller_to_hart
-    ~hart_to_memory_controller
+    ~read_bus
+    ~read_response
+    ~write_bus
+    ~write_response
     ~(registers : _ Registers.t)
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
-    let { Store.O.finished; error; hart_to_memory_controller } =
+    let { Store.O.finished; error; read_bus; write_bus } =
       Store.hierarchical
         ~instance:"store"
         scope
@@ -292,8 +308,10 @@ struct
         ; funct3 = decoded_instruction.funct3
         ; destination = decoded_instruction.store_address
         ; value = decoded_instruction.rs2
-        ; memory_controller_to_hart
-        ; hart_to_memory_controller
+        ; read_bus
+        ; read_response
+        ; write_bus
+        ; write_response
         }
     in
     { Opcode_output.valid = finished
@@ -303,7 +321,8 @@ struct
         ; error
         ; new_pc = registers.pc +:. 4
         }
-    ; hart_to_memory_controller = Some hart_to_memory_controller
+    ; read_bus = Some read_bus
+    ; write_bus = Some write_bus
     }
   ;;
 
@@ -329,7 +348,8 @@ struct
     in
     let%hw is_ecall = decoded_instruction.is_ecall in
     { Opcode_output.valid
-    ; hart_to_memory_controller = None
+    ; write_bus = None
+    ; read_bus = None
     ; transaction =
         Transaction.Of_signal.mux2 is_ecall ecall_transaction unsupported_increment_pc
     }
@@ -352,8 +372,10 @@ struct
     ~registers
     ~decoded_instruction
     ~ecall_transaction
-    ~memory_controller_to_hart
-    ~hart_to_memory_controller
+    ~read_bus
+    ~read_response
+    ~write_bus
+    ~write_response
     scope
     =
     [ Table_entry.create
@@ -390,8 +412,8 @@ struct
            ~clock
            ~clear
            ~valid
-           ~memory_controller_to_hart
-           ~hart_to_memory_controller
+           ~read_bus
+           ~read_response
            ~registers
            decoded_instruction
            scope)
@@ -401,8 +423,10 @@ struct
            ~clock
            ~clear
            ~valid
-           ~memory_controller_to_hart
-           ~hart_to_memory_controller
+           ~read_bus
+           ~read_response
+           ~write_bus
+           ~write_response
            ~registers
            decoded_instruction
            scope)
@@ -428,8 +452,10 @@ struct
         ~valid:i.valid
         ~decoded_instruction:i.instruction
         ~registers:(Registers.For_writeback.to_registers i.registers)
-        ~memory_controller_to_hart:i.memory_controller_to_hart
-        ~hart_to_memory_controller:i.hart_to_memory_controller
+        ~read_bus:i.read_bus
+        ~read_response:i.read_response
+        ~write_bus:i.write_bus
+        ~write_response:i.write_response
         ~ecall_transaction:i.ecall_transaction
         scope
     in
@@ -469,15 +495,28 @@ struct
           reg_spec_with_clear
           i.instruction
     ; transaction
-    ; hart_to_memory_controller =
-        (let combine = Memory.Tx_bus.Tx.map2 ~f:( |: ) in
-         let gate (t : _ Memory.Tx_bus.Tx.t) =
-           Memory.Tx_bus.Tx.Of_signal.mux2 t.valid t (Memory.Tx_bus.Tx.Of_signal.of_int 0)
+    ; read_bus =
+        (let combine = Memory.Read_bus.Tx.map2 ~f:( |: ) in
+         let gate (t : _ Memory.Read_bus.Tx.t) =
+           Memory.Read_bus.Tx.Of_signal.mux2
+             t.valid
+             t
+             (Memory.Read_bus.Tx.Of_signal.of_int 0)
          in
-         List.map ~f:(fun t -> t.output.hart_to_memory_controller) instruction_table
-         |> List.filter_opt
+         List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
          |> List.map ~f:gate
-         |> List.fold ~init:(Memory.Tx_bus.Tx.Of_signal.of_int 0) ~f:combine)
+         |> List.fold ~init:(Memory.Read_bus.Tx.Of_signal.of_int 0) ~f:combine)
+    ; write_bus =
+        (let combine = Memory.Write_bus.Tx.map2 ~f:( |: ) in
+         let gate (t : _ Memory.Write_bus.Tx.t) =
+           Memory.Write_bus.Tx.Of_signal.mux2
+             t.valid
+             t
+             (Memory.Write_bus.Tx.Of_signal.of_int 0)
+         in
+         List.filter_map ~f:(fun t -> t.output.write_bus) instruction_table
+         |> List.map ~f:gate
+         |> List.fold ~init:(Memory.Write_bus.Tx.Of_signal.of_int 0) ~f:combine)
     ; error = reg ~enable:i.error reg_spec_with_clear i.error |: transaction.error
     ; is_ecall = i.instruction.is_ecall
     }
