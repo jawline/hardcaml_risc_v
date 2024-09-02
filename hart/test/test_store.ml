@@ -44,6 +44,7 @@ module Test_machine = struct
     type 'a t =
       { error : 'a
       ; finished : 'a
+      ; read_response : 'a Read_response.With_valid.t
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -96,7 +97,7 @@ module Test_machine = struct
           write_response
           (List.nth_exn controller.write_response 0)
       ];
-    { O.error = store.error; finished = store.finished }
+    { O.error = store.error; finished = store.finished ; read_response = List.nth_exn controller.read_response 0}
   ;;
 end
 
@@ -144,106 +145,105 @@ let%expect_test "store" =
     {|
     (outputs
      ((error 0) (finished 0)
-      (controller_to_hart
+      (read_response
        ((valid 0)
-        (data ((error 0) (read_data 00000000000000000000000000000000)))))
-      (hart_to_memory_controller ((ready 1)))))
+        (value ((error 0) (read_data 00000000000000000000000000000000)))))))
     deadbeef ffffffff ffffffff ffffffff
     |}];
   (* Unaligned store, we expect no change *)
   test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
   [%expect
     {|
-     (outputs
-      ((error 1) (finished 1)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 00000000000000000000000000000000)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 1) (finished 1)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 00000000000000000000000000000000)))))))
+    ffffffff ffffffff ffffffff ffffffff
+    |}];
   (* Aligned store half, we expect these to succeed. *)
   test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffabab ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffabab ffffffff ffffffff ffffffff
+    |}];
   test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     edabffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    edabffff ffffffff ffffffff ffffffff
+    |}];
   (* Test unaligned Sh, we expect these to fail *)
   test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 1) (finished 1)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 1) (finished 1)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffffff ffffffff ffffffff ffffffff
+    |}];
   test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 1) (finished 1)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 1) (finished 1)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffffff ffffffff ffffffff ffffffff
+    |}];
   (* Test SB, these cannot be unaligned. *)
   test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffaa ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffffaa ffffffff ffffffff ffffffff
+    |}];
   test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffaaff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffaaff ffffffff ffffffff ffffffff
+    |}];
   test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffaaffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffaaffff ffffffff ffffffff ffffffff
+    |}];
   test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     aaffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    aaffffff ffffffff ffffffff ffffffff
+    |}];
   if debug then Waveform.Serialize.marshall waveform "/tmp/test_store";
   [%expect {| |}]
 ;;
