@@ -15,12 +15,14 @@ end
 
 module Memory_controller = Memory_controller.Make (struct
     let capacity_in_bytes = 16
-    let num_channels = 1
+    let num_read_channels = 1
+    let num_write_channels = 1
     let address_width = 32
     let data_bus_width = 32
   end)
 
-module Store = Store.Make (Hart_config) (Memory_controller)
+open Memory_controller.Memory_bus
+module Store = Store.Make (Hart_config) (Memory_controller.Memory_bus)
 
 module Test_machine = struct
   open! Signal
@@ -42,10 +44,6 @@ module Test_machine = struct
     type 'a t =
       { error : 'a
       ; finished : 'a
-      ; controller_to_hart : 'a Memory_controller.Rx_bus.Tx.t
-           [@rtlprefix "controller_to_hart"]
-      ; hart_to_memory_controller : 'a Memory_controller.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_controller"]
       }
     [@@deriving sexp_of, hardcaml]
   end
@@ -54,8 +52,10 @@ module Test_machine = struct
     (scope : Scope.t)
     ({ I.clock; clear; enable; funct3; destination; value } : _ I.t)
     =
-    let memory_controller_to_hart = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
-    let hart_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
+    let read_bus = Read_bus.Rx.Of_always.wire zero in
+    let read_response = Read_response.With_valid.Of_always.wire zero in
+    let write_bus = Write_bus.Rx.Of_always.wire zero in
+    let write_response = Write_response.With_valid.Of_always.wire zero in
     let store =
       Store.hierarchical
         ~instance:"store"
@@ -66,10 +66,10 @@ module Test_machine = struct
         ; funct3
         ; destination
         ; value
-        ; memory_controller_to_hart =
-            Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_hart
-        ; hart_to_memory_controller =
-            Memory_controller.Tx_bus.Rx.Of_always.value hart_to_memory_controller
+        ; read_bus = Read_bus.Rx.Of_always.value read_bus
+        ; read_response = Read_response.With_valid.Of_always.value read_response
+        ; write_bus = Write_bus.Rx.Of_always.value write_bus
+        ; write_response = Write_response.With_valid.Of_always.value write_response
         }
     in
     let controller =
@@ -78,24 +78,25 @@ module Test_machine = struct
         scope
         { Memory_controller.I.clock
         ; clear
-        ; ch_to_controller = [ store.hart_to_memory_controller ]
+        ; write_to_controller = [ store.write_bus ]
+        ; read_to_controller = [ store.read_bus ]
         }
     in
     compile
-      [ Memory_controller.Rx_bus.Tx.Of_always.assign
-          memory_controller_to_hart
-          (List.nth_exn controller.controller_to_ch 0)
-      ; Memory_controller.Tx_bus.Rx.Of_always.assign
-          hart_to_memory_controller
-          (List.nth_exn controller.ch_to_controller 0)
+      [ Read_bus.Rx.Of_always.assign
+          read_bus
+          (List.nth_exn controller.read_to_controller 0)
+      ; Read_response.With_valid.Of_always.assign
+          read_response
+          (List.nth_exn controller.read_response 0)
+      ; Write_bus.Rx.Of_always.assign
+          write_bus
+          (List.nth_exn controller.write_to_controller 0)
+      ; Write_response.With_valid.Of_always.assign
+          write_response
+          (List.nth_exn controller.write_response 0)
       ];
-    { O.error = store.error
-    ; O.finished = store.finished
-    ; controller_to_hart =
-        Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_hart
-    ; hart_to_memory_controller =
-        Memory_controller.Tx_bus.Rx.Of_always.value hart_to_memory_controller
-    }
+    { O.error = store.error; finished = store.finished }
   ;;
 end
 
