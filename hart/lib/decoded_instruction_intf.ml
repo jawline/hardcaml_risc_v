@@ -20,8 +20,8 @@ module M (Registers : Registers_intf.S) = struct
       ; funct7_switch : 'a
       ; funct7_bit_other_than_switch_is_selected : 'a
       ; is_ecall : 'a
-      ; is_store : 'a
-      ; is_load : 'a
+      ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
+      ; opcode_signals : 'a Opcodes.Signals.t
       }
     [@@deriving sexp_of, hardcaml]
 

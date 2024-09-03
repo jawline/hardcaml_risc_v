@@ -24,16 +24,18 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7_switch : 'a
     ; funct7_bit_other_than_switch_is_selected : 'a
     ; is_ecall : 'a
-    ; is_store : 'a
-    ; is_load : 'a
+    ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
+    ; opcode_signals : 'a Opcodes.Signals.t
     }
   [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
   let of_instruction instruction registers _scope =
+    let decoded_opcode_or_error = Opcodes.Or_error.decode (Decoder.opcode instruction) in
+    let opcode_signals = Opcodes.Signals.of_signal (Decoder.opcode instruction) in
     let is_ecall =
-      let system = Decoder.opcode instruction ==:. Opcodes.system in
+      let system = opcode_signals.system in
       let ecall =
         Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
       in
@@ -61,8 +63,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7_switch = funct7.:(5)
     ; funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0
     ; is_ecall
-    ; is_store = Decoder.opcode instruction ==:. Opcodes.store
-    ; is_load = Decoder.opcode instruction ==:. Opcodes.load
+    ; decoded_opcode_or_error
+    ; opcode_signals
     }
   ;;
 end

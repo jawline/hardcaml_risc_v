@@ -24,6 +24,7 @@ struct
       ; write_bus : 'a Memory.Write_bus.Tx.t option
       ; read_bus : 'a Memory.Read_bus.Tx.t option
       }
+    [@@deriving fields ~getters]
   end
 
   module I = struct
@@ -267,7 +268,7 @@ struct
         ; enable =
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            valid &: decoded_instruction.is_load
+            valid &: decoded_instruction.opcode_signals.load
         ; funct3 = decoded_instruction.funct3
         ; address = decoded_instruction.load_address
         ; read_bus
@@ -304,7 +305,7 @@ struct
         ; enable =
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            valid &: decoded_instruction.is_store
+            valid &: decoded_instruction.opcode_signals.store
         ; funct3 = decoded_instruction.funct3
         ; destination = decoded_instruction.store_address
         ; value = decoded_instruction.rs2
@@ -358,9 +359,10 @@ struct
   module Table_entry = struct
     (* This doesn't need to be a whole type *)
     type 'a t =
-      { opcode : int
+      { opcode : Opcodes.t
       ; output : 'a Opcode_output.t
       }
+    [@@deriving fields ~getters]
 
     let create ~opcode output = { opcode; output }
   end
@@ -379,35 +381,35 @@ struct
     scope
     =
     [ Table_entry.create
-        ~opcode:Opcodes.op
+        ~opcode:Opcodes.Op
         (op_instructions ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.op_imm
+        ~opcode:Opcodes.Op_imm
         (op_imm_instructions ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.jal
+        ~opcode:Opcodes.Jal
         (jal_instruction
            ~valid
            ~registers
            decoded_instruction
            (Scope.sub_scope scope "jal"))
     ; Table_entry.create
-        ~opcode:Opcodes.jalr
+        ~opcode:Opcodes.Jalr
         (jalr_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
-        ~opcode:Opcodes.lui
+        ~opcode:Opcodes.Lui
         (lui_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.auipc
+        ~opcode:Opcodes.Auipc
         (auipc_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.fence
+        ~opcode:Opcodes.Fence
         (fence ~valid ~registers decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.branch
+        ~opcode:Opcodes.Branch
         (branch_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
-        ~opcode:Opcodes.load
+        ~opcode:Opcodes.Load
         (load_instruction
            ~clock
            ~clear
@@ -418,7 +420,7 @@ struct
            decoded_instruction
            scope)
     ; Table_entry.create
-        ~opcode:Opcodes.store
+        ~opcode:Opcodes.Store
         (store_instruction
            ~clock
            ~clear
@@ -431,7 +433,7 @@ struct
            decoded_instruction
            scope)
     ; Table_entry.create
-        ~opcode:Opcodes.system
+        ~opcode:Opcodes.System
         (system_instruction
            ~clock
            ~clear
@@ -441,6 +443,8 @@ struct
            decoded_instruction
            scope)
     ]
+    |> List.sort ~compare:(fun t1 t2 ->
+      Opcodes.Or_error.compare (Opcode t1.opcode) (Opcode t2.opcode))
   ;;
 
   let create scope (i : _ I.t) =
@@ -459,29 +463,28 @@ struct
         ~ecall_transaction:i.ecall_transaction
         scope
     in
+    (* The decoded_opcode_or_error will be zero if the opcode failed to decode
+       otherwise it will be 1 + Opcodes.to_rank t. We use this encoding to
+       minimize the width of the mux while still detecting failures.
+
+       In the error case we set valid high and emit a transaction error. *)
     let valid =
-      let valid_mux =
-        List.init
-          ~f:(fun opcode ->
-            match List.find ~f:(fun t -> t.opcode = opcode) instruction_table with
-            | Some t -> t.output.valid
-            | None -> gnd)
-          128
+      let valids =
+        [ vdd ]
+        @ (List.map ~f:Table_entry.output instruction_table
+           |> List.map ~f:Opcode_output.valid)
       in
-      reg reg_spec_with_clear (mux i.instruction.opcode valid_mux)
+      reg reg_spec_with_clear (mux i.instruction.decoded_opcode_or_error valids)
     in
     let transaction =
-      let instruction_mux =
-        List.init
-          ~f:(fun opcode ->
-            match List.find ~f:(fun t -> t.opcode = opcode) instruction_table with
-            | Some t -> t.output.transaction
-            | None -> Transaction.generic_error)
-          128
+      let transactions =
+        [ Transaction.generic_error ]
+        @ (List.map ~f:Table_entry.output instruction_table
+           |> List.map ~f:Opcode_output.transaction)
       in
       Transaction.Of_signal.reg
         reg_spec_with_clear
-        (Transaction.Of_signal.mux i.instruction.opcode instruction_mux)
+        (Transaction.Of_signal.mux i.instruction.decoded_opcode_or_error transactions)
     in
     { O.valid
     ; registers =
