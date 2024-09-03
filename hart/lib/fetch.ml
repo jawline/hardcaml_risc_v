@@ -13,22 +13,22 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
-      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
-      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
+      ; registers : 'a Registers.For_writeback.t
+      ; read_bus : 'a Memory.Read_bus.Rx.t
+      ; read_response : 'a Memory.Read_response.With_valid.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
       { valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
+      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a [@bits 32]
       ; error : 'a
-      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create scope (i : _ I.t) =

@@ -18,7 +18,7 @@ struct
       ; clear : 'a
       ; uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -28,7 +28,7 @@ struct
       ; parity_error : 'a
       ; stop_bit_unstable : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module State = struct

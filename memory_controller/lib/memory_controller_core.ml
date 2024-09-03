@@ -41,7 +41,7 @@ struct
       ; which_write_ch : 'a [@bits num_bits_to_represent M.num_write_channels - 1]
       ; selected_write_ch : 'a Memory_bus.Write_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -50,7 +50,7 @@ struct
       ; write_response : 'a Write_response.With_valid.t list
            [@length M.num_write_channels]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let real_address ~scope address =

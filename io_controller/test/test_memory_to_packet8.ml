@@ -40,7 +40,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
         ; address : 'a [@bits 32]
         ; length : 'a [@bits 16]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     module O = Memory_to_packet8.O

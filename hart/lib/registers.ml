@@ -9,7 +9,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     { pc : 'a [@bits register_width]
     ; general : 'a list [@bits register_width] [@length Hart_config.num_registers]
     }
-  [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+  [@@deriving hardcaml ~rtlmangle:"$"]
 
   let set_pc t new_pc = { t with pc = new_pc }
 
@@ -33,7 +33,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       { pc : 'a [@bits register_width]
       ; general : 'a list [@bits register_width] [@length Hart_config.num_registers - 1]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
 
     let to_registers (t : _ t) : _ registers =
       { pc = t.pc; general = zero register_width :: t.general }

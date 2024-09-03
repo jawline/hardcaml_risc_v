@@ -21,7 +21,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
       ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -31,7 +31,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; finished : 'a
       ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct

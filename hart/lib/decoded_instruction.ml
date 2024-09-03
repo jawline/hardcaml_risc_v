@@ -27,7 +27,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
     ; opcode_signals : 'a Opcodes.Signals.t
     }
-  [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+  [@@deriving hardcaml ~rtlmangle:"$"]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 

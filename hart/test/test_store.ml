@@ -37,7 +37,7 @@ module Test_machine = struct
       ; destination : 'a [@bits 32]
       ; value : 'a [@bits 32]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -46,7 +46,7 @@ module Test_machine = struct
       ; finished : 'a
       ; read_response : 'a Read_response.With_valid.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create

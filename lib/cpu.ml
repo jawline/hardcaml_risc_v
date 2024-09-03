@@ -45,7 +45,7 @@ struct
       ; (* ignored if include_io_controller = Uart_io. *)
         uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -58,7 +58,7 @@ struct
       ; stop_bit_unstable : 'a
       ; serial_to_packet_valid : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let default_transaction (hart : _ Hart.O.t) =

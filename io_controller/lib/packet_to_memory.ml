@@ -13,7 +13,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       ; out : 'a Memory.Write_bus.Rx.t
       ; out_ack : 'a Memory.Write_response.With_valid.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -21,7 +21,7 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
       { in_ : 'a P.Contents_stream.Rx.t
       ; out : 'a Memory.Write_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct

@@ -16,7 +16,7 @@ module Make (C : Config_intf.S) = struct
       ; clear : 'a
       ; uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -26,7 +26,7 @@ module Make (C : Config_intf.S) = struct
       ; parity_error : 'a
       ; stop_bit_unstable : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct

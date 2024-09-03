@@ -16,7 +16,7 @@ struct
       ; instruction : 'a [@bits 32]
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -26,7 +26,7 @@ struct
       ; instruction : 'a Decoded_instruction.t
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create scope (i : _ I.t) =

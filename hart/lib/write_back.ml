@@ -27,7 +27,7 @@ struct
       ; transaction : 'a Transaction.t
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -36,7 +36,7 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; error : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create _scope (i : _ I.t) =

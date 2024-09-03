@@ -42,7 +42,7 @@ struct
            [@rtlprefix "write_response$"]
       ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -56,7 +56,7 @@ struct
       ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
       ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let op_imm_instructions
@@ -443,8 +443,32 @@ struct
            decoded_instruction
            scope)
     ]
-    |> List.sort ~compare:(fun t1 t2 ->
-      Opcodes.Or_error.compare (Opcode t1.opcode) (Opcode t2.opcode))
+    |> (* We sort the instruction table entries by the order they should appear
+          in the result mux. *)
+    List.sort ~compare:(fun t1 t2 -> Opcodes.compare t1.opcode t2.opcode)
+  ;;
+
+  let combine_read_bus (instruction_table : _ Table_entry.t list) =
+    let combine = Memory.Read_bus.Tx.map2 ~f:( |: ) in
+    let gate (t : _ Memory.Read_bus.Tx.t) =
+      Memory.Read_bus.Tx.Of_signal.mux2 t.valid t (Memory.Read_bus.Tx.Of_signal.of_int 0)
+    in
+    List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
+    |> List.map ~f:gate
+    |> List.fold ~init:(Memory.Read_bus.Tx.Of_signal.of_int 0) ~f:combine
+  ;;
+
+  let combine_write_bus (instruction_table : _ Table_entry.t list) =
+    let combine = Memory.Write_bus.Tx.map2 ~f:( |: ) in
+    let gate (t : _ Memory.Write_bus.Tx.t) =
+      Memory.Write_bus.Tx.Of_signal.mux2
+        t.valid
+        t
+        (Memory.Write_bus.Tx.Of_signal.of_int 0)
+    in
+    List.filter_map ~f:(fun t -> t.output.write_bus) instruction_table
+    |> List.map ~f:gate
+    |> List.fold ~init:(Memory.Write_bus.Tx.Of_signal.of_int 0) ~f:combine
   ;;
 
   let create scope (i : _ I.t) =
@@ -498,30 +522,10 @@ struct
           reg_spec_with_clear
           i.instruction
     ; transaction
-    ; read_bus =
-        (let combine = Memory.Read_bus.Tx.map2 ~f:( |: ) in
-         let gate (t : _ Memory.Read_bus.Tx.t) =
-           Memory.Read_bus.Tx.Of_signal.mux2
-             t.valid
-             t
-             (Memory.Read_bus.Tx.Of_signal.of_int 0)
-         in
-         List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
-         |> List.map ~f:gate
-         |> List.fold ~init:(Memory.Read_bus.Tx.Of_signal.of_int 0) ~f:combine)
-    ; write_bus =
-        (let combine = Memory.Write_bus.Tx.map2 ~f:( |: ) in
-         let gate (t : _ Memory.Write_bus.Tx.t) =
-           Memory.Write_bus.Tx.Of_signal.mux2
-             t.valid
-             t
-             (Memory.Write_bus.Tx.Of_signal.of_int 0)
-         in
-         List.filter_map ~f:(fun t -> t.output.write_bus) instruction_table
-         |> List.map ~f:gate
-         |> List.fold ~init:(Memory.Write_bus.Tx.Of_signal.of_int 0) ~f:combine)
     ; error = reg ~enable:i.error reg_spec_with_clear i.error |: transaction.error
     ; is_ecall = i.instruction.is_ecall
+    ; read_bus = combine_read_bus instruction_table
+    ; write_bus = combine_write_bus instruction_table
     }
   ;;
 

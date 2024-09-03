@@ -15,7 +15,7 @@ struct
       ; clear : 'a
       ; ch_to_controller : 'a S.Tx.t list [@length M.num_channels]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -24,7 +24,7 @@ struct
       ; selected_ch : 'a S.Tx.t
       ; acks : 'a S.Rx.t list [@length M.num_channels]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let rotate n xs = List.(concat [ drop xs n; take xs n ])

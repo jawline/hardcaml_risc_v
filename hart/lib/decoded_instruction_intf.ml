@@ -23,7 +23,7 @@ module M (Registers : Registers_intf.S) = struct
       ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
       ; opcode_signals : 'a Opcodes.Signals.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
 
     val of_instruction : Signal.t -> Signal.t Registers.t -> Scope.t -> Signal.t t
   end

@@ -33,7 +33,7 @@ struct
            [@rtlprefix "write_response$"]
       ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -46,7 +46,7 @@ struct
       ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
       ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create scope (i : _ I.t) =

@@ -11,7 +11,7 @@ module Make (P : Packet_intf.S) = struct
       ; clear : 'a
       ; in_ : 'a P.Contents_stream.Tx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -19,7 +19,7 @@ module Make (P : Packet_intf.S) = struct
       { in_ : 'a P.Contents_stream.Rx.t
       ; signal : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create (_scope : Scope.t) ({ I.clock = _; clear = _; in_ } : _ I.t) =

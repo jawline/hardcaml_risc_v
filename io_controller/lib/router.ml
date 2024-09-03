@@ -19,7 +19,7 @@ struct
       ; in_ : 'a P.Contents_stream.Tx.t
       ; outs : 'a P.Contents_stream.Rx.t list [@length Config.num_tags]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -27,7 +27,7 @@ struct
       { in_ : 'a P.Contents_stream.Rx.t
       ; outs : 'a P.Contents_stream.Tx.t list [@length Config.num_tags]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module State = struct

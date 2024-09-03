@@ -8,10 +8,10 @@ module Make (M : Interface.S) = struct
       { valid : 'a
       ; data : 'a M.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module Rx = struct
-    type 'a t = { ready : 'a } [@@deriving sexp_of, hardcaml]
+    type 'a t = { ready : 'a } [@@deriving hardcaml]
   end
 end

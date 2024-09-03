@@ -35,7 +35,7 @@ struct
       ; write_to_controller : 'a Write_bus.Tx.t list [@length M.num_write_channels]
       ; read_to_controller : 'a Read_bus.Tx.t list [@length M.num_read_channels]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -46,7 +46,7 @@ struct
            [@length M.num_write_channels]
       ; read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create scope ({ clock; clear; write_to_controller; read_to_controller } : _ I.t) =

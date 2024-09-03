@@ -34,7 +34,7 @@ module Test_machine = struct
       ; funct3 : 'a [@bits 3]
       ; address : 'a [@bits 32]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -43,7 +43,7 @@ module Test_machine = struct
       ; error : 'a
       ; finished : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create (scope : Scope.t) ({ I.clock; clear; enable; funct3; address } : _ I.t) =

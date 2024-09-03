@@ -26,12 +26,11 @@ struct
       ; in_data : 'a [@bits Config.serial_input_width]
       ; out : 'a P.Contents_stream.Rx.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
-    type 'a t = { out : 'a P.Contents_stream.Tx.t }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    type 'a t = { out : 'a P.Contents_stream.Tx.t } [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct

@@ -53,7 +53,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         ; data_in_valid : 'a
         ; data_in : 'a [@bits 8]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     module O = struct
@@ -64,7 +64,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         ; parity_error : 'a
         ; stop_bit_unstable : 'a
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =

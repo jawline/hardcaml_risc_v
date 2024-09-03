@@ -996,12 +996,12 @@ module With_transmitter = struct
       ; data_in_valid : 'a
       ; data_in : 'a [@bits 8]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
     type 'a t = { registers : 'a Cpu_with_dma_memory.Registers.t list [@length 1] }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create scope { I.clock; clear; data_in_valid; data_in } =

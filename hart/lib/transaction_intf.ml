@@ -7,7 +7,7 @@ module type S = sig
     ; new_pc : 'a [@bits register_width]
     ; error : 'a
     }
-  [@@deriving sexp_of, hardcaml]
+  [@@deriving hardcaml]
 
   val generic_error : Signal.t t
 end

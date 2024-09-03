@@ -82,7 +82,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
         ; dma_out_address : 'a [@bits 32]
         ; dma_out_length : 'a [@bits 16]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     module O = struct
@@ -90,7 +90,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
         { out_valid : 'a [@bits 1]
         ; out_data : 'a [@bits 8]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     let create
