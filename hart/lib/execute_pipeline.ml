@@ -65,8 +65,8 @@ struct
         ; clear = i.clear
         ; valid = i.valid
         ; registers = i.registers
-        ; read_bus = List.nth_exn i.read_bus 0
-        ; read_response = List.nth_exn i.read_response 0
+        ; read_bus = List.nth_exn i.read_bus 1
+        ; read_response = List.nth_exn i.read_response 1
         }
     in
     let decode =
@@ -90,8 +90,8 @@ struct
         ; instruction = decode.instruction
         ; ecall_transaction = i.ecall_transaction
         ; error = decode.error
-        ; read_bus = List.nth_exn i.read_bus 1
-        ; read_response = List.nth_exn i.read_response 1
+        ; read_bus = List.nth_exn i.read_bus 0
+        ; read_response = List.nth_exn i.read_response 0
         ; write_bus = List.nth_exn i.write_bus 0
         ; write_response = List.nth_exn i.write_response 0
         }
