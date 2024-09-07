@@ -149,13 +149,13 @@ struct
     in
     let read_bus_per_hart =
       List.init
-        ~f:(fun _which_hart -> Read_bus.Tx.Of_always.wire zero)
-        General_config.num_harts
+        ~f:(fun _ -> Read_bus.Tx.Of_always.wire zero)
+        (General_config.num_harts * hart_required_read_channels)
     in
     let write_bus_per_hart =
       List.init
-        ~f:(fun _which_hart -> Write_bus.Tx.Of_always.wire zero)
-        General_config.num_harts
+        ~f:(fun _ -> Write_bus.Tx.Of_always.wire zero)
+        (General_config.num_harts * hart_required_write_channels)
     in
     let of_dma ~default ~f =
       Option.map ~f maybe_dma_controller |> Option.value ~default
@@ -222,14 +222,14 @@ struct
         General_config.num_harts
     in
     assign_ecalls maybe_dma_controller harts hart_ecall_transactions scope;
+    let all_hart_read_bus = List.map ~f:(fun t -> t.read_bus) harts |> List.concat in
+    let all_hart_write_bus = List.map ~f:(fun t -> t.write_bus) harts |> List.concat in
     compile
-      (List.map
-         ~f:(fun (hart, read_bus) -> Read_bus.Tx.Of_always.assign read_bus hart.read_bus)
-         (List.zip_exn harts read_bus_per_hart)
-       @ List.map
-           ~f:(fun (hart, write_bus) ->
-             Write_bus.Tx.Of_always.assign write_bus hart.write_bus)
-           (List.zip_exn harts write_bus_per_hart)
+      (List.map2_exn ~f:Read_bus.Tx.Of_always.assign read_bus_per_hart all_hart_read_bus
+       @ List.map2_exn
+           ~f:Write_bus.Tx.Of_always.assign
+           write_bus_per_hart
+           all_hart_write_bus
        @
        match maybe_dma_controller with
        | None -> []

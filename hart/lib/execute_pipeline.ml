@@ -4,7 +4,6 @@
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
-open Signal
 
 let required_read_channels = 2
 let required_write_channels = 1
@@ -50,9 +49,9 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
       ; error : 'a
-      ; write_bus : 'a Memory.Write_bus.Tx.t
+      ; write_bus : 'a Memory.Write_bus.Tx.t list
            [@rtlprefix "write$"] [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Tx.t
+      ; read_bus : 'a Memory.Read_bus.Tx.t list
            [@rtlprefix "read$"] [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -112,16 +111,8 @@ struct
     { O.valid = write_back.valid
     ; registers = write_back.registers
     ; error = write_back.error
-    ; read_bus =
-        (let combine = Memory.Read_bus.Tx.map2 ~f:( |: ) in
-         let gate (t : _ Memory.Read_bus.Tx.t) =
-           Memory.Read_bus.Tx.Of_signal.mux2
-             t.valid
-             t
-             (Memory.Read_bus.Tx.Of_signal.of_int 0)
-         in
-         combine (gate fetch.read_bus) (gate execute.read_bus))
-    ; write_bus = execute.write_bus
+    ; read_bus = [ execute.read_bus; fetch.read_bus ]
+    ; write_bus = [ execute.write_bus ]
     ; is_ecall = execute.is_ecall
     }
   ;;

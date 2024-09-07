@@ -49,8 +49,10 @@ struct
       ; is_ecall : 'a
       (** Set high when the hart is in an ecall and is delagating behaviour to
           the user design. *)
-      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
-      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
+      ; write_bus : 'a Memory.Write_bus.Tx.t list
+           [@rtlprefix "write$"] [@length required_write_channels]
+      ; read_bus : 'a Memory.Read_bus.Tx.t list
+           [@rtlprefix "read$"] [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
