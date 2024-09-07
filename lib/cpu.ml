@@ -18,10 +18,22 @@ struct
     | Uart_controller _ -> 1
   ;;
 
+  let hart_required_read_channels = Hart.required_read_channels
+  let hart_required_write_channels = Hart.required_write_channels
+
   module Memory_controller = Memory_controller.Make (struct
       let capacity_in_bytes = Memory_config.num_bytes
-      let num_read_channels = system_non_hart_memory_channels + General_config.num_harts
-      let num_write_channels = system_non_hart_memory_channels + General_config.num_harts
+
+      let num_read_channels =
+        system_non_hart_memory_channels
+        + (General_config.num_harts * hart_required_read_channels)
+      ;;
+
+      let num_write_channels =
+        system_non_hart_memory_channels
+        + (General_config.num_harts * hart_required_write_channels)
+      ;;
+
       let address_width = Register_width.bits Hart_config.register_width
       let data_bus_width = 32
     end)
@@ -165,6 +177,16 @@ struct
     let hart_ecall_transactions =
       List.init ~f:(fun _ -> Transaction.Of_signal.wires ()) General_config.num_harts
     in
+    let select_controller_parts ~mode ~(which_hart : int) t =
+      let offset = system_non_hart_memory_channels in
+      let stride =
+        match mode with
+        | `Read -> hart_required_read_channels
+        | `Write -> hart_required_write_channels
+      in
+      let dropped = List.drop t (offset + (which_hart * stride)) in
+      List.take dropped stride
+    in
     let harts =
       List.init
         ~f:(fun which_hart ->
@@ -177,21 +199,22 @@ struct
                   (* Allow resets via remote IO if a DMA controller is attached. *)
                   of_dma ~default:gnd ~f:Dma.clear_message |: i.clear
               ; read_bus =
-                  List.nth_exn
+                  select_controller_parts
+                    ~mode:`Read
+                    ~which_hart
                     controller.read_to_controller
-                    (system_non_hart_memory_channels + which_hart)
               ; write_bus =
-                  List.nth_exn
+                  select_controller_parts
+                    ~mode:`Write
+                    ~which_hart
                     controller.write_to_controller
-                    (system_non_hart_memory_channels + which_hart)
               ; read_response =
-                  List.nth_exn
-                    controller.read_response
-                    (system_non_hart_memory_channels + which_hart)
+                  select_controller_parts ~mode:`Read ~which_hart controller.read_response
               ; write_response =
-                  List.nth_exn
+                  select_controller_parts
+                    ~mode:`Write
+                    ~which_hart
                     controller.write_response
-                    (system_non_hart_memory_channels + which_hart)
               ; ecall_transaction = List.nth_exn hart_ecall_transactions which_hart
               }
           in

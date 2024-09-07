@@ -8,6 +8,9 @@ open Hardcaml
 open Hardcaml_memory_controller
 open Signal
 
+let required_read_channels = Execute_pipeline.required_read_channels
+let required_write_channels = Execute_pipeline.required_write_channels
+
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
@@ -27,11 +30,14 @@ struct
           (* When is_ecall is high the opcode will be considered finished when
              ecall_transaction is finished. If a user wants custom behaviour on ecall
              they should hold ecall finished low, do the work, then raise finished. *)
-      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
-      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
-      ; write_response : 'a Memory.Write_response.With_valid.t
-           [@rtlprefix "write_response$"]
-      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
+      ; write_bus : 'a Memory.Write_bus.Rx.t list
+           [@rtlprefix "write$"] [@length required_write_channels]
+      ; write_response : 'a Memory.Write_response.With_valid.t list
+           [@rtlprefix "write_response$"] [@length required_write_channels]
+      ; read_bus : 'a Memory.Read_bus.Rx.t list
+           [@rtlprefix "read$"] [@length required_read_channels]
+      ; read_response : 'a Memory.Read_response.With_valid.t list
+           [@rtlprefix "read_response$"] [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
