@@ -9,23 +9,14 @@ open! Bits
 let debug = false
 
 module Memory_controller = Memory_controller.Make (struct
-    let num_bytes = 128
-    let num_channels = 2
+    let capacity_in_bytes = 128
+    let num_write_channels = 1
+    let num_read_channels = 1
     let address_width = 32
     let data_bus_width = 32
   end)
 
-let print_ram sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  let as_str =
-    Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut) ram
-    |> Array.to_list
-    |> List.map ~f:(fun t -> Bits.split_lsb ~part_width:8 t |> List.map ~f:Bits.to_char)
-    |> List.concat
-    |> String.of_char_list
-  in
-  print_s [%message "" ~_:(as_str : String.Hexdump.t)]
-;;
+open Memory_controller.Memory_bus
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
   =
@@ -58,7 +49,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       let data_bus_width = 8
     end)
   in
-  let module Dma = Packet_to_memory.Make (Memory_controller) (Packet) in
+  let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Packet) in
   let module Uart_tx = Uart_tx.Make (Config) in
   let module Uart_rx = Uart_rx.Make (Config) in
   let module Serial_to_packet =
@@ -75,7 +66,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       (struct
         let header = Some 'Q'
       end)
-      (Memory_controller)
+      (Memory_controller.Memory_bus)
   in
   let module Machine = struct
     open Signal
@@ -91,7 +82,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
         ; dma_out_address : 'a [@bits 32]
         ; dma_out_length : 'a [@bits 16]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     module O = struct
@@ -99,7 +90,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
         { out_valid : 'a [@bits 1]
         ; out_data : 'a [@bits 8]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     let create
@@ -136,8 +127,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; out = { ready = vdd }
           }
       in
-      let dma_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
-      let memory_controller_to_dma = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
+      let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
+      let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
         Dma.hierarchical
           ~instance:"dma"
@@ -145,16 +136,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           { Dma.I.clock
           ; clear
           ; in_ = out
-          ; out = Memory_controller.Tx_bus.Rx.Of_always.value dma_to_memory_controller
-          ; out_ack = Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma
+          ; out = Write_bus.Rx.Of_always.value dma_to_memory_controller
+          ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
       in
-      let dma_out_to_memory_controller =
-        Memory_controller.Tx_bus.Rx.Of_always.wire zero
-      in
-      let memory_controller_to_dma_out =
-        Memory_controller.Rx_bus.Tx.Of_always.wire zero
-      in
+      let dma_out_to_memory_controller = Read_bus.Rx.Of_always.wire zero in
+      let memory_controller_to_dma_out = Read_response.With_valid.Of_always.wire zero in
       let uart_tx_ready = wire 1 in
       let dma_out =
         Memory_to_packet8.hierarchical
@@ -166,10 +153,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
               { valid = dma_out_enable
               ; value = { address = dma_out_address; length = dma_out_length }
               }
-          ; memory =
-              Memory_controller.Tx_bus.Rx.Of_always.value dma_out_to_memory_controller
+          ; memory = Read_bus.Rx.Of_always.value dma_out_to_memory_controller
           ; memory_response =
-              Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_dma_out
+              Read_response.With_valid.Of_always.value memory_controller_to_dma_out
           ; output_packet = { ready = uart_tx_ready }
           }
       in
@@ -196,23 +182,23 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           scope
           { Memory_controller.I.clock
           ; clear
-          ; ch_to_controller = [ dma.out; dma_out.memory ]
-          ; controller_to_ch = [ dma.out_ack; dma_out.memory_response ]
+          ; write_to_controller = [ dma.out ]
+          ; read_to_controller = [ dma_out.memory ]
           }
       in
       compile
-        [ Memory_controller.Tx_bus.Rx.Of_always.assign
+        [ Write_bus.Rx.Of_always.assign
             dma_to_memory_controller
-            (List.nth_exn controller.ch_to_controller 0)
-        ; Memory_controller.Rx_bus.Tx.Of_always.assign
+            (List.nth_exn controller.write_to_controller 0)
+        ; Write_response.With_valid.Of_always.assign
             memory_controller_to_dma
-            (List.nth_exn controller.controller_to_ch 0)
-        ; Memory_controller.Tx_bus.Rx.Of_always.assign
+            (List.nth_exn controller.write_response 0)
+        ; Read_bus.Rx.Of_always.assign
             dma_out_to_memory_controller
-            (List.nth_exn controller.ch_to_controller 1)
-        ; Memory_controller.Rx_bus.Tx.Of_always.assign
+            (List.nth_exn controller.read_to_controller 0)
+        ; Read_response.With_valid.Of_always.assign
             memory_controller_to_dma_out
-            (List.nth_exn controller.controller_to_ch 1)
+            (List.nth_exn controller.read_response 0)
         ];
       { O.out_valid = dma_out_uart_rx.data_out_valid
       ; out_data = dma_out_uart_rx.data_out
@@ -253,7 +239,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     all_inputs;
   loop_for 100;
   printf "Printing ram (not DMA response):\n";
-  print_ram sim;
+  Test_util.print_ram sim;
   printf "Doing a DMA read:\n";
   let issue_read ~address ~length =
     inputs.dma_out_enable := Bits.vdd;
@@ -294,18 +280,19 @@ let%expect_test "test" =
     ~packet:"Hio";
   [%expect
     {|
-      Printing ram (not DMA response):
-      ("00000000  48 69 6f 00 00 00 00 00  00 00 00 00 00 00 00 00  |Hio.............|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-      Doing a DMA read:
-      ("00000000  51 00 03 48 69 6f                                 |Q..Hio|")
-      500 |}];
+    Printing ram (not DMA response):
+    ("00000000  48 69 6f 00 00 00 00 00  00 00 00 00 00 00 00 00  |Hio.............|"
+     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Doing a DMA read:
+    ("00000000  51 00 03 48 69 6f                                 |Q..Hio|")
+    500
+    |}];
   test
     ~name:"/tmp/test_e2e_dma_hello_world"
     ~clock_frequency:200
@@ -316,16 +303,17 @@ let%expect_test "test" =
     ~packet:"Hello world!";
   [%expect
     {|
-      Printing ram (not DMA response):
-      ("00000000  48 65 6c 6c 6f 20 77 6f  72 6c 64 21 00 00 00 00  |Hello world!....|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-      Doing a DMA read:
-      ("00000000  51 00 0c 48 65 6c 6c 6f  20 77 6f 72 6c 64 21     |Q..Hello world!|")
-      500 |}]
+    Printing ram (not DMA response):
+    ("00000000  48 65 6c 6c 6f 20 77 6f  72 6c 64 21 00 00 00 00  |Hello world!....|"
+     "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Doing a DMA read:
+    ("00000000  51 00 0c 48 65 6c 6c 6f  20 77 6f 72 6c 64 21     |Q..Hello world!|")
+    500
+    |}]
 ;;

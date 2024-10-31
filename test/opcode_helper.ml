@@ -4,36 +4,48 @@ open Hardcaml_risc_v_hart
 open! Bits
 
 let assemble_i_type ~opcode ~funct3 ~rs1 ~rd ~immediate =
+  let opcode = Opcodes.to_int_repr opcode |> Bits.of_int ~width:7 in
   concat_msb [ immediate; rs1; funct3; rd; opcode ]
 ;;
 
 let assemble_r_type ~opcode ~funct3 ~funct7 ~rs1 ~rs2 ~rd =
+  let opcode = Opcodes.to_int_repr opcode |> Bits.of_int ~width:7 in
   concat_msb [ funct7; rs2; rs1; funct3; rd; opcode ]
 ;;
 
 let assemble_s_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
-  concat_msb [ sel_top immediate 7; rs2; rs1; funct3; sel_bottom immediate 5; opcode ]
-;;
-
-let assemble_b_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
+  let opcode = Opcodes.to_int_repr opcode |> Bits.of_int ~width:7 in
   concat_msb
-    [ bit immediate 12
-    ; select immediate 10 5
+    [ sel_top ~width:7 immediate
     ; rs2
     ; rs1
     ; funct3
-    ; select immediate 4 1
-    ; bit immediate 11
+    ; sel_bottom ~width:5 immediate
+    ; opcode
+    ]
+;;
+
+let assemble_b_type ~opcode ~funct3 ~immediate ~rs1 ~rs2 =
+  let opcode = Opcodes.to_int_repr opcode |> Bits.of_int ~width:7 in
+  concat_msb
+    [ immediate.:(12)
+    ; immediate.:[10, 5]
+    ; rs2
+    ; rs1
+    ; funct3
+    ; immediate.:[4, 1]
+    ; immediate.:(11)
     ; opcode
     ]
 ;;
 
 let assemble_j_type ~opcode ~rd ~immediate =
+  let opcode = Opcodes.to_int_repr opcode |> Bits.of_int ~width:7 in
   concat_msb
-    [ bit immediate 19
-    ; select immediate 10 1
-    ; bit immediate 11
-    ; select immediate 19 12
+    [ immediate.:(19)
+    ; immediate.:[10, 1]
+    ; immediate.:(11)
+    ; immediate.:[19, 12]
     ; rd
     ; opcode
     ]
@@ -41,7 +53,7 @@ let assemble_j_type ~opcode ~rd ~immediate =
 
 let load ~funct3 ~rs1 ~rd ~immediate =
   assemble_i_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.load)
+    ~opcode:Opcodes.Load
     ~funct3:(Bits.of_int ~width:3 (Funct3.Load.to_int funct3))
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rd:(Bits.of_int ~width:5 rd)
@@ -50,7 +62,7 @@ let load ~funct3 ~rs1 ~rd ~immediate =
 
 let store ~funct3 ~rs1 ~rs2 ~immediate =
   assemble_s_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.store)
+    ~opcode:Store
     ~funct3:(Bits.of_int ~width:3 (Funct3.Store.to_int funct3))
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rs2:(Bits.of_int ~width:5 rs2)
@@ -59,14 +71,14 @@ let store ~funct3 ~rs1 ~rs2 ~immediate =
 
 let jal ~rd ~offset =
   assemble_j_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.jal)
+    ~opcode:Jal
     ~rd:(Bits.of_int ~width:5 rd)
     ~immediate:(Bits.of_int ~width:20 offset)
 ;;
 
 let jalr ~rd ~rs1 ~offset =
   assemble_i_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.jalr)
+    ~opcode:Jalr
     ~funct3:(Bits.of_int ~width:3 0)
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rd:(Bits.of_int ~width:5 rd)
@@ -75,7 +87,7 @@ let jalr ~rd ~rs1 ~offset =
 
 let branch ~funct3 ~rs1 ~rs2 ~offset =
   assemble_b_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.branch)
+    ~opcode:Branch
     ~funct3:(Bits.of_int ~width:3 (Funct3.Branch.to_int funct3))
     ~immediate:(Bits.of_int ~width:13 offset)
     ~rs1:(Bits.of_int ~width:5 rs1)
@@ -84,7 +96,7 @@ let branch ~funct3 ~rs1 ~rs2 ~offset =
 
 let op_imm ~funct3 ~rs1 ~rd ~immediate =
   assemble_i_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.op_imm)
+    ~opcode:Op_imm
     ~funct3:(Bits.of_int ~width:3 (Funct3.Op.to_int funct3))
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rd:(Bits.of_int ~width:5 rd)
@@ -93,7 +105,7 @@ let op_imm ~funct3 ~rs1 ~rd ~immediate =
 
 let op ~funct7 ~funct3 ~rs1 ~rs2 ~rd =
   assemble_r_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.op)
+    ~opcode:Op
     ~funct3:(Bits.of_int ~width:3 (Funct3.Op.to_int funct3))
     ~funct7:(Bits.of_int ~width:7 funct7)
     ~rs1:(Bits.of_int ~width:5 rs1)
@@ -103,7 +115,7 @@ let op ~funct7 ~funct3 ~rs1 ~rs2 ~rd =
 
 let ecall ~rs1 ~rd =
   assemble_i_type
-    ~opcode:(Bits.of_int ~width:7 Opcodes.system)
+    ~opcode:System
     ~funct3:(Bits.of_int ~width:3 (Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
     ~rs1:(Bits.of_int ~width:5 rs1)
     ~rd:(Bits.of_int ~width:5 rd)

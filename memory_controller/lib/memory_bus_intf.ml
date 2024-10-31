@@ -2,26 +2,37 @@ open Hardcaml
 open Hardcaml_stream
 
 module type S = sig
-  module Tx_data : sig
-    type 'a t =
-      { write : 'a
-      ; address : 'a
-      ; write_data : 'a
-      }
-    [@@deriving sexp_of, hardcaml]
+  module Read : sig
+    type 'a t = { address : 'a [@bits M.address_width] } [@@deriving hardcaml]
   end
 
-  module Rx_data : sig
+  module Write : sig
+    type 'a t =
+      { address : 'a [@bits M.address_width]
+      ; write_data : 'a [@bits M.data_bus_width]
+      }
+    [@@deriving hardcaml]
+  end
+
+  module Read_response : sig
     type 'a t =
       { error : 'a
-      ; read_data : 'a
+      ; read_data : 'a [@bits M.data_bus_width]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
+
+    module With_valid : With_valid.Wrap.S with type 'a value := 'a t
+  end
+
+  module Write_response : sig
+    type 'a t = { error : 'a } [@@deriving hardcaml]
+
+    module With_valid : With_valid.Wrap.S with type 'a value := 'a t
   end
 
   val data_bus_width : int
   val address_is_word_aligned : Signal.t -> Signal.t
 
-  module Tx_bus : Stream_intf.S with type 'a data := 'a Tx_data.t
-  module Rx_bus : Stream_intf.S with type 'a data := 'a Rx_data.t
+  module Read_bus : Stream_intf.S with type 'a data := 'a Read.t
+  module Write_bus : Stream_intf.S with type 'a data := 'a Write.t
 end

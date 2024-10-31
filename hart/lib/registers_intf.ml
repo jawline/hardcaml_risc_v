@@ -5,7 +5,7 @@ module type S = sig
     { pc : 'a
     ; general : 'a list
     }
-  [@@deriving sexp_of, hardcaml]
+  [@@deriving hardcaml]
 
   val set_pc : 'a t -> 'a -> 'a t
 
@@ -23,7 +23,7 @@ module type S = sig
       { pc : 'a
       ; general : 'a list
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
 
     val to_registers : Signal.t t -> Signal.t registers
     val of_registers : 'a registers -> 'a t

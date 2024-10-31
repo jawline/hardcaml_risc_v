@@ -27,17 +27,17 @@ let test ~lhs ~rhs ~funct3 ~funct7 sim =
   inputs.lhs := of_int ~width:32 lhs;
   inputs.rhs := of_int ~width:32 rhs;
   inputs.funct3 := of_int ~width:3 funct3;
-  inputs.funct7 := of_int ~width:7 funct7;
+  inputs.funct7_switch := of_bool funct7;
   Cyclesim.cycle sim
 ;;
 
 let simple_test ~funct3 sim =
   let outputs = Cyclesim.outputs sim in
   printf "Funct 7 = 0\n";
-  test ~lhs:17 ~rhs:3 ~funct3 ~funct7:0 sim;
+  test ~lhs:17 ~rhs:3 ~funct3 ~funct7:false sim;
   print outputs;
   printf "Funct 7 = 1\n";
-  test ~lhs:17 ~rhs:3 ~funct3 ~funct7:1 sim;
+  test ~lhs:17 ~rhs:3 ~funct3 ~funct7:true sim;
   print outputs
 ;;
 
@@ -46,10 +46,11 @@ let%expect_test "branch tests" =
   simple_test ~funct3:(Funct3.Op.to_int Add_or_sub) sim;
   [%expect
     {|
-      Funct 7 = 0
-      ((rd 20) (error false))
-      Funct 7 = 1
-      ((rd 20) (error false)) |}];
+    Funct 7 = 0
+    ((rd 20) (error false))
+    Funct 7 = 1
+    ((rd 14) (error false))
+    |}];
   simple_test ~funct3:(Funct3.Op.to_int Sll) sim;
   [%expect
     {|

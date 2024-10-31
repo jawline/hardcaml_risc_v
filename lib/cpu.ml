@@ -15,25 +15,28 @@ struct
   let system_non_hart_memory_channels =
     match General_config.include_io_controller with
     | No_io_controller -> 0
-    | Uart_controller _ -> 2
+    | Uart_controller _ -> 1
   ;;
 
   module Memory_controller = Memory_controller.Make (struct
-      let num_bytes = Memory_config.num_bytes
-      let num_channels = system_non_hart_memory_channels + General_config.num_harts
+      let capacity_in_bytes = Memory_config.num_bytes
+      let num_read_channels = system_non_hart_memory_channels + General_config.num_harts
+      let num_write_channels = system_non_hart_memory_channels + General_config.num_harts
       let address_width = Register_width.bits Hart_config.register_width
       let data_bus_width = 32
     end)
 
+  open Memory_controller.Memory_bus
   module Registers = Registers.Make (Hart_config)
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
-  module Transaction = Transaction.Make (Hart_config) (Memory_controller)
+  module Transaction = Transaction.Make (Hart_config) (Memory_controller.Memory_bus)
 
   module Hart =
-    Hart.Make (Hart_config) (Memory_controller) (Registers) (Decoded_instruction)
+    Hart.Make (Hart_config) (Memory_controller.Memory_bus) (Registers)
+      (Decoded_instruction)
       (Transaction)
 
-  module Dma = Cpu_dma_controller.Make (General_config) (Memory_controller)
+  module Dma = Cpu_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
 
   module I = struct
     type 'a t =
@@ -42,7 +45,7 @@ struct
       ; (* ignored if include_io_controller = Uart_io. *)
         uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -55,12 +58,11 @@ struct
       ; stop_bit_unstable : 'a
       ; serial_to_packet_valid : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let default_transaction (hart : _ Hart.O.t) =
-    { Transaction.finished = vdd
-    ; set_rd = vdd
+    { Transaction.set_rd = vdd
     ; new_rd = zero register_width
     ; new_pc = hart.registers.pc +:. 4
     ; error = gnd
@@ -103,15 +105,14 @@ struct
       <== { valid = should_do_dma &: not_busy
           ; value =
               { address = delayed_r6 -- "dma$address"
-              ; length = uresize delayed_r7 (width tx_input.value.length) -- "dma$length"
+              ; length = uresize ~width:(Dma.Tx_input.port_widths.length) delayed_r7 -- "dma$length"
               }
           });
     (* Assign the Hart0 transaction *)
     Transaction.Of_signal.(
       List.hd_exn hart_ecall_transactions
-      <== { Transaction.finished = vdd
-          ; set_rd = vdd
-          ; new_rd = uresize not_busy register_width
+      <== { Transaction.set_rd = vdd
+          ; new_rd = uresize ~width:register_width not_busy
           ; new_pc = hart0.registers.pc +:. 4
           ; error = gnd
           });
@@ -134,14 +135,14 @@ struct
     let maybe_dma_controller =
       Dma.maybe_dma_controller ~uart_rx:i.uart_rx ~clock:i.clock ~clear:i.clear scope
     in
-    let ch_to_controller_per_hart =
+    let read_bus_per_hart =
       List.init
-        ~f:(fun _which_hart -> Memory_controller.Tx_bus.Tx.Of_always.wire zero)
+        ~f:(fun _which_hart -> Read_bus.Tx.Of_always.wire zero)
         General_config.num_harts
     in
-    let controller_to_ch_per_hart =
+    let write_bus_per_hart =
       List.init
-        ~f:(fun _which_hart -> Memory_controller.Rx_bus.Rx.Of_always.wire zero)
+        ~f:(fun _which_hart -> Write_bus.Tx.Of_always.wire zero)
         General_config.num_harts
     in
     let of_dma ~default ~f =
@@ -153,16 +154,12 @@ struct
         scope
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
-        ; ch_to_controller =
-            of_dma ~default:[] ~f:Dma.dma_to_memory_controller
-            @ List.map
-                ~f:Memory_controller.Tx_bus.Tx.Of_always.value
-                ch_to_controller_per_hart
-        ; controller_to_ch =
-            of_dma ~default:[] ~f:Dma.memory_controller_to_dma_rx
-            @ List.map
-                ~f:Memory_controller.Rx_bus.Rx.Of_always.value
-                controller_to_ch_per_hart
+        ; read_to_controller =
+            of_dma ~default:[] ~f:(fun dma -> [ dma.read_request ])
+            @ List.map ~f:Read_bus.Tx.Of_always.value read_bus_per_hart
+        ; write_to_controller =
+            of_dma ~default:[] ~f:(fun dma -> [ dma.write_request ])
+            @ List.map ~f:Write_bus.Tx.Of_always.value write_bus_per_hart
         }
     in
     let hart_ecall_transactions =
@@ -179,13 +176,21 @@ struct
               ; clear =
                   (* Allow resets via remote IO if a DMA controller is attached. *)
                   of_dma ~default:gnd ~f:Dma.clear_message |: i.clear
-              ; memory_controller_to_hart =
+              ; read_bus =
                   List.nth_exn
-                    controller.controller_to_ch
+                    controller.read_to_controller
                     (system_non_hart_memory_channels + which_hart)
-              ; hart_to_memory_controller =
+              ; write_bus =
                   List.nth_exn
-                    controller.ch_to_controller
+                    controller.write_to_controller
+                    (system_non_hart_memory_channels + which_hart)
+              ; read_response =
+                  List.nth_exn
+                    controller.read_response
+                    (system_non_hart_memory_channels + which_hart)
+              ; write_response =
+                  List.nth_exn
+                    controller.write_response
                     (system_non_hart_memory_channels + which_hart)
               ; ecall_transaction = List.nth_exn hart_ecall_transactions which_hart
               }
@@ -195,41 +200,30 @@ struct
     in
     assign_ecalls ~clock:i.clock maybe_dma_controller harts hart_ecall_transactions scope;
     compile
-      ([ List.map
-           ~f:(fun (hart, ch_to_controller_per_hart) ->
-             Memory_controller.Tx_bus.Tx.Of_always.assign
-               ch_to_controller_per_hart
-               hart.hart_to_memory_controller)
-           (List.zip_exn
-              harts
-              (List.take ch_to_controller_per_hart General_config.num_harts))
-         |> proc
-       ; List.map
-           ~f:(fun (hart, controller_to_ch_per_hart) ->
-             Memory_controller.Rx_bus.Rx.Of_always.assign
-               controller_to_ch_per_hart
-               hart.memory_controller_to_hart)
-           (List.zip_exn
-              harts
-              (List.take controller_to_ch_per_hart General_config.num_harts))
-         |> proc
-       ]
+      (List.map
+         ~f:(fun (hart, read_bus) -> Read_bus.Tx.Of_always.assign read_bus hart.read_bus)
+         (List.zip_exn harts read_bus_per_hart)
+       @ List.map
+           ~f:(fun (hart, write_bus) ->
+             Write_bus.Tx.Of_always.assign write_bus hart.write_bus)
+           (List.zip_exn harts write_bus_per_hart)
        @
        match maybe_dma_controller with
        | None -> []
-       | Some { dma_to_memory_controller_rx; memory_controller_to_dma; _ } ->
-         List.mapi
-           ~f:(fun i t ->
-             Memory_controller.Tx_bus.Rx.Of_always.assign
-               t
-               (List.nth_exn controller.ch_to_controller i))
-           dma_to_memory_controller_rx
-         @ List.mapi
-             ~f:(fun i t ->
-               Memory_controller.Rx_bus.Tx.Of_always.assign
-                 t
-                 (List.nth_exn controller.controller_to_ch i))
-             memory_controller_to_dma);
+       | Some { read_bus; write_bus; read_response; write_response; _ } ->
+         [ Read_bus.Rx.Of_always.assign
+             read_bus
+             (List.nth_exn controller.read_to_controller 0)
+         ; Write_bus.Rx.Of_always.assign
+             write_bus
+             (List.nth_exn controller.write_to_controller 0)
+         ; Read_response.With_valid.Of_always.assign
+             read_response
+             (List.nth_exn controller.read_response 0)
+         ; Write_response.With_valid.Of_always.assign
+             write_response
+             (List.nth_exn controller.write_response 0)
+         ]);
     let of_dma = of_dma ~default:gnd in
     { O.registers = List.map ~f:(fun o -> o.registers) harts
     ; uart_tx = of_dma ~f:Dma.uart_tx

@@ -1,9 +1,12 @@
 open! Core
 open Hardcaml
+module Test_util = Util
 open Hardcaml_waveterm
 open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
+
+let debug = false
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -11,13 +14,15 @@ module Hart_config = struct
 end
 
 module Memory_controller = Memory_controller.Make (struct
-    let num_bytes = 16
-    let num_channels = 1
+    let capacity_in_bytes = 16
+    let num_read_channels = 1
+    let num_write_channels = 1
     let address_width = 32
     let data_bus_width = 32
   end)
 
-module Store = Store.Make (Hart_config) (Memory_controller)
+open Memory_controller.Memory_bus
+module Store = Store.Make (Hart_config) (Memory_controller.Memory_bus)
 
 module Test_machine = struct
   open! Signal
@@ -32,28 +37,27 @@ module Test_machine = struct
       ; destination : 'a [@bits 32]
       ; value : 'a [@bits 32]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
     type 'a t =
       { error : 'a
       ; finished : 'a
-      ; controller_to_hart : 'a Memory_controller.Rx_bus.Tx.t
-           [@rtlprefix "controller_to_hart"]
-      ; hart_to_memory_controller : 'a Memory_controller.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_controller"]
+      ; read_response : 'a Read_response.With_valid.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create
     (scope : Scope.t)
     ({ I.clock; clear; enable; funct3; destination; value } : _ I.t)
     =
-    let memory_controller_to_hart = Memory_controller.Rx_bus.Tx.Of_always.wire zero in
-    let hart_to_memory_controller = Memory_controller.Tx_bus.Rx.Of_always.wire zero in
-    let load =
+    let read_bus = Read_bus.Rx.Of_always.wire zero in
+    let read_response = Read_response.With_valid.Of_always.wire zero in
+    let write_bus = Write_bus.Rx.Of_always.wire zero in
+    let write_response = Write_response.With_valid.Of_always.wire zero in
+    let store =
       Store.hierarchical
         ~instance:"store"
         scope
@@ -63,10 +67,10 @@ module Test_machine = struct
         ; funct3
         ; destination
         ; value
-        ; memory_controller_to_hart =
-            Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_hart
-        ; hart_to_memory_controller =
-            Memory_controller.Tx_bus.Rx.Of_always.value hart_to_memory_controller
+        ; read_bus = Read_bus.Rx.Of_always.value read_bus
+        ; read_response = Read_response.With_valid.Of_always.value read_response
+        ; write_bus = Write_bus.Rx.Of_always.value write_bus
+        ; write_response = Write_response.With_valid.Of_always.value write_response
         }
     in
     let controller =
@@ -75,24 +79,27 @@ module Test_machine = struct
         scope
         { Memory_controller.I.clock
         ; clear
-        ; ch_to_controller = [ load.hart_to_memory_controller ]
-        ; controller_to_ch = [ load.memory_controller_to_hart ]
+        ; write_to_controller = [ store.write_bus ]
+        ; read_to_controller = [ store.read_bus ]
         }
     in
     compile
-      [ Memory_controller.Rx_bus.Tx.Of_always.assign
-          memory_controller_to_hart
-          (List.nth_exn controller.controller_to_ch 0)
-      ; Memory_controller.Tx_bus.Rx.Of_always.assign
-          hart_to_memory_controller
-          (List.nth_exn controller.ch_to_controller 0)
+      [ Read_bus.Rx.Of_always.assign
+          read_bus
+          (List.nth_exn controller.read_to_controller 0)
+      ; Read_response.With_valid.Of_always.assign
+          read_response
+          (List.nth_exn controller.read_response 0)
+      ; Write_bus.Rx.Of_always.assign
+          write_bus
+          (List.nth_exn controller.write_to_controller 0)
+      ; Write_response.With_valid.Of_always.assign
+          write_response
+          (List.nth_exn controller.write_response 0)
       ];
-    { O.error = load.error
-    ; O.finished = load.finished
-    ; controller_to_hart =
-        Memory_controller.Rx_bus.Tx.Of_always.value memory_controller_to_hart
-    ; hart_to_memory_controller =
-        Memory_controller.Tx_bus.Rx.Of_always.value hart_to_memory_controller
+    { O.error = store.error
+    ; finished = store.finished
+    ; read_response = List.nth_exn controller.read_response 0
     }
   ;;
 end
@@ -105,20 +112,9 @@ let create_sim () =
        (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
 ;;
 
-let print_ram sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.map ~f:(fun mut -> Bits.Mutable.to_bits mut |> Bits.to_int) ram
-  |> Array.iter ~f:(fun v -> printf "%02x " v);
-  printf "\n"
-;;
-
 let test ~destination ~value ~funct3 sim =
   (* Initialize the main memory to some known values for testing. *)
-  let initial_ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  Array.iter
-    ~f:(fun mut ->
-      Bits.Mutable.copy_bits ~src:(Bits.of_int ~width:32 0xFFFFFFFF) ~dst:mut)
-    initial_ram;
+  Test_util.program_ram sim (Array.init ~f:(Fn.const (ones 32)) 4);
   (try
      let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
      let outputs_before : _ Test_machine.O.t =
@@ -140,223 +136,117 @@ let test ~destination ~value ~funct3 sim =
      print_s [%message (outputs : Bits.t ref Test_machine.O.t)]
    with
    | _ -> print_s [%message "BUG: Timed out"]);
-  print_ram sim
+  Test_util.print_ram sim
 ;;
 
-let%expect_test "lw" =
+let%expect_test "store" =
   let sim = create_sim () in
   let waveform, sim = Waveform.create sim in
   (* Aligned store, we expect these to succeed. *)
   test ~destination:0 ~value:0xDEADBEEF ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 00000000000000000000000000000000)))))
-       (hart_to_memory_controller ((ready 1)))))
-     deadbeef ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 00000000000000000000000000000000)))))))
+    deadbeef ffffffff ffffffff ffffffff
+    |}];
   (* Unaligned store, we expect no change *)
   test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
   [%expect
     {|
-     (outputs
-      ((error 1) (finished 1)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 00000000000000000000000000000000)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 1) (finished 1)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 00000000000000000000000000000000)))))))
+    ffffffff ffffffff ffffffff ffffffff
+    |}];
   (* Aligned store half, we expect these to succeed. *)
   test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffabab ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffabab ffffffff ffffffff ffffffff
+    |}];
   test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     edabffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    edabffff ffffffff ffffffff ffffffff
+    |}];
   (* Test unaligned Sh, we expect these to fail *)
   test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 1) (finished 1)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 1) (finished 1)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffffff ffffffff ffffffff ffffffff
+    |}];
   test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
   [%expect
     {|
-     (outputs
-      ((error 1) (finished 1)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 1) (finished 1)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffffff ffffffff ffffffff ffffffff
+    |}];
   (* Test SB, these cannot be unaligned. *)
   test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffffaa ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffffaa ffffffff ffffffff ffffffff
+    |}];
   test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffffaaff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffffaaff ffffffff ffffffff ffffffff
+    |}];
   test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     ffaaffff ffffffff ffffffff ffffffff |}];
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    ffaaffff ffffffff ffffffff ffffffff
+    |}];
   test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
   [%expect
     {|
-     (outputs
-      ((error 0) (finished 0)
-       (controller_to_hart
-        ((valid 0)
-         (data ((error 0) (read_data 11111111111111111111111111111111)))))
-       (hart_to_memory_controller ((ready 1)))))
-     aaffffff ffffffff ffffffff ffffffff |}];
-  Waveform.expect
-    ~serialize_to:"/tmp/test_store"
-    ~display_width:150
-    ~display_height:100
-    waveform;
-  [%expect
-    {|
-    ┌Signals───────────┐┌Waves───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-    │clock             ││┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   ┌───┐   │
-    │                  ││    └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───┘   └───│
-    │clear             ││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │enable            ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││                                                                                                                                │
-    │                  ││────────────────────────┬───────┬───────────────────────────────┬───────────────────────────────┬───────┬───────┬───────────────│
-    │destination       ││ 00000000               │000000.│00000000                       │00000002                       │000000.│000000.│00000000       │
-    │                  ││────────────────────────┴───────┴───────────────────────────────┴───────────────────────────────┴───────┴───────┴───────────────│
-    │                  ││────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┬───────────────│
-    │funct3            ││ 2                              │1                                                                              │0              │
-    │                  ││────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────┴───────────────│
-    │                  ││────────────────────────┬───────┬───────────────────────────────┬───────────────────────────────────────────────┬───────────────│
-    │value             ││ DEADBEEF               │000000.│0000ABAB                       │0000EDAB                                       │000000AA       │
-    │                  ││────────────────────────┴───────┴───────────────────────────────┴───────────────────────────────────────────────┴───────────────│
-    │controller_to_hart││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────│
-    │controller_to_hart││ 00000000                               │FFFFFFFF                                                                               │
-    │                  ││────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────│
-    │controller_to_hart││                ┌───────┐               ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                       ┌───────│
-    │                  ││────────────────┘       └───────────────┘       └───────┘       └───────┘       └───────┘       └───────────────────────┘       │
-    │error             ││                        ┌───────┐                                                               ┌───────────────┐               │
-    │                  ││────────────────────────┘       └───────────────────────────────────────────────────────────────┘               └───────────────│
-    │finished          ││                ┌───────────────┐                       ┌───────┐                       ┌───────────────────────┐               │
-    │                  ││────────────────┘               └───────────────────────┘       └───────────────────────┘                       └───────────────│
-    │hart_to_controller││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││                                                                                                                                │
-    │gnd               ││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │main_memory_bram  ││ 00000000                                                                                                                       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││ 00000000                                                                                                                       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││        ┌───────┐               ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                       ┌───────┐       │
-    │                  ││────────┘       └───────────────┘       └───────┘       └───────┘       └───────┘       └───────────────────────┘       └───────│
-    │memory_controller$││        ┌───────┐                               ┌───────┐                       ┌───────┐                                       │
-    │                  ││────────┘       └───────────────────────────────┘       └───────────────────────┘       └───────────────────────────────────────│
-    │                  ││────────┬───────┬───────────────────────────────┬───────┬───────────────────────┬───────┬───────────────────────────────────────│
-    │memory_controller$││ 000000.│DEADBE.│00000000                       │FFFFAB.│00000000               │EDABFF.│00000000                               │
-    │                  ││────────┴───────┴───────────────────────────────┴───────┴───────────────────────┴───────┴───────────────────────────────────────│
-    │memory_controller$││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││        ┌───────┐               ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                       ┌───────┐       │
-    │                  ││────────┘       └───────────────┘       └───────┘       └───────┘       └───────┘       └───────────────────────┘       └───────│
-    │memory_controller$││        ┌───────┐               ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                       ┌───────┐       │
-    │                  ││────────┘       └───────────────┘       └───────┘       └───────┘       └───────┘       └───────────────────────┘       └───────│
-    │memory_controller$││        ┌───────┐                               ┌───────┐                       ┌───────┐                                       │
-    │                  ││────────┘       └───────────────────────────────┘       └───────────────────────┘       └───────────────────────────────────────│
-    │memory_controller$││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││                                                                                                                                │
-    │memory_controller$││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││ 00000000                               │FFFFFFFF                                                                               │
-    │                  ││────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││                ┌───────┐               ┌───────┐       ┌───────┐       ┌───────┐       ┌───────┐                       ┌───────│
-    │                  ││────────────────┘       └───────────────┘       └───────┘       └───────┘       └───────┘       └───────────────────────┘       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││ 00000000                                                                                                                       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││ 00000000                               │FFFFFFFF                                                                               │
-    │                  ││────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││                                ┌───────┐                       ┌───────┐                                       ┌───────┐       │
-    │                  ││────────────────────────────────┘       └───────────────────────┘       └───────────────────────────────────────┘       └───────│
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││ 00000000                                                                                                                       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────┬───────┬───────────────────────────────┬───────┬───────────────────────┬───────┬───────────────────────────────────────│
-    │memory_controller$││ 000000.│DEADBE.│00000000                       │FFFFAB.│00000000               │EDABFF.│00000000                               │
-    │                  ││────────┴───────┴───────────────────────────────┴───────┴───────────────────────┴───────┴───────────────────────────────────────│
-    │memory_controller$││        ┌───────┐                               ┌───────┐                       ┌───────┐                                       │
-    │                  ││────────┘       └───────────────────────────────┘       └───────────────────────┘       └───────────────────────────────────────│
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││ 00000000                                                                                                                       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │memory_controller$││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │store$aligned_addr││ FFFFFFFC                                                                                                                       │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────┬───────┬───────┬───────────────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────────────────────┬───────│
-    │store$current_stat││ 0      │2      │3      │0              │1      │2      │3      │0      │1      │2      │3      │0                      │1      │
-    │                  ││────────┴───────┴───────┴───────────────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────────────────────┴───────│
-    │store$funct3_is_er││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │store$i$clear     ││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │store$i$clock     ││                                                                                                                                │
-    │                  ││────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
-    │                  ││────────────────────────┬───────┬───────────────────────────────┬───────────────────────────────┬───────┬───────┬───────────────│
-    └──────────────────┘└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-    633189d38a210651f7ec632afc591f16 |}]
+    (outputs
+     ((error 0) (finished 0)
+      (read_response
+       ((valid 0)
+        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
+    aaffffff ffffffff ffffffff ffffffff
+    |}];
+  if debug then Waveform.Serialize.marshall waveform "/tmp/test_store";
+  [%expect {| |}]
 ;;

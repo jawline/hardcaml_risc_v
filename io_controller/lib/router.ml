@@ -19,7 +19,7 @@ struct
       ; in_ : 'a P.Contents_stream.Tx.t
       ; outs : 'a P.Contents_stream.Rx.t list [@length Config.num_tags]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -27,7 +27,7 @@ struct
       { in_ : 'a P.Contents_stream.Rx.t
       ; outs : 'a P.Contents_stream.Tx.t list [@length Config.num_tags]
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module State = struct
@@ -63,7 +63,7 @@ struct
     compile
       [ state.switch
           [ ( State.Waiting_for_start_of_packet
-            , [ which_tag <-- uresize in_.data.data (width which_tag.value)
+            , [ which_tag <-- uresize ~width:(width which_tag.value) in_.data.data
               ; when_
                   in_.valid
                   [ (* If a received tag is out of the range of the

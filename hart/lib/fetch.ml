@@ -3,48 +3,66 @@ open Hardcaml
 open Hardcaml_memory_controller
 open Signal
 
-module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
+module Make
+    (Hart_config : Hart_config_intf.S)
+    (Memory : Memory_bus_intf.S)
+    (Registers : Registers_intf.S) =
+struct
   module I = struct
     type 'a t =
-      { memory_controller_to_hart : 'a Memory.Rx_bus.Tx.t
-           [@rtlprefix "memory_controller_to_hart"]
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Rx.t
-           [@rtlprefix "hart_to_memory_controller"]
-      ; should_fetch : 'a
-      ; address : 'a [@bits Register_width.bits Hart_config.register_width]
+      { clock : 'a
+      ; clear : 'a
+      ; valid : 'a
+      ; registers : 'a Registers.For_writeback.t
+      ; read_bus : 'a Memory.Read_bus.Rx.t
+      ; read_response : 'a Memory.Read_response.With_valid.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { memory_controller_to_hart : 'a Memory.Rx_bus.Rx.t
-           [@rtlprefix "memory_controller_to_hart"]
-      ; hart_to_memory_controller : 'a Memory.Tx_bus.Tx.t
-           [@rtlprefix "hart_to_memory_controller"]
-      ; has_fetched : 'a
+      { valid : 'a
+      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a [@bits 32]
       ; error : 'a
+      ; read_bus : 'a Memory.Read_bus.Tx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create _scope (i : _ I.t) =
-    let should_fetch = i.should_fetch in
-    { O.memory_controller_to_hart = Memory.Rx_bus.Rx.Of_signal.of_int 1
-    ; hart_to_memory_controller =
-        { Memory.Tx_bus.Tx.valid = should_fetch
-        ; data = { Memory.Tx_data.address = i.address; write = gnd; write_data = zero 32 }
+  let create scope (i : _ I.t) =
+    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
+    let%hw fetching =
+      i.valid
+      |: reg_fb
+           ~width:1
+           ~f:(fun t -> mux2 i.read_bus.ready gnd (t |: i.valid))
+           reg_spec_with_clear
+    in
+    let%hw awaiting_result =
+      reg_fb
+        ~width:1
+        ~f:(fun t -> mux2 i.valid vdd (mux2 i.read_response.valid gnd t))
+        reg_spec_with_clear
+    in
+    let registers =
+      Registers.For_writeback.Of_signal.reg ~enable:i.valid reg_spec_no_clear i.registers
+    in
+    { O.read_bus =
+        { Memory.Read_bus.Tx.valid = fetching
+        ; data = { address = mux2 i.valid i.registers.pc registers.pc }
         }
-    ; has_fetched =
-        i.memory_controller_to_hart.valid &: ~:(i.memory_controller_to_hart.data.error)
-    ; instruction = i.memory_controller_to_hart.data.read_data
-    ; error = i.memory_controller_to_hart.valid &: i.memory_controller_to_hart.data.error
+    ; valid = ~:fetching &: awaiting_result &: i.read_response.valid
+    ; registers
+    ; instruction = i.read_response.value.read_data
+    ; error = i.read_response.value.error
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"fetch" ~instance create input
+    H.hierarchical ~scope ~name:"fetch" create input
   ;;
 end

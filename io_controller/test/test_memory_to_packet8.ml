@@ -7,20 +7,6 @@ open! Bits
 
 let debug = false
 
-let write_packet_to_memory ~packet sim =
-  let ram = Cyclesim.lookup_mem sim "main_memory_bram" |> Option.value_exn in
-  let packet = String.to_array packet in
-  for i = 0 to Array.length packet / 4 do
-    let m = Array.get ram i in
-    let start = i * 4 in
-    let sel idx =
-      if start + idx < Array.length packet then packet.(start + idx) else '\x00'
-    in
-    let new_bits = List.init ~f:sel 4 |> List.map ~f:Bits.of_char |> Bits.concat_lsb in
-    Bits.Mutable.copy_bits ~src:new_bits ~dst:m
-  done
-;;
-
 let test ~name ~load_memory ~dma_address ~dma_length =
   let module Packet =
     Packet.Make (struct
@@ -29,8 +15,9 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   in
   let module Memory_controller =
     Memory_controller.Make (struct
-      let num_bytes = 256
-      let num_channels = 1
+      let capacity_in_bytes = 256
+      let num_write_channels = 1
+      let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
     end)
@@ -40,9 +27,11 @@ let test ~name ~load_memory ~dma_address ~dma_length =
       (struct
         let header = Some 'Q'
       end)
-      (Memory_controller)
+      (Memory_controller.Memory_bus)
   in
   let module Machine = struct
+    open Memory_controller.Memory_bus
+
     module I = struct
       type 'a t =
         { clock : 'a
@@ -51,24 +40,21 @@ let test ~name ~load_memory ~dma_address ~dma_length =
         ; address : 'a [@bits 32]
         ; length : 'a [@bits 16]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     module O = Memory_to_packet8.O
 
     let create (scope : Scope.t) { I.clock; clear; enable; address; length } =
-      let ch_to_controller = Memory_controller.Tx_bus.Tx.Of_always.wire Signal.zero in
-      let controller_to_ch = Memory_controller.Rx_bus.Rx.Of_always.wire Signal.zero in
+      let ch_to_controller = Read_bus.Tx.Of_always.wire Signal.zero in
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
           scope
           { Memory_controller.I.clock
           ; clear
-          ; ch_to_controller =
-              [ Memory_controller.Tx_bus.Tx.Of_always.value ch_to_controller ]
-          ; controller_to_ch =
-              [ Memory_controller.Rx_bus.Rx.Of_always.value controller_to_ch ]
+          ; read_to_controller = [ Read_bus.Tx.Of_always.value ch_to_controller ]
+          ; write_to_controller = [ Write_bus.Tx.Of_signal.of_int 0 ]
           }
       in
       let output =
@@ -79,16 +65,11 @@ let test ~name ~load_memory ~dma_address ~dma_length =
           ; clear
           ; enable = { valid = enable; value = { address; length } }
           ; output_packet = { ready = Signal.vdd }
-          ; memory = List.nth_exn controller.ch_to_controller 0
-          ; memory_response = List.nth_exn controller.controller_to_ch 0
+          ; memory = List.nth_exn controller.read_to_controller 0
+          ; memory_response = List.nth_exn controller.read_response 0
           }
       in
-      Always.compile
-        [ Memory_controller.Tx_bus.Tx.Of_always.assign ch_to_controller output.memory
-        ; Memory_controller.Rx_bus.Rx.Of_always.assign
-            controller_to_ch
-            output.memory_response
-        ];
+      Always.compile [ Read_bus.Tx.Of_always.assign ch_to_controller output.memory ];
       output
     ;;
   end
@@ -101,7 +82,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   in
   let sim = create_sim () in
-  write_packet_to_memory ~packet:load_memory sim;
+  Test_util.write_packet_to_memory ~packet:load_memory sim;
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
@@ -136,22 +117,22 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   Cyclesim.cycle sim;
   inputs.clear := Bits.gnd;
   issue_read ~address:dma_address ~length:dma_length;
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
+  if debug then Waveform.Serialize.marshall waveform name
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_memory_to_packet8"
+    ~name:"/tmp/test_memory_to_packet8_1"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:3
     ~dma_length:9;
   [%expect
     {|
     ("00000000  51 00 09 20 71 75 69 63  6b 20 62 72              |Q.. quick br|")
-    17 |}];
+    17
+    |}];
   test
-    ~name:"/tmp/test_memory_to_packet8"
+    ~name:"/tmp/test_memory_to_packet8_2"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:0
     ~dma_length:(String.length "The quick brown fox jumps over the lazy dog");
@@ -160,14 +141,16 @@ let%expect_test "test" =
     ("00000000  51 00 2b 54 68 65 20 71  75 69 63 6b 20 62 72 6f  |Q.+The quick bro|"
      "00000010  77 6e 20 66 6f 78 20 6a  75 6d 70 73 20 6f 76 65  |wn fox jumps ove|"
      "00000020  72 20 74 68 65 20 6c 61  7a 79 20 64 6f 67        |r the lazy dog|")
-    67 |}];
+    67
+    |}];
   test
-    ~name:"/tmp/test_memory_to_packet8"
+    ~name:"/tmp/test_memory_to_packet8_3"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:8
     ~dma_length:1;
   [%expect
     {|
     ("00000000  51 00 01 6b                                       |Q..k|")
-    5 |}]
+    5
+    |}]
 ;;

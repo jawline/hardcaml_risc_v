@@ -17,10 +17,12 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
   module Tx_input = Memory_to_packet8.Input
 
   type 'a t =
-    { dma_to_memory_controller : Memory.Tx_bus.Tx.Of_signal.t list
-    ; dma_to_memory_controller_rx : Variable.t Memory.Tx_bus.Rx.t list
-    ; memory_controller_to_dma : Variable.t Memory.Rx_bus.Tx.t list
-    ; memory_controller_to_dma_rx : Memory.Rx_bus.Rx.Of_signal.t list
+    { write_request : Signal.t Memory.Write_bus.Tx.t
+    ; read_request : Signal.t Memory.Read_bus.Tx.t
+    ; read_response : Variable.t Memory.Read_response.With_valid.t
+    ; write_response : Variable.t Memory.Write_response.With_valid.t
+    ; write_bus : Variable.t Memory.Write_bus.Rx.t
+    ; read_bus : Variable.t Memory.Read_bus.Rx.t
     ; uart_rx_valid : 'a
     ; tx_input : Signal.t Tx_input.With_valid.t
     ; tx_busy : 'a
@@ -62,10 +64,11 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         (Packet)
     in
     let module Pulse = Pulse.Make (Packet) in
-    let ( -- ) = Scope.naming scope in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let rx_dma_to_memory_controller = Memory.Tx_bus.Rx.Of_always.wire zero in
-    let rx_memory_controller_to_dma = Memory.Rx_bus.Tx.Of_always.wire zero in
+    let read_bus = Memory.Read_bus.Rx.Of_always.wire zero in
+    let write_bus = Memory.Write_bus.Rx.Of_always.wire zero in
+    let read_response = Memory.Read_response.With_valid.Of_always.wire zero in
+    let write_response = Memory.Write_response.With_valid.Of_always.wire zero in
     let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
       Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
     in
@@ -101,8 +104,8 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         { Dma.I.clock
         ; clear
         ; in_ = List.nth_exn router.outs 0
-        ; out = Memory.Tx_bus.Rx.Of_always.value rx_dma_to_memory_controller
-        ; out_ack = Memory.Rx_bus.Tx.Of_always.value rx_memory_controller_to_dma
+        ; out = Memory.Write_bus.Rx.Of_always.value write_bus
+        ; out_ack = Memory.Write_response.With_valid.Of_always.value write_response
         }
     in
     dma_ready <== dma.in_.ready;
@@ -114,9 +117,6 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
     in
     pulse_ready <== pulse.in_.ready;
     let tx_enable = Tx_input.With_valid.Of_signal.wires () in
-    ignore (tx_enable.valid -- "tx_enable" : Signal.t);
-    let tx_dma_to_memory_controller = Memory.Tx_bus.Rx.Of_always.wire zero in
-    let tx_memory_controller_to_dma = Memory.Rx_bus.Tx.Of_always.wire zero in
     let uart_tx_ready = wire 1 in
     let dma_out =
       Memory_to_packet8.hierarchical
@@ -125,8 +125,8 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         { Memory_to_packet8.I.clock
         ; clear
         ; enable = tx_enable
-        ; memory = Memory.Tx_bus.Rx.Of_always.value tx_dma_to_memory_controller
-        ; memory_response = Memory.Rx_bus.Tx.Of_always.value tx_memory_controller_to_dma
+        ; memory = Memory.Read_bus.Rx.Of_always.value read_bus
+        ; memory_response = Memory.Read_response.With_valid.Of_always.value read_response
         ; output_packet = { ready = uart_tx_ready }
         }
     in
@@ -149,12 +149,12 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         reg_spec_no_clear
     in
     Some
-      { dma_to_memory_controller = [ dma.out; dma_out.memory ]
-      ; dma_to_memory_controller_rx =
-          [ rx_dma_to_memory_controller; tx_dma_to_memory_controller ]
-      ; memory_controller_to_dma =
-          [ rx_memory_controller_to_dma; tx_memory_controller_to_dma ]
-      ; memory_controller_to_dma_rx = [ dma.out_ack; dma_out.memory_response ]
+      { write_request = dma.out
+      ; read_request = dma_out.memory
+      ; read_response
+      ; write_response
+      ; write_bus
+      ; read_bus
       ; tx_input = tx_enable
       ; tx_busy = dma_out.busy
       ; uart_tx = dma_out_uart_tx.uart_tx
@@ -162,7 +162,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
       ; parity_error
       ; stop_bit_unstable
       ; serial_to_packet_valid = out.valid
-      ; clear_message = (pulse_held <>:. 0) -- "clear_message"
+      ; clear_message = pulse_held <>:. 0
       }
   ;;
 

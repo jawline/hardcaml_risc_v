@@ -6,7 +6,7 @@ module type S = sig
       { data : 'a
       ; last : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module Contents_stream : Stream_intf.S with type 'a data := 'a Contents.t

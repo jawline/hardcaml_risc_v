@@ -11,7 +11,7 @@ module Make (P : Packet_intf.S) = struct
       ; clear : 'a
       ; in_ : 'a P.Contents_stream.Tx.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -19,7 +19,7 @@ module Make (P : Packet_intf.S) = struct
       { in_ : 'a P.Contents_stream.Rx.t
       ; signal : 'a
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   let create (_scope : Scope.t) ({ I.clock = _; clear = _; in_ } : _ I.t) =
@@ -28,6 +28,6 @@ module Make (P : Packet_intf.S) = struct
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"signal" ~instance create input
+    H.hierarchical ~scope ~name:"pulse" ~instance create input
   ;;
 end

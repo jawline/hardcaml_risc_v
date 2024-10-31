@@ -26,7 +26,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
         { length : 'a [@bits 16]
         ; address : 'a [@bits Memory.data_bus_width]
         }
-      [@@deriving sexp_of, hardcaml]
+      [@@deriving hardcaml]
     end
 
     include T
@@ -39,10 +39,10 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
       ; clear : 'a
       ; enable : 'a Input.With_valid.t
       ; output_packet : 'a Packet8.Contents_stream.Rx.t
-      ; memory : 'a Memory.Tx_bus.Rx.t
-      ; memory_response : 'a Memory.Rx_bus.Tx.t
+      ; memory : 'a Memory.Read_bus.Rx.t
+      ; memory_response : 'a Memory.Read_response.With_valid.t
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -50,10 +50,9 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
       { busy : 'a
       ; done_ : 'a
       ; output_packet : 'a Packet8.Contents_stream.Tx.t [@rtlprefix "output$"]
-      ; memory : 'a Memory.Tx_bus.Tx.t [@rtlprefix "memory$"]
-      ; memory_response : 'a Memory.Rx_bus.Rx.t [@rtlprefix "mem_response$"]
+      ; memory : 'a Memory.Read_bus.Tx.t [@rtlprefix "memory$"]
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
@@ -90,13 +89,13 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     let which_step = Variable.reg ~width:2 reg_spec_no_clear in
     ignore (state.current -- "current_state" : Signal.t);
     let output_packet = Packet8.Contents_stream.Tx.Of_always.wire zero in
-    let address_stride = width memory_response.data.read_data / 8 in
-    let memory = Memory.Tx_bus.Tx.Of_always.wire zero in
+    let address_stride = width memory_response.value.read_data / 8 in
+    let memory = Memory.Read_bus.Tx.Of_always.wire zero in
     let read_data =
-      Variable.reg ~width:(width memory_response.data.read_data) reg_spec_no_clear
+      Variable.reg ~width:(width memory_response.value.read_data) reg_spec_no_clear
     in
     let alignment_mask =
-      width memory_response.data.read_data / 8 |> Int.floor_log2 |> ones
+      width memory_response.value.read_data / 8 |> Int.floor_log2 |> ones
     in
     compile
       [ state.switch
@@ -136,41 +135,35 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   { valid = vdd; data = { data = length_byte; last = gnd } }
               ; when_
                   output_packet_ready
-                  [ which_step <-- which_step.value +:. 1
+                  [ incr which_step
                   ; when_
                       (which_step.value ==:. 1)
                       [ (* If the address was unaligned, set which_step to the
                            offset here to align it. *)
                         which_step
-                        <-- (uresize address.value (width alignment_mask)
+                        <-- (uresize ~width:(width alignment_mask) address.value
                              &: alignment_mask)
                       ; (* Align the address we read. Which step will
                            make sure we do not write the lower bytes. *)
                         address
                         <-- (address.value
-                             &: ~:(uresize alignment_mask (width address.value)))
+                             &: ~:(uresize ~width:(width address.value) alignment_mask))
                       ; state.set_next Reading_data
                       ]
                   ]
               ] )
           ; ( Reading_data
-            , [ Memory.Tx_bus.Tx.Of_always.assign
+            , [ Memory.Read_bus.Tx.Of_always.assign
                   memory
-                  { valid = vdd
-                  ; data =
-                      { address = address.value
-                      ; write = gnd
-                      ; write_data = zero (width memory_response.data.read_data)
-                      }
-                  }
+                  { valid = vdd; data = { address = address.value } }
               ; when_
                   (memory_response.valid -- "is_memory_response_valid")
                   [ (* Memory read can fail, if they do return zero. *)
                     read_data
                     <-- mux2
-                          memory_response.data.error
-                          (zero (width memory_response.data.read_data))
-                          memory_response.data.read_data
+                          memory_response.value.error
+                          (zero (width memory_response.value.read_data))
+                          memory_response.value.read_data
                   ; state.set_next Writing_data
                   ]
               ] )
@@ -186,15 +179,15 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   }
               ; when_
                   output_packet_ready
-                  [ length <-- length.value -:. 1
-                  ; which_step <-- which_step.value +:. 1
+                  [ decr length
+                  ; incr which_step
                   ; (* TODO: Once we have exhausted our read, we return
                        to reading data. We could prefetch here to speed this
                        up and avoid the stall. *)
                     when_
                       (which_step.value ==:. address_stride - 1)
                       [ which_step <--. 0
-                      ; address <-- address.value +:. address_stride
+                      ; incr ~by:address_stride address
                       ; state.set_next Reading_data
                       ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
@@ -208,13 +201,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     { O.busy = ~:(state.is State.Idle)
     ; done_ = done_.value
     ; output_packet = Packet8.Contents_stream.Tx.Of_always.value output_packet
-    ; memory = Memory.Tx_bus.Tx.Of_always.value memory
-    ; memory_response =
-        { ready =
-            (* We should always be ready to ack a read on the same cycle it
-               becomes ready. *)
-            vdd
-        }
+    ; memory = Memory.Read_bus.Tx.Of_always.value memory
     }
   ;;
 

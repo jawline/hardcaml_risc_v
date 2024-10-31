@@ -1,4 +1,0 @@
-(executable
- (public_name hardcaml_uart_controller)
- (name main)
- (libraries hardcaml_uart_controller))

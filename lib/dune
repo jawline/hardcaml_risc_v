@@ -10,9 +10,4 @@
   hardcaml_risc_v_hart)
  (inline_tests)
  (preprocess
-  (pps
-   ppx_jane
-   ppx_deriving_hardcaml
-   ppx_deriving.show
-   ppx_deriving.ord
-   ppx_expect)))
+  (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))

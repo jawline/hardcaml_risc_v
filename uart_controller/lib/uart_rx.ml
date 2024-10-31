@@ -16,7 +16,7 @@ module Make (C : Config_intf.S) = struct
       ; clear : 'a
       ; uart_rx : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -26,7 +26,7 @@ module Make (C : Config_intf.S) = struct
       ; parity_error : 'a
       ; stop_bit_unstable : 'a
       }
-    [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
@@ -54,7 +54,7 @@ module Make (C : Config_intf.S) = struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
-    let switch_cycle = switch_cycle reg_spec_no_clear -- "switch_cycle" in
+    let switch_cycle = switch_cycle reg_spec_no_clear in
     let data = Variable.reg ~width:8 reg_spec_no_clear in
     let which_data_bit = Variable.reg ~width:3 reg_spec_no_clear in
     let which_stop_bit = Variable.reg ~width:2 reg_spec_no_clear in
@@ -66,16 +66,13 @@ module Make (C : Config_intf.S) = struct
           concat_lsb (List.take bits index @ [ uart_rx ] @ List.drop bits (index + 1)))
         which_data_bit.value
         8
-      -- "data_with_new_bit"
     in
     (* The parity bit should always = the RX parity bit if Config.include_parity_bit is set *)
     let parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let rx_parity_bit = Variable.reg ~width:1 reg_spec_no_clear in
     let parity_bit_matches =
       if C.config.include_parity_bit
-      then
-        parity_bit.value -- "calculated_parity_bit"
-        ==: rx_parity_bit.value -- "rx_parity_bit"
+      then parity_bit.value ==: rx_parity_bit.value
       else vdd
     in
     let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in
@@ -100,9 +97,9 @@ module Make (C : Config_intf.S) = struct
                   switch_cycle
                   [ parity_bit <-- parity_bit.value +: uart_rx
                   ; data <-- data_with_new_data_bit
-                  ; which_data_bit <-- which_data_bit.value +:. 1
+                  ; incr which_data_bit
                   ; when_
-                      (which_data_bit.value -- "which_data_bit" ==:. 7)
+                      (which_data_bit.value ==:. 7)
                       [ (if C.config.include_parity_bit
                          then current_state.set_next Waiting_for_parity_bit
                          else current_state.set_next Waiting_for_stop_bits)
@@ -119,7 +116,7 @@ module Make (C : Config_intf.S) = struct
           ; ( State.Waiting_for_stop_bits
             , [ when_
                   switch_cycle
-                  [ which_stop_bit <-- which_stop_bit.value +:. 1
+                  [ incr which_stop_bit
                   ; when_ (uart_rx ==:. 0) [ stop_bit_not_stable <--. 1 ]
                   ; when_
                       (which_stop_bit.value ==:. C.config.stop_bits - 1)

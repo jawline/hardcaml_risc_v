@@ -17,8 +17,13 @@ module M (Registers : Registers_intf.S) = struct
       ; b_immediate : 'a [@bits register_width]
       ; load_address : 'a [@bits register_width]
       ; store_address : 'a [@bits register_width]
+      ; funct7_switch : 'a
+      ; funct7_bit_other_than_switch_is_selected : 'a
+      ; is_ecall : 'a
+      ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
+      ; opcode_signals : 'a Opcodes.Signals.t
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
 
     val of_instruction : Signal.t -> Signal.t Registers.t -> Scope.t -> Signal.t t
   end

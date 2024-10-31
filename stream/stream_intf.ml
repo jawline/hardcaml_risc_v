@@ -6,10 +6,10 @@ module type S = sig
       { valid : 'a
       ; data : 'a data
       }
-    [@@deriving sexp_of, hardcaml]
+    [@@deriving hardcaml]
   end
 
   module Rx : sig
-    type 'a t = { ready : 'a } [@@deriving sexp_of, hardcaml]
+    type 'a t = { ready : 'a } [@@deriving hardcaml]
   end
 end

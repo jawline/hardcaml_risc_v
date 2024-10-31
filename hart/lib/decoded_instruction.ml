@@ -21,15 +21,21 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate : 'a [@bits register_width]
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
+    ; funct7_switch : 'a
+    ; funct7_bit_other_than_switch_is_selected : 'a
+    ; is_ecall : 'a
+    ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
+    ; opcode_signals : 'a Opcodes.Signals.t
     }
-  [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
+  [@@deriving hardcaml ~rtlmangle:"$"]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
-  let of_instruction instruction registers scope =
-    let ( -- ) = Scope.naming scope in
+  let of_instruction instruction registers _scope =
+    let decoded_opcode_or_error = Opcodes.Or_error.decode (Decoder.opcode instruction) in
+    let opcode_signals = Opcodes.Signals.of_signal (Decoder.opcode instruction) in
     let is_ecall =
-      let system = Decoder.opcode instruction ==:. Opcodes.system in
+      let system = opcode_signals.system in
       let ecall =
         Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
       in
@@ -37,13 +43,12 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     in
     let rs1 = select_register registers (Decoder.rs1 instruction) in
     let rs2 = select_register registers (Decoder.rs2 instruction) in
-    let i_immediate =
-      Decoder.i_immediate ~width:register_width instruction -- "decoded_i_immediate"
-    in
+    let i_immediate = Decoder.i_immediate ~width:register_width instruction in
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
+    let funct7 = Decoder.funct7 instruction in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction
-    ; funct7 = Decoder.funct7 instruction
+    ; funct7
     ; rs1
     ; rs2
     ; rd = mux2 is_ecall (of_int ~width:5 5) (Decoder.rd instruction)
@@ -55,6 +60,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction
     ; load_address = rs1 +: i_immediate
     ; store_address = rs1 +: s_immediate
+    ; funct7_switch = funct7.:(5)
+    ; funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0
+    ; is_ecall
+    ; decoded_opcode_or_error
+    ; opcode_signals
     }
   ;;
 end
