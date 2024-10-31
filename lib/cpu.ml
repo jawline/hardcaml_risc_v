@@ -77,6 +77,7 @@ struct
   ;;
 
   let assign_dma_io_ecall
+    ~clock
     (harts : _ Hart.O.t list)
     hart_ecall_transactions
     { Dma.tx_input; tx_busy; _ }
@@ -87,21 +88,22 @@ struct
        issuing commands at the same time and entering a weird
        state. *)
     let ( -- ) = Scope.naming scope in
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let hart0 = List.nth_exn harts 0 in
-    let should_do_dma =
-      hart0.is_ecall &: (List.nth_exn hart0.registers.general 5 ==:. 0)
-    in
+    (* Delay the ecall by a cycle so we can register all the relevant
+     * registers, reducing routing pressure. *)
+    let delayed_is_ecall = reg reg_spec_no_clear hart0.is_ecall in
+    let delayed_r5 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 5) in
+    let delayed_r6 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 6) in
+    let delayed_r7 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 7) in
+    let should_do_dma = delayed_is_ecall &: (delayed_r5 ==:. 0) in
     let not_busy = ~:tx_busy in
     Dma.Tx_input.With_valid.Of_signal.(
       tx_input
       <== { valid = should_do_dma &: not_busy
           ; value =
-              { address = List.nth_exn hart0.registers.general 6 -- "dma$address"
-              ; length =
-                  uresize
-                    (List.nth_exn hart0.registers.general 7)
-                    (width tx_input.value.length)
-                  -- "dma$length"
+              { address = delayed_r6 -- "dma$address"
+              ; length = uresize delayed_r7 (width tx_input.value.length) -- "dma$length"
               }
           });
     (* Assign the Hart0 transaction *)
@@ -119,11 +121,11 @@ struct
     |> List.iter ~f:assign_non_io_ecall
   ;;
 
-  let assign_ecalls maybe_dma_controller harts hart_ecall_transactions scope =
+  let assign_ecalls ~clock maybe_dma_controller harts hart_ecall_transactions scope =
     (* If a DMA controller is in the design then wire up DMA related ecalls
        otherwise do not include any ecalls *)
     match maybe_dma_controller with
-    | Some config -> assign_dma_io_ecall harts hart_ecall_transactions config scope
+    | Some config -> assign_dma_io_ecall ~clock harts hart_ecall_transactions config scope
     | None -> assign_empty_ecalls harts hart_ecall_transactions
   ;;
 
@@ -191,7 +193,7 @@ struct
           hart)
         General_config.num_harts
     in
-    assign_ecalls maybe_dma_controller harts hart_ecall_transactions scope;
+    assign_ecalls ~clock:i.clock maybe_dma_controller harts hart_ecall_transactions scope;
     compile
       ([ List.map
            ~f:(fun (hart, ch_to_controller_per_hart) ->
