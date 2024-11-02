@@ -5,16 +5,21 @@
 // To save memory we use a bitvector
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
-// This function assumes that x5 - x7 are used as the registers
-int __attribute__((optimize("O0"))) system_call(int imode, void* iptr, unsigned int ilength) {
-  volatile register int mode asm("x5") = imode;
-  volatile register void* ptr asm("x6") = iptr;
-  volatile register unsigned int length asm("x7") = ilength;
-  asm volatile ("ecall");
-  return mode;
+int system_call(int ecall_mode, void* input_pointer, unsigned int input_length) {
+  int output_mode = 0;
+  asm volatile("addi x5, %[mode], 0\n"
+      "addi x6, %[iptr], 0\n"
+      "addi x7, %[ilength], 0\n"
+      "ecall\n"
+      "addi %[output_mode], x5, 0"
+      : [output_mode] "=r" (output_mode) 
+      : [mode] "r" (ecall_mode),
+         [iptr] "r" (input_pointer),
+         [ilength] "r" (input_length));
+  return output_mode;
 }
 
-int send_dma_l(char* msg, int len) {
+void send_dma_l(char* msg, int len) {
   while (!system_call(0, msg, len)) {}
 }
 
@@ -94,8 +99,6 @@ int neighbors(char* buffer, unsigned int x, unsigned int y) {
     }
   }
 
-  send_dma_l("F", 1);
-
   return sum;
 }
 
@@ -103,6 +106,7 @@ void compute(char* next, char* prev) {
   // Compute the next state of the grid
   for (unsigned int y = 0; y < HEIGHT; y++) {
     for (unsigned int x = 0; x < WIDTH; x++) {
+      send_dma_l("N", 1);
       int c_neighbors = neighbors(prev, x, y);
       set(next, x, y, c_neighbors > 1 && c_neighbors < 4); 
     }
@@ -118,12 +122,12 @@ void expand_row(char* dst, char* buffer, int y) {
 void send_rows(char* buffer) {
   for (int i = 0; i < HEIGHT; i++) {
     expand_row(ROW_BUFFER, buffer, i);
-    while (!send_dma_l(ROW_BUFFER, WIDTH)) {}
+    send_dma_l(ROW_BUFFER, WIDTH);
   }
 }
 
 void c_start() {
-  while (!send_dma_l("Starting up", 11)) {}
+  send_dma_l("Starting up", 11);
   char* current = BUFFER1;
   char* next = BUFFER2;
 

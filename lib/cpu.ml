@@ -94,26 +94,30 @@ struct
     let hart0 = List.nth_exn harts 0 in
     (* Delay the ecall by a cycle so we can register all the relevant
      * registers, reducing routing pressure. *)
-    let delayed_is_ecall = reg reg_spec_no_clear hart0.is_ecall in
-    let delayed_r5 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 5) in
-    let delayed_r6 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 6) in
-    let delayed_r7 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 7) in
-    let should_do_dma = delayed_is_ecall &: (delayed_r5 ==:. 0) in
+    (* TODO: This is pretty jank - move ecall to write back and pass 'ecall registers' out of the pipeline *)
+    let%hw delayed_r5 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 5) in
+    let%hw delayed_r6 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 6) in
+    let%hw delayed_r7 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 7) in
+    let%hw is_dma_write = hart0.is_ecall &: (delayed_r5 ==:. 0) in
+    let%hw next_pc = reg reg_spec_no_clear (hart0.registers.pc +:. 4) in
+    (* TODO: I think this can race. *)
     let not_busy = ~:tx_busy in
     Dma.Tx_input.With_valid.Of_signal.(
       tx_input
-      <== { valid = should_do_dma &: not_busy
+      <== { valid = is_dma_write &: not_busy
           ; value =
               { address = delayed_r6 -- "dma$address"
-              ; length = uresize ~width:(Dma.Tx_input.port_widths.length) delayed_r7 -- "dma$length"
+              ; length =
+                  uresize ~width:Dma.Tx_input.port_widths.length delayed_r7
+                  -- "dma$length"
               }
           });
-    (* Assign the Hart0 transaction *)
+    (* Assign the Hart0 transaction. *)
     Transaction.Of_signal.(
       List.hd_exn hart_ecall_transactions
       <== { Transaction.set_rd = vdd
-          ; new_rd = uresize ~width:register_width not_busy
-          ; new_pc = hart0.registers.pc +:. 4
+          ; new_rd = uresize ~width:register_width (is_dma_write &: not_busy)
+          ; new_pc = next_pc
           ; error = gnd
           });
     (* Default the remainders *)

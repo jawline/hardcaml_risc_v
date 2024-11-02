@@ -1021,7 +1021,8 @@ module With_transmitter = struct
   ;;
 end
 
-module With_dma_ram = Make (struct
+module With_dma_ram = struct
+  module M = struct
     type sim =
       (Bits.t ref With_transmitter.I.t, Bits.t ref With_transmitter.O.t) Cyclesim.t
       * Waveform.t
@@ -1129,5 +1130,67 @@ module With_dma_ram = Make (struct
       print_s [%message "PC: " ~_:(pc : int) "REG:" ~_:(registers : int list)];
       print_ram sim
     ;;
-  end)
+  end
+
+  include Make (M)
+
+  (* DMA ecall stdout isn't supported without the IO controller so we specialize this test on the DMA variant. *)
+  let%expect_test "ecall stdout" =
+    let sim = create_sim "ecall" in
+    test
+      ~instructions:
+        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:5 ~immediate:500
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:6 ~immediate:300
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:7 ~immediate:300
+        ; ecall
+        ]
+      sim;
+    [%expect
+      {|
+      ("PC: " 16 REG:
+       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("00000000  93 02 40 1f 13 03 c0 12  93 03 c0 12 73 00 00 00  |..@.........s...|"
+       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+      |}];
+    M.finalize_sim sim;
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "ecall goes busy" =
+    let sim = create_sim "ecall_busy" in
+    test
+      ~instructions:
+        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:5 ~immediate:0
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:6 ~immediate:300
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:7 ~immediate:300
+        ; ecall
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:5 ~immediate:0
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:6 ~immediate:300
+        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:7 ~immediate:300
+        ; ecall
+        ]
+      sim;
+    [%expect
+      {|
+      ("PC: " 32 REG:
+       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
+       "00000010  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
+       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+      |}];
+    M.finalize_sim sim;
+    [%expect {| |}]
+  ;;
+end
 (* TODO: Add discrete SH and SB quickcheck tests along with LH and LW since they are paired it is easy to break them both at the same time. *)
