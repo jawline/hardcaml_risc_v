@@ -25,7 +25,7 @@ void send_dma_l(char* msg, int len) {
 
 // Used when expanding the bitvector into chars 
 // for writing to stdout via DMA
-char ROW_BUFFER[BUFFER_SIZE];
+char ROW_BUFFER[WIDTH + 1];
 
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
 char BUFFER1[BUFFER_SIZE];
@@ -91,8 +91,8 @@ int neighbors(char* buffer, unsigned int x, unsigned int y) {
   // get.
   int sum = 0;
 
-  for (int yi = min(y - 1, y) ; yi <= min(y + 1, HEIGHT); yi++) {
-    for (int xi = min(x - 1, x); xi <= min(x + 1, WIDTH); xi++) {
+  for (int yi = min(y - 1, y) ; yi < min(y + 1, HEIGHT); yi++) {
+    for (int xi = min(x - 1, x); xi < min(x + 1, WIDTH); xi++) {
       if (xi != x && yi != y) {
         sum += get(buffer, xi, yi);
       }
@@ -106,17 +106,22 @@ void compute(char* next, char* prev) {
   // Compute the next state of the grid
   for (unsigned int y = 0; y < HEIGHT; y++) {
     for (unsigned int x = 0; x < WIDTH; x++) {
-      send_dma_l("N", 1);
       int c_neighbors = neighbors(prev, x, y);
-      set(next, x, y, c_neighbors > 1 && c_neighbors < 4); 
+      char alive =  get(prev, x, y);
+      if (alive) {
+        set(next, x, y, c_neighbors >= 2 && c_neighbors <= 3); 
+      } else {
+        set(next, x, y, c_neighbors == 3);
+      }
     }
   }
 }
 
 void expand_row(char* dst, char* buffer, int y) {
-  for (int i = 0; i < WIDTH; i++) {
-   dst[i] = get(buffer, i, y) ? '*' : ' ';
+  for (int x = 0; x < WIDTH; x++) {
+   dst[x] = get(buffer, x, y) ? '*' : '-';
   }
+  dst[WIDTH] = '\n';
 }
 
 void send_rows(char* buffer) {
@@ -131,10 +136,15 @@ void c_start() {
   char* current = BUFFER1;
   char* next = BUFFER2;
 
+  set(current, 3, 3, 1);
+  set(current, 3, 2, 1);
+  set(current, 2, 3, 1);
+  send_dma_l("Startup", 7);
+  send_rows(current);
+
+  send_dma_l("Entering loop", 13);
   for (;;) {
-    send_dma_l("Entering loop", 13);
     cmemset(next, BUFFER_SIZE, 0);
-    send_dma_l("Cleared",7);
     compute(next, current);
     send_dma_l("Computed", 9); 
     send_rows(next);

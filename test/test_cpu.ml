@@ -1139,7 +1139,7 @@ module With_dma_ram = struct
     let sim = create_sim "ecall" in
     test
       ~instructions:
-        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:5 ~immediate:500
+        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:5 ~immediate:0
         ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:6 ~immediate:300
         ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:7 ~immediate:300
         ; ecall
@@ -1148,8 +1148,8 @@ module With_dma_ram = struct
     [%expect
       {|
       ("PC: " 16 REG:
-       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  93 02 40 1f 13 03 c0 12  93 03 c0 12 73 00 00 00  |..@.........s...|"
+       (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
