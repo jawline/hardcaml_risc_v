@@ -15,13 +15,10 @@ void send_dma_l(char* msg, int len) {
   while (!system_call(0, msg, len)) {}
 }
 
-// Used when expanding the bitvector into chars 
-// for writing to stdout via DMA
-char ROW_BUFFER[WIDTH + 1];
-
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
 char BUFFER1[BUFFER_SIZE] = { 0 };
 char BUFFER2[BUFFER_SIZE] = { 0 };
+char ROW_BUFFER[WIDTH];
 
 char* byte_address(char* buffer, unsigned int x, unsigned int y) {
   if (x >= WIDTH) { return NULL; }
@@ -98,7 +95,7 @@ int neighbors(char* buffer, unsigned int x, unsigned int y) {
       }
     }
   }
-
+ 
   return sum;
 }
 
@@ -119,17 +116,20 @@ void compute(char* next, char* prev) {
 }
 
 void expand_row(char* dst, char* buffer, int y) {
-  for (int x = 0; x < WIDTH; x++) {
-    dst[x] = get(buffer, x, y) ? '*' : '-';
+  for (unsigned int x = 0; x < WIDTH; x++) {
+    if (get(buffer, x, y) == 1) {
+      dst[x] = '*';
+    } else {
+      dst[x] = '-';
+    }
   }
 }
 
 void send_rows(char* buffer) {
-  ROW_BUFFER[WIDTH] = '\n';
-
   for (int i = 0; i < HEIGHT; i++) {
     expand_row(ROW_BUFFER, buffer, i);
-    send_dma_l(ROW_BUFFER, WIDTH + 1);
+    send_dma_l(ROW_BUFFER, WIDTH);
+    send_dma_l("\n", 1);
   }
 }
 
