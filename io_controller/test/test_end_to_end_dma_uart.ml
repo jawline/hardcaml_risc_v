@@ -18,7 +18,15 @@ module Memory_controller = Memory_controller.Make (struct
 
 open Memory_controller.Memory_bus
 
-let test ~verbose ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
+let test
+  ~verbose
+  ~name
+  ~clock_frequency
+  ~baud_rate
+  ~include_parity_bit
+  ~stop_bits
+  ~address
+  ~packet
   =
   let all_inputs =
     (* We add the header and then the packet length before the packet *)
@@ -238,10 +246,11 @@ let test ~verbose ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bi
       loop_for 11)
     all_inputs;
   loop_for 100;
-  if verbose then (
-  printf "Printing ram (not DMA response):\n";
-  Test_util.print_ram sim;
-  printf "Doing a DMA read:\n");
+  if verbose
+  then (
+    printf "Printing ram (not DMA response):\n";
+    Test_util.print_ram sim;
+    printf "Doing a DMA read:\n");
   let issue_read ~address ~length =
     inputs.dma_out_enable := Bits.vdd;
     inputs.dma_out_address := Bits.of_int ~width:32 address;
@@ -263,14 +272,15 @@ let test ~verbose ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bi
       incr count
     done;
     let data = !data in
-
-    let without_length = String.subo ~pos:3 ~len:(String.length  data - 3) data in
-      (* TODO: assert without length is the length of the two words. *) 
-    if String.(without_length  <> packet) then raise_s [%message "BUG: Packet differs" ~received:(without_length) ~packet:(packet)];
-    if verbose then (
+    let without_length = String.subo ~pos:3 ~len:(String.length data - 3) data in
+    (* TODO: assert without length is the length of the two words. *)
+    if String.(without_length <> packet)
+    then raise_s [%message "BUG: Packet differs" ~received:without_length ~packet];
+    if verbose
+    then (
       print_s [%message "" ~_:(data : String.Hexdump.t)];
-      printf "%i\n" !count
-    ) else ()
+      printf "%i\n" !count)
+    else ()
   in
   issue_read ~address ~length:(String.length packet);
   if debug
@@ -310,9 +320,7 @@ let%expect_test "test" =
     ~stop_bits:1
     ~address:0
     ~packet:"Hello world!"
-  
-  ~verbose:true
-  ;
+    ~verbose:true;
   [%expect
     {|
     Printing ram (not DMA response):
@@ -331,7 +339,7 @@ let%expect_test "test" =
 ;;
 
 let%expect_test "fuzz" =
-  Quickcheck.test ~trials:50 (String.gen_nonempty) ~f:(fun test_str ->
+  Quickcheck.test ~trials:50 String.gen_nonempty ~f:(fun test_str ->
     test
       ~name:"/tmp/test_qcheck"
       ~clock_frequency:200
@@ -340,6 +348,5 @@ let%expect_test "fuzz" =
       ~stop_bits:1
       ~address:0
       ~packet:test_str
-      ~verbose:false
-      )
+      ~verbose:false)
 ;;

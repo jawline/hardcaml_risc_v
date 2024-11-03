@@ -1,4 +1,5 @@
 (rule
  (target game_of_life)
- (deps   ./compile ./game_of_life.c ./entry.s ./link.ld)
- (action (run %{deps} -o %{target})))
+ (deps ./compile ./game_of_life.c ./entry.s ./link.ld)
+ (action
+  (run %{deps} -o %{target})))
