@@ -132,6 +132,7 @@ struct
       then current_state.set_next X_body
       else current_state.set_next X_margin_start
     in
+    let x_body_next_pixel = assert false in
     let proceed =
       current_state.switch
         [ ( State.Y_margin_start
@@ -142,7 +143,7 @@ struct
                 ~size:margin_x_start
                 ~stop_behaviour:(proc [ current_state.set_next X_body ])
             ] )
-        ; State.X_body, assert false
+        ; State.X_body, x_body_next_pixel
         ; ( State.X_margin_end
           , [ x_margin
                 ~size:margin_x_end
