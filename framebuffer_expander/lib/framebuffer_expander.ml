@@ -83,7 +83,7 @@ struct
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let reg_x = Variable.reg ~width:(num_bits_to_represent input_width) reg_spec in
     let reg_y = Variable.reg ~width:(num_bits_to_represent input_height) reg_spec in
-    let x_ctr =
+    let x_px_ctr =
       Variable.reg
         ~width:(num_bits_to_represent (Int.max margin_x_start margin_x_end - 1))
         reg_spec
@@ -106,7 +106,7 @@ struct
       proc
         [ reg_x <--. 0
         ; reg_y <--. 0
-        ; x_ctr <--. 0
+        ; x_px_ctr <--. 0
         ; y_line_ctr <--. 0
         ; y_px_ctr <--. 0
         ; enter_state
@@ -127,14 +127,33 @@ struct
     in
     let x_margin ~size ~stop_behaviour =
       proc
-        [ incr x_ctr; when_ (x_ctr.value ==:. size - 1) [ x_ctr <--. 0; stop_behaviour ] ]
+        [ incr x_px_ctr
+        ; when_ (x_px_ctr.value ==:. size - 1) [ x_px_ctr <--. 0; stop_behaviour ]
+        ]
     in
     let enter_x_line =
       if margin_x_start = 0
       then current_state.set_next X_body
       else current_state.set_next X_margin_start
     in
-    let x_body_next_pixel = assert false in
+    let x_body_next_pixel =
+      let move_on_to_next_part =
+        if margin_x_end <> 0
+        then current_state.set_next X_margin_end
+        else current_state.set_next X_margin_start
+      in
+      proc
+        [ incr x_px_ctr
+        ; when_
+            (x_px_ctr.value ==:. scaling_factor_x - 1)
+            [ x_px_ctr <--. 0
+            ; incr reg_x
+            ; when_
+                (reg_x.value ==:. input_width - 1)
+                [ reg_x <--. 0; move_on_to_next_part ]
+            ]
+        ]
+    in
     let proceed =
       current_state.switch
         [ ( State.Y_margin_start
@@ -145,20 +164,28 @@ struct
                 ~size:margin_x_start
                 ~stop_behaviour:(proc [ current_state.set_next X_body ])
             ] )
-        ; State.X_body, x_body_next_pixel
+        ; State.X_body, [ x_body_next_pixel ]
         ; ( State.X_margin_end
           , [ x_margin
                 ~size:margin_x_end
                 ~stop_behaviour:
                   (proc
-                     [ assert false
-                       (* If move on to next line then (if next line is end
+                     [ (* TODO: If move on to next line then (if next line is end
                           then y margin end else y += 1 *)
-                     ; enter_x_line
+                       enter_x_line
+                     ; incr y_px_ctr
+                     ; when_
+                         (y_px_ctr.value ==:. scaling_factor_y - 1)
+                         [ y_px_ctr <--. 0
+                         ; incr reg_y
+                         ; when_
+                             (reg_y.value ==:. input_height - 1)
+                             [ reg_y <--. 0; current_state.set_next Y_margin_end ]
+                         ]
                      ])
             ] )
         ; ( State.Y_margin_end
-          , [ y_margin_line ~stop_condition:margin_y_end ~stop_behaviour:(proc []) ] )
+          , if (margin_y_end <> 0) then ( [ y_margin_line ~stop_condition:margin_y_end ~stop_behaviour:(proc []) ]) else ([]) )
         ]
     in
     compile [ when_ i.next [ proceed ]; when_ i.start [ start ] ];

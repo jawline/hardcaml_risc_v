@@ -119,21 +119,34 @@ let test ~name =
   if debug then Waveform.Serialize.marshall waveform name
 ;;
 
+let%expect_test "details" =
+        print_s [%message (Machine.Framebuffer_expander.scaling_factor_y : int) (Machine.Framebuffer_expander.scaling_factor_x : int)
+        (Machine.Framebuffer_expander.margin_x_start : int)
+        (Machine.Framebuffer_expander.margin_x_end : int)
+        (Machine.Framebuffer_expander.margin_y_start : int)
+        (Machine.Framebuffer_expander.margin_y_end : int)
+        
+        ];
+        [%expect {|
+          ((Machine.Framebuffer_expander.scaling_factor_y 1)
+           (Machine.Framebuffer_expander.scaling_factor_x 2)
+           (Machine.Framebuffer_expander.margin_x_start 2)
+           (Machine.Framebuffer_expander.margin_x_end 1)
+           (Machine.Framebuffer_expander.margin_y_start 1)
+           (Machine.Framebuffer_expander.margin_y_end 0))
+          |}];;
+
 let%expect_test "test" =
   test ~name:"/tmp/test_framebuffer_expander";
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-     This is strongly discouraged as backtraces are fragile.
-     Please change this test to not include a backtrace. *)
-  "Assert_failure framebuffer_expander/lib/framebuffer_expander.ml:137:28"
-  Raised at Hardcaml_framebuffer_expander__Framebuffer_expander.Make.create in file "framebuffer_expander/lib/framebuffer_expander.ml", line 137, characters 28-40
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_framebuffer_expander_test__Test_framebuffer_expander.Machine.create in file "framebuffer_expander/test/test_framebuffer_expander.ml", line 48, characters 6-297
-  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 424, characters 18-34
-  Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 146, characters 18-81
-  Called from Hardcaml_framebuffer_expander_test__Test_framebuffer_expander.test.create_sim in file "framebuffer_expander/test/test_framebuffer_expander.ml", line 80, characters 4-161
-  Called from Hardcaml_framebuffer_expander_test__Test_framebuffer_expander.(fun) in file "framebuffer_expander/test/test_framebuffer_expander.ml", line 123, characters 2-45
-  Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
-  |}]
+  [%expect {|
+    ⠀⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+    ⠀⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉
+    |}]
 ;;
