@@ -6,10 +6,10 @@ open Hardcaml_framebuffer_expander
 open! Bits
 
 module FBC = struct
-  let input_width = 32
-  let input_height = 32
-  let output_width = 67
-  let output_height = 33
+  let input_width = 2
+  let input_height = 2
+  let output_width = 5
+  let output_height = 5
 end
 
 module Memory_controller = Memory_controller.Make (struct
@@ -72,7 +72,7 @@ module Machine = struct
   ;;
 end
 
-let debug = false
+let debug = true
 
 let test ~name =
   let create_sim () =
@@ -107,46 +107,43 @@ let test ~name =
       ~f:(fun _ -> wait_some_cycles_and_sample ())
       (FBC.output_width * FBC.output_height)
   in
-  let canvas = Drawille.create FBC.output_width FBC.output_height in
-  Sequence.range 0 FBC.output_width
-  |> Sequence.iter ~f:(fun x ->
-    Sequence.range 0 FBC.output_height
-    |> Sequence.iter ~f:(fun y ->
+  Sequence.range 0 FBC.output_height
+  |> Sequence.iter ~f:(fun y ->
+    Sequence.range 0 FBC.output_width
+    |> Sequence.iter ~f:(fun x ->
       let px = Array.get frame_buffer ((y * FBC.output_width) + x) in
-      if px then Drawille.set canvas { x; y }));
-  let result = Drawille.frame canvas in
-  printf "%s\n" result;
+      if px then printf "*" else printf "-");
+    printf "\n");
   if debug then Waveform.Serialize.marshall waveform name
 ;;
 
 let%expect_test "details" =
-        print_s [%message (Machine.Framebuffer_expander.scaling_factor_y : int) (Machine.Framebuffer_expander.scaling_factor_x : int)
+  print_s
+    [%message
+      (Machine.Framebuffer_expander.scaling_factor_y : int)
+        (Machine.Framebuffer_expander.scaling_factor_x : int)
         (Machine.Framebuffer_expander.margin_x_start : int)
         (Machine.Framebuffer_expander.margin_x_end : int)
         (Machine.Framebuffer_expander.margin_y_start : int)
-        (Machine.Framebuffer_expander.margin_y_end : int)
-        
-        ];
-        [%expect {|
-          ((Machine.Framebuffer_expander.scaling_factor_y 1)
-           (Machine.Framebuffer_expander.scaling_factor_x 2)
-           (Machine.Framebuffer_expander.margin_x_start 2)
-           (Machine.Framebuffer_expander.margin_x_end 1)
-           (Machine.Framebuffer_expander.margin_y_start 1)
-           (Machine.Framebuffer_expander.margin_y_end 0))
-          |}];;
+        (Machine.Framebuffer_expander.margin_y_end : int)];
+  [%expect
+    {|
+    ((Machine.Framebuffer_expander.scaling_factor_y 2)
+     (Machine.Framebuffer_expander.scaling_factor_x 2)
+     (Machine.Framebuffer_expander.margin_x_start 1)
+     (Machine.Framebuffer_expander.margin_x_end 0)
+     (Machine.Framebuffer_expander.margin_y_start 1)
+     (Machine.Framebuffer_expander.margin_y_end 0))
+    |}]
+;;
 
 let%expect_test "test" =
   test ~name:"/tmp/test_framebuffer_expander";
   [%expect {|
-    ⠀⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-    ⠀⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉
+    -----
+    -****
+    -****
+    -****
+    -****
     |}]
 ;;

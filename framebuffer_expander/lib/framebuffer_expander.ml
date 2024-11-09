@@ -97,6 +97,7 @@ struct
       Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec
     in
     let current_state = State_machine.create (module State) reg_spec in
+    ignore (current_state.current -- "current_state" : Signal.t);
     let start =
       let enter_state =
         if margin_y_start = 0
@@ -157,8 +158,11 @@ struct
     let proceed =
       current_state.switch
         [ ( State.Y_margin_start
-          , [ y_margin_line ~stop_condition:margin_y_start ~stop_behaviour:enter_x_line ]
-          )
+          , if margin_y_start = 0
+            then [ current_state.set_next X_margin_start ]
+            else
+              [ y_margin_line ~stop_condition:margin_y_start ~stop_behaviour:enter_x_line
+              ] )
         ; ( State.X_margin_start
           , [ x_margin
                 ~size:margin_x_start
@@ -166,26 +170,31 @@ struct
             ] )
         ; State.X_body, [ x_body_next_pixel ]
         ; ( State.X_margin_end
-          , [ x_margin
-                ~size:margin_x_end
-                ~stop_behaviour:
-                  (proc
-                     [ (* TODO: If move on to next line then (if next line is end
-                          then y margin end else y += 1 *)
-                       enter_x_line
-                     ; incr y_px_ctr
-                     ; when_
-                         (y_px_ctr.value ==:. scaling_factor_y - 1)
-                         [ y_px_ctr <--. 0
-                         ; incr reg_y
-                         ; when_
-                             (reg_y.value ==:. input_height - 1)
-                             [ reg_y <--. 0; current_state.set_next Y_margin_end ]
-                         ]
-                     ])
-            ] )
+          , if margin_x_end = 0
+            then []
+            else
+              [ x_margin
+                  ~size:margin_x_end
+                  ~stop_behaviour:
+                    (proc
+                       [ (* TODO: If move on to next line then (if next line is end
+                            then y margin end else y += 1 *)
+                         enter_x_line
+                       ; incr y_px_ctr
+                       ; when_
+                           (y_px_ctr.value ==:. scaling_factor_y - 1)
+                           [ y_px_ctr <--. 0
+                           ; incr reg_y
+                           ; when_
+                               (reg_y.value ==:. input_height - 1)
+                               [ reg_y <--. 0; current_state.set_next Y_margin_end ]
+                           ]
+                       ])
+              ] )
         ; ( State.Y_margin_end
-          , if (margin_y_end <> 0) then ( [ y_margin_line ~stop_condition:margin_y_end ~stop_behaviour:(proc []) ]) else ([]) )
+          , if margin_y_end <> 0
+            then [ y_margin_line ~stop_condition:margin_y_end ~stop_behaviour:(proc []) ]
+            else [] )
         ]
     in
     compile [ when_ i.next [ proceed ]; when_ i.start [ start ] ];
