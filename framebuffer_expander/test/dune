@@ -1,0 +1,13 @@
+(library
+ (name hardcaml_framebuffer_expander_test)
+ (libraries
+  hardcaml
+  core
+  async
+  async_unix
+  hardcaml_waveterm
+  hardcaml_memory_controller
+  hardcaml_framebuffer_expander)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))

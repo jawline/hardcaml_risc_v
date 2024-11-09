@@ -30,10 +30,11 @@ struct
       ; clear : 'a
       ; start : 'a
       ; next : 'a
-      ; start_address : 'a [@bits Memory.Read_bus.Tx.port_widths.address]
+      ; start_address : 'a [@bits Memory.Read_bus.Tx.port_widths.data.address]
       ; memory_request : 'a Memory.Read_bus.Rx.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -41,6 +42,7 @@ struct
       { pixel : 'a
       ; memory_request : 'a Memory.Read_bus.Tx.t
       }
+    [@@deriving hardcaml]
   end
 
   let () =
@@ -160,9 +162,14 @@ struct
         ]
     in
     compile [ when_ i.next [ proceed ]; when_ i.start [ start ] ];
-    { O.pixel = mux2 (current_state.is X_body) (assert false) gnd
-    ; memory_request = assert false
+    { O.pixel = mux2 (current_state.is X_body) vdd gnd
+    ; memory_request = Memory.Read_bus.Tx.Of_signal.of_int 0
     }
+  ;;
+
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
+    let module H = Hierarchy.In_scope (I) (O) in
+    H.hierarchical ~scope ~name:"framebuffer_expander" create input
   ;;
 end
 
@@ -196,8 +203,8 @@ let%expect_test "margins and scaling factor tests" =
         (M.margin_y_end : int)];
   [%expect
     {|
-    ((M.scaling_factor_x 1) (M.scaling_factor_y 1) (M.margin_x_start 2)
-     (M.margin_x_end 1) (M.margin_y_start 2) (M.margin_y_end 1))
+    ((M.scaling_factor_x 2) (M.scaling_factor_y 1) (M.margin_x_start 3)
+     (M.margin_x_end 2) (M.margin_y_start 2) (M.margin_y_end 1))
     |}]
 ;;
 
@@ -231,7 +238,7 @@ let%expect_test "margins and scaling factor tests" =
         (M.margin_y_end : int)];
   [%expect
     {|
-    ((M.scaling_factor_x 1) (M.scaling_factor_y 1) (M.margin_x_start 2)
-     (M.margin_x_end 1) (M.margin_y_start 2) (M.margin_y_end 1))
+    ((M.scaling_factor_x 20) (M.scaling_factor_y 22) (M.margin_x_start 0)
+     (M.margin_x_end 0) (M.margin_y_start 8) (M.margin_y_end 8))
     |}]
 ;;
