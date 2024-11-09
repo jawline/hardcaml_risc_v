@@ -6,10 +6,10 @@ open Hardcaml_framebuffer_expander
 open! Bits
 
 module FBC = struct
-  let input_width = 2
-  let input_height = 2
-  let output_width = 5
-  let output_height = 5
+  let input_width = 3
+  let input_height = 3
+  let output_width = 8
+  let output_height = 8
 end
 
 module Memory_controller = Memory_controller.Make (struct
@@ -107,13 +107,17 @@ let test ~name =
       ~f:(fun _ -> wait_some_cycles_and_sample ())
       (FBC.output_width * FBC.output_height)
   in
-  Sequence.range 0 FBC.output_height
-  |> Sequence.iter ~f:(fun y ->
-    Sequence.range 0 FBC.output_width
-    |> Sequence.iter ~f:(fun x ->
+
+    Sequence.range 0 FBC.output_height
+    |> Sequence.iter ~f:(fun y ->
+  Sequence.range 0 FBC.output_width
+  |> Sequence.iter ~f:(fun x ->
+
       let px = Array.get frame_buffer ((y * FBC.output_width) + x) in
-      if px then printf "*" else printf "-");
-    printf "\n");
+      if px then printf "*" else printf "-"
+  );
+  printf "\n";
+  );
   if debug then Waveform.Serialize.marshall waveform name
 ;;
 
@@ -131,19 +135,22 @@ let%expect_test "details" =
     ((Machine.Framebuffer_expander.scaling_factor_y 2)
      (Machine.Framebuffer_expander.scaling_factor_x 2)
      (Machine.Framebuffer_expander.margin_x_start 1)
-     (Machine.Framebuffer_expander.margin_x_end 0)
+     (Machine.Framebuffer_expander.margin_x_end 1)
      (Machine.Framebuffer_expander.margin_y_start 1)
-     (Machine.Framebuffer_expander.margin_y_end 0))
+     (Machine.Framebuffer_expander.margin_y_end 1))
     |}]
 ;;
 
 let%expect_test "test" =
   test ~name:"/tmp/test_framebuffer_expander";
   [%expect {|
-    -----
-    -****
-    -****
-    -****
-    -****
+    --------
+    -******-
+    -******-
+    -******-
+    -******-
+    -******-
+    -******-
+    --------
     |}]
 ;;
