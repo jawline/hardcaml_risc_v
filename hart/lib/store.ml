@@ -209,7 +209,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               ] )
           ]
       ];
-    { O.error = inputs_are_error
+    { O.error = inputs_are_error (* TODO: Write errors are getting ignored here. *)
     ; finished =
         (* We are finished either once the memory controller responds with a
            write finished signal OR immediately with error if we are unaligned.

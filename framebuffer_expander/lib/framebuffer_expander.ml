@@ -275,7 +275,7 @@ struct
     compile
       [ when_ i.next [ proceed ]
       ; when_ i.start [ start ]
-      ; when_ request_read [ fetched <-- vdd ]
+      ; when_ (request_read &: i.memory_request.ready) [ fetched <-- vdd ]
       ; when_ i.memory_response.valid [ data <-- i.memory_response.value.read_data ]
       ];
     let body_bit = (log_shift ~f:srl ~by:which_bit data.value).:(0) in

@@ -64,7 +64,10 @@ struct
     in
     { O.which_ch
     ; selected_ch
-    ; acks = List.init ~f:(fun i -> { S.Rx.ready = which_ch ==:. i }) M.num_channels
+    ; acks =
+        List.mapi
+          ~f:(fun i t -> { S.Rx.ready = which_ch ==:. i &: t.valid })
+          ch_to_controller
     }
   ;;
 

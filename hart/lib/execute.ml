@@ -522,7 +522,7 @@ struct
           reg_spec_with_clear
           i.instruction
     ; transaction
-    ; error = reg ~enable:i.error reg_spec_with_clear i.error |: transaction.error
+    ; error = reg ~enable:i.valid reg_spec_with_clear i.error |: transaction.error
     ; is_ecall = i.valid &: i.instruction.is_ecall
     ; read_bus = combine_read_bus instruction_table
     ; write_bus = combine_write_bus instruction_table
