@@ -50,7 +50,7 @@ module Machine = struct
         { Framebuffer_expander.I.clock
         ; clear
         ; start = start_frame
-        ; start_address = of_int ~width:32 8
+        ; start_address = of_int ~width:32 0
         ; next = next_pixel
         ; memory_request = request_ack
         ; memory_response = response
@@ -74,7 +74,12 @@ end
 
 let debug = true
 
-let test ~name =
+let program_ram sim bits =
+  let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
+  Array.iteri ~f:(fun i m -> Cyclesim.Memory.of_bits ~address:i ram m) bits
+;;
+
+let test ~name ~framebuffer =
   let create_sim () =
     let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
     Sim.create
@@ -86,6 +91,7 @@ let test ~name =
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
+  program_ram sim framebuffer;
   inputs.clear := vdd;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
@@ -107,17 +113,13 @@ let test ~name =
       ~f:(fun _ -> wait_some_cycles_and_sample ())
       (FBC.output_width * FBC.output_height)
   in
-
-    Sequence.range 0 FBC.output_height
-    |> Sequence.iter ~f:(fun y ->
-  Sequence.range 0 FBC.output_width
-  |> Sequence.iter ~f:(fun x ->
-
+  Sequence.range 0 FBC.output_height
+  |> Sequence.iter ~f:(fun y ->
+    Sequence.range 0 FBC.output_width
+    |> Sequence.iter ~f:(fun x ->
       let px = Array.get frame_buffer ((y * FBC.output_width) + x) in
-      if px then printf "*" else printf "-"
-  );
-  printf "\n";
-  );
+      if px then printf "*" else printf "-");
+    printf "\n");
   if debug then Waveform.Serialize.marshall waveform name
 ;;
 
@@ -142,15 +144,18 @@ let%expect_test "details" =
 ;;
 
 let%expect_test "test" =
-  test ~name:"/tmp/test_framebuffer_expander";
-  [%expect {|
+  let strided = Bits.of_int ~width:32 0b0101 in
+  let rev_strided = Bits.of_int ~width:32 0b1010 in
+  test ~name:"/tmp/test_framebuffer_expander" ~framebuffer:[| strided ; rev_strided ; strided |];
+  [%expect
+    {|
     --------
-    -******-
-    -******-
-    -******-
-    -******-
-    -******-
-    -******-
+    -**--**-
+    -**--**-
+    ---**---
+    ---**---
+    -**--**-
+    -**--**-
     --------
     |}]
 ;;

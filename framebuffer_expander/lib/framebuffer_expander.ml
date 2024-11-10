@@ -34,7 +34,7 @@ struct
       ; memory_request : 'a Memory.Read_bus.Rx.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -42,7 +42,7 @@ struct
       { pixel : 'a
       ; memory_request : 'a Memory.Read_bus.Tx.t
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let () =
@@ -78,11 +78,35 @@ struct
     [@@deriving compare, enumerate, sexp_of]
   end
 
-  let create _scope (i : _ I.t) =
+  (* We require that row memory be word aligned (e.g, even if row width % 4 <>
+     0 we still say the row is a multiple of 4 bytes wide).
+
+     This greatly simplifies thinking about framebuffer row offsets since
+     bitvectors are always word aligned. *)
+
+  let word_in_bytes = I.port_widths.start_address / 8
+
+  let row_offset_in_words =
+    (* Number of bytes in a row, aligned to the nearest byte (8 bits). *)
+    let row_num_bytes =
+      let whole_component = input_width / 8 in
+      let ratio_component = input_height % 8 in
+      whole_component + if ratio_component <> 0 then 1 else 0
+    in
+    let whole_component = row_num_bytes / word_in_bytes in
+    let ratio_component = row_num_bytes % word_in_bytes in
+    whole_component + if ratio_component <> 0 then 1 else 0
+  ;;
+
+  let row_offset_in_bytes = row_offset_in_words * word_in_bytes
+
+  let create scope (i : _ I.t) =
     let open Always in
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let reg_x = Variable.reg ~width:(num_bits_to_represent input_width) reg_spec in
     let reg_y = Variable.reg ~width:(num_bits_to_represent input_height) reg_spec in
+    let next_address = Variable.reg ~width:I.port_widths.start_address reg_spec in
+    let row_start_address = Variable.reg ~width:I.port_widths.start_address reg_spec in
     let x_px_ctr =
       Variable.reg
         ~width:(num_bits_to_represent (Int.max margin_x_start margin_x_end - 1))
@@ -96,13 +120,24 @@ struct
     let y_px_ctr =
       Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec
     in
+    let fetched = Variable.reg ~width:1 reg_spec in
+    let%hw_var data =
+      Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec
+    in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
+    let%hw which_bit =
+      let num_bits = num_bits_to_represent (width data.value - 1) in
+      if num_bits > width data.value
+      then sel_bottom ~width:num_bits reg_x.value
+      else uresize ~width:num_bits reg_x.value
+    in
     let start =
       let enter_state =
-        if margin_y_start = 0
-        then proc [ current_state.set_next X_margin_start ]
-        else proc [ current_state.set_next Y_margin_start ]
+        (if margin_y_start = 0
+         then [ current_state.set_next X_margin_start ]
+         else [ current_state.set_next Y_margin_start ])
+        |> proc
       in
       proc
         [ reg_x <--. 0
@@ -110,6 +145,9 @@ struct
         ; x_px_ctr <--. 0
         ; y_line_ctr <--. 0
         ; y_px_ctr <--. 0
+        ; next_address <-- i.start_address
+        ; row_start_address <-- i.start_address
+        ; fetched <-- gnd
         ; enter_state
         ]
     in
@@ -150,6 +188,11 @@ struct
             [ x_px_ctr <--. 0
             ; incr reg_x
             ; when_
+                (which_bit ==: ones (width which_bit))
+                [ next_address <-- reg reg_spec (next_address.value +:. 1)
+                ; fetched <-- gnd
+                ]
+            ; when_
                 (reg_x.value ==:. input_width - 1)
                 [ reg_x <--. 0; move_on_to_next_part ]
             ]
@@ -181,10 +224,16 @@ struct
                             then y margin end else y += 1 *)
                          enter_x_line
                        ; incr y_px_ctr
+                       ; next_address <-- row_start_address.value
+                       ; fetched <-- gnd
                        ; when_
                            (y_px_ctr.value ==:. scaling_factor_y - 1)
                            [ y_px_ctr <--. 0
                            ; incr reg_y
+                           ; next_address
+                             <-- reg reg_spec (row_start_address.value +:. row_offset_in_bytes)
+                           ; row_start_address
+                             <-- reg reg_spec (row_start_address.value +:. row_offset_in_bytes)
                            ; when_
                                (reg_y.value ==:. input_height - 1)
                                [ reg_y <--. 0; current_state.set_next Y_margin_end ]
@@ -197,9 +246,19 @@ struct
             else [] )
         ]
     in
-    compile [ when_ i.next [ proceed ]; when_ i.start [ start ] ];
-    { O.pixel = mux2 (current_state.is X_body) vdd gnd
-    ; memory_request = Memory.Read_bus.Tx.Of_signal.of_int 0
+    let request_read = current_state.is X_body &: ~:(fetched.value) in
+    compile
+      [ when_ i.next [ proceed ]
+      ; when_ i.start [ start ]
+      ; when_ request_read [ fetched <-- vdd ]
+      ; when_ i.memory_response.valid [ data <-- i.memory_response.value.read_data ]
+      ];
+    let body_bit = (log_shift ~f:srl ~by:which_bit data.value).:(0) in
+    { O.pixel = mux2 (current_state.is X_body) body_bit gnd
+    ; memory_request =
+        { Memory.Read_bus.Tx.valid = request_read
+        ; data = { address = next_address.value }
+        }
     }
   ;;
 
@@ -222,8 +281,8 @@ let%expect_test "margins and scaling factor tests" =
   let module M =
     Make
       (struct
-        let input_width = 64
-        let input_height = 32
+        let input_width = 3
+        let input_height = 3
         let output_width = 133
         let output_height = 35
       end)
@@ -236,11 +295,15 @@ let%expect_test "margins and scaling factor tests" =
         (M.margin_x_start : int)
         (M.margin_x_end : int)
         (M.margin_y_start : int)
-        (M.margin_y_end : int)];
+        (M.margin_y_end : int)
+        (M.word_in_bytes : int)
+        (M.row_offset_in_bytes : int)
+        (M.row_offset_in_words : int)];
   [%expect
     {|
-    ((M.scaling_factor_x 2) (M.scaling_factor_y 1) (M.margin_x_start 3)
-     (M.margin_x_end 2) (M.margin_y_start 2) (M.margin_y_end 1))
+    ((M.scaling_factor_x 44) (M.scaling_factor_y 11) (M.margin_x_start 1)
+     (M.margin_x_end 0) (M.margin_y_start 1) (M.margin_y_end 1)
+     (M.word_in_bytes 4) (M.row_offset_in_bytes 4) (M.row_offset_in_words 1))
     |}]
 ;;
 
@@ -271,10 +334,14 @@ let%expect_test "margins and scaling factor tests" =
         (M.margin_x_start : int)
         (M.margin_x_end : int)
         (M.margin_y_start : int)
-        (M.margin_y_end : int)];
+        (M.margin_y_end : int)
+        (M.word_in_bytes : int)
+        (M.row_offset_in_bytes : int)
+        (M.row_offset_in_words : int)];
   [%expect
     {|
     ((M.scaling_factor_x 20) (M.scaling_factor_y 22) (M.margin_x_start 0)
-     (M.margin_x_end 0) (M.margin_y_start 8) (M.margin_y_end 8))
+     (M.margin_x_end 0) (M.margin_y_start 8) (M.margin_y_end 8)
+     (M.word_in_bytes 4) (M.row_offset_in_bytes 8) (M.row_offset_in_words 2))
     |}]
 ;;
