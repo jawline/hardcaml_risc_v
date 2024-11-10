@@ -1,8 +1,3 @@
-open Core
-open Hardcaml
-open Signal
-open Hardcaml_memory_controller
-
 (** A framebuffer expander that reads a greyscale bitvector of input_width *
     input_height from the memory controller and outputs it pixel by pixel width
     by height.
@@ -12,7 +7,16 @@ open Hardcaml_memory_controller
 
     To move on to the next pixel the next input should be set high for a cycle.
     As with start, the next pixel should be sampled some cycles after the next
-    pulse to provide leeway for fetching. *)
+    pulse to provide leeway for fetching. 
+ 
+    Row memory must be word aligned (e.g, if a row is 8 width it must still be
+    4 bytes long). *)
+
+open Core
+open Hardcaml
+open Signal
+open Hardcaml_memory_controller
+
 module Make
     (Config : sig
        val input_width : int
