@@ -72,7 +72,7 @@ module Machine = struct
   ;;
 end
 
-let debug = true
+let debug = false
 
 let program_ram sim bits =
   let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
@@ -146,7 +146,9 @@ let%expect_test "details" =
 let%expect_test "test" =
   let strided = Bits.of_int ~width:32 0b0101 in
   let rev_strided = Bits.of_int ~width:32 0b1010 in
-  test ~name:"/tmp/test_framebuffer_expander" ~framebuffer:[| strided ; rev_strided ; strided |];
+  test
+    ~name:"/tmp/test_framebuffer_expander"
+    ~framebuffer:[| strided; rev_strided; strided |];
   [%expect
     {|
     --------

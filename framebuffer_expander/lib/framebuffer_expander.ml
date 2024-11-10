@@ -103,26 +103,35 @@ struct
   let create scope (i : _ I.t) =
     let open Always in
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let reg_x = Variable.reg ~width:(num_bits_to_represent input_width) reg_spec in
-    let reg_y = Variable.reg ~width:(num_bits_to_represent input_height) reg_spec in
-    let next_address = Variable.reg ~width:I.port_widths.start_address reg_spec in
-    let row_start_address = Variable.reg ~width:I.port_widths.start_address reg_spec in
+    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
+    let reg_x =
+      Variable.reg ~width:(num_bits_to_represent input_width) reg_spec_no_clear
+    in
+    let reg_y =
+      Variable.reg ~width:(num_bits_to_represent input_height) reg_spec_no_clear
+    in
+    let next_address =
+      Variable.reg ~width:I.port_widths.start_address reg_spec_no_clear
+    in
+    let row_start_address =
+      Variable.reg ~width:I.port_widths.start_address reg_spec_no_clear
+    in
     let x_px_ctr =
       Variable.reg
         ~width:(num_bits_to_represent (Int.max margin_x_start margin_x_end - 1))
-        reg_spec
+        reg_spec_no_clear
     in
     let y_line_ctr =
       Variable.reg
         ~width:(num_bits_to_represent (Int.max margin_y_start margin_y_end - 1))
-        reg_spec
+        reg_spec_no_clear
     in
     let y_px_ctr =
-      Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec
+      Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec_no_clear
     in
-    let fetched = Variable.reg ~width:1 reg_spec in
+    let fetched = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data =
-      Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec
+      Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec_no_clear
     in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
@@ -189,7 +198,7 @@ struct
             ; incr reg_x
             ; when_
                 (which_bit ==: ones (width which_bit))
-                [ next_address <-- reg reg_spec (next_address.value +:. 1)
+                [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 1)
                 ; fetched <-- gnd
                 ]
             ; when_
@@ -198,11 +207,40 @@ struct
             ]
         ]
     in
+    let move_on_to_next_y_row =
+      let next_row_address =
+        reg reg_spec_no_clear (row_start_address.value +:. row_offset_in_bytes)
+      in
+      let at_y_row_limit = reg_y.value ==:. input_height - 1 in
+      [ y_px_ctr <--. 0
+      ; incr reg_y
+      ; next_address <-- next_row_address
+      ; row_start_address <-- next_row_address
+      ; when_
+          at_y_row_limit
+          [ reg_y <--. 0
+          ; (* Even though Y_margin_end might be a no-op it is always ok to go on to it since a start signal will then restart for the next frame. *)
+            current_state.set_next Y_margin_end
+          ]
+      ]
+      |> proc
+    in
+    let move_on_or_repeat_y_row =
+      proc
+        [ (* TODO: If move on to next line then (if next line is end
+             then y margin end else y += 1 *)
+          enter_x_line
+        ; incr y_px_ctr
+        ; next_address <-- row_start_address.value
+        ; fetched <-- gnd
+        ; when_ (y_px_ctr.value ==:. scaling_factor_y - 1) [ move_on_to_next_y_row ]
+        ]
+    in
     let proceed =
       current_state.switch
         [ ( State.Y_margin_start
           , if margin_y_start = 0
-            then [ current_state.set_next X_margin_start ]
+            then [ enter_x_line ]
             else
               [ y_margin_line ~stop_condition:margin_y_start ~stop_behaviour:enter_x_line
               ] )
@@ -215,31 +253,8 @@ struct
         ; ( State.X_margin_end
           , if margin_x_end = 0
             then []
-            else
-              [ x_margin
-                  ~size:margin_x_end
-                  ~stop_behaviour:
-                    (proc
-                       [ (* TODO: If move on to next line then (if next line is end
-                            then y margin end else y += 1 *)
-                         enter_x_line
-                       ; incr y_px_ctr
-                       ; next_address <-- row_start_address.value
-                       ; fetched <-- gnd
-                       ; when_
-                           (y_px_ctr.value ==:. scaling_factor_y - 1)
-                           [ y_px_ctr <--. 0
-                           ; incr reg_y
-                           ; next_address
-                             <-- reg reg_spec (row_start_address.value +:. row_offset_in_bytes)
-                           ; row_start_address
-                             <-- reg reg_spec (row_start_address.value +:. row_offset_in_bytes)
-                           ; when_
-                               (reg_y.value ==:. input_height - 1)
-                               [ reg_y <--. 0; current_state.set_next Y_margin_end ]
-                           ]
-                       ])
-              ] )
+            else [ x_margin ~size:margin_x_end ~stop_behaviour:move_on_or_repeat_y_row ]
+          )
         ; ( State.Y_margin_end
           , if margin_y_end <> 0
             then [ y_margin_line ~stop_condition:margin_y_end ~stop_behaviour:(proc []) ]
