@@ -7,8 +7,8 @@
 
     To move on to the next pixel the next input should be set high for a cycle.
     As with start, the next pixel should be sampled some cycles after the next
-    pulse to provide leeway for fetching. 
- 
+    pulse to provide leeway for fetching.
+
     Row memory must be word aligned (e.g, if a row is 8 width it must still be
     4 bytes long). *)
 

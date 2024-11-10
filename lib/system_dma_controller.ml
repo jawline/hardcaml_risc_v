@@ -6,7 +6,7 @@ open Hardcaml_uart_controller
 open Signal
 open Always
 
-module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = struct
+module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) = struct
   module Memory_to_packet8 =
     Memory_to_packet8.Make
       (struct
@@ -169,6 +169,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
   let maybe_dma_controller ~uart_rx ~clock ~clear scope =
     match General_config.include_io_controller with
     | No_io_controller -> None
-    | Uart_controller config -> dma_controller ~config ~uart_rx ~clock ~clear scope
+    | Uart_controller config ->
+      dma_controller ~config ~uart_rx:(Option.value_exn uart_rx) ~clock ~clear scope
   ;;
 end

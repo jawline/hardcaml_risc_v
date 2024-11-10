@@ -874,7 +874,7 @@ struct
 end
 
 module Cpu_with_no_io_controller =
-  Cpu.Make
+  System.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
@@ -975,7 +975,7 @@ module Uart_tx = Uart_tx.Make (struct
   end)
 
 module Cpu_with_dma_memory =
-  Cpu.Make
+  System.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
@@ -1015,7 +1015,7 @@ module With_transmitter = struct
       Cpu_with_dma_memory.hierarchical
         ~instance:"cpu"
         scope
-        { clock; clear; uart_rx = uart_tx }
+        { clock; clear; uart_rx = Some uart_tx }
     in
     { O.registers }
   ;;

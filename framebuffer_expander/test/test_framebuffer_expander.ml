@@ -98,7 +98,7 @@ let test ~name ~framebuffers =
   inputs.clear := gnd;
   Array.iter
     ~f:(fun framebuffer ->
-  program_ram sim framebuffer;
+      program_ram sim framebuffer;
       let wait_some_cycles_and_sample () =
         Sequence.range 0 10 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
         let result = Bits.to_bool !(outputs.pixel) in

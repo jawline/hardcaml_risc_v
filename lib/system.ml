@@ -7,8 +7,8 @@ open Always
 
 module Make
     (Hart_config : Hart_config_intf.S)
-    (Memory_config : Cpu_intf.Memory_config)
-    (General_config : Cpu_intf.Config) =
+    (Memory_config : System_intf.Memory_config)
+    (General_config : System_intf.Config) =
 struct
   let register_width = Register_width.bits Hart_config.register_width
 
@@ -36,14 +36,19 @@ struct
       (Decoded_instruction)
       (Transaction)
 
-  module Dma = Cpu_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
+  module Dma = System_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
+
+  let include_uart_wires =
+    match General_config.include_io_controller with
+    | Uart_controller _ -> true
+    | _ -> false
+  ;;
 
   module I = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; (* ignored if include_io_controller = Uart_io. *)
-        uart_rx : 'a
+      ; uart_rx : 'a option [@exists include_uart_wires]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -51,12 +56,11 @@ struct
   module O = struct
     type 'a t =
       { registers : 'a Registers.t list [@length General_config.num_harts]
-      ; (* gnd if include_io_controller = Uart_io. *)
-        uart_tx : 'a
-      ; uart_rx_valid : 'a
-      ; parity_error : 'a
-      ; stop_bit_unstable : 'a
-      ; serial_to_packet_valid : 'a
+      ; uart_tx : 'a option [@exists include_uart_wires]
+      ; uart_rx_valid : 'a option [@exists include_uart_wires]
+      ; parity_error : 'a option [@exists include_uart_wires]
+      ; stop_bit_unstable : 'a option [@exists include_uart_wires]
+      ; serial_to_packet_valid : 'a option [@exists include_uart_wires]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -149,9 +153,7 @@ struct
         ~f:(fun _which_hart -> Write_bus.Tx.Of_always.wire zero)
         General_config.num_harts
     in
-    let of_dma ~default ~f =
-      Option.map ~f maybe_dma_controller |> Option.value ~default
-    in
+    let of_dma ~f = Option.map ~f maybe_dma_controller in
     let controller =
       Memory_controller.hierarchical
         ~instance:"Memory_controller"
@@ -159,10 +161,10 @@ struct
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
         ; read_to_controller =
-            of_dma ~default:[] ~f:(fun dma -> [ dma.read_request ])
+            (of_dma ~f:(fun dma -> [ dma.read_request ]) |> Option.value ~default:[])
             @ List.map ~f:Read_bus.Tx.Of_always.value read_bus_per_hart
         ; write_to_controller =
-            of_dma ~default:[] ~f:(fun dma -> [ dma.write_request ])
+            (of_dma ~f:(fun dma -> [ dma.write_request ]) |> Option.value ~default:[])
             @ List.map ~f:Write_bus.Tx.Of_always.value write_bus_per_hart
         }
     in
@@ -179,7 +181,7 @@ struct
               { Hart.I.clock = i.clock
               ; clear =
                   (* Allow resets via remote IO if a DMA controller is attached. *)
-                  of_dma ~default:gnd ~f:Dma.clear_message |: i.clear
+                  of_dma ~f:Dma.clear_message |> Option.value ~default:gnd |: i.clear
               ; read_bus =
                   List.nth_exn
                     controller.read_to_controller
@@ -228,7 +230,6 @@ struct
              write_response
              (List.nth_exn controller.write_response 0)
          ]);
-    let of_dma = of_dma ~default:gnd in
     { O.registers = List.map ~f:(fun o -> o.registers) harts
     ; uart_tx = of_dma ~f:Dma.uart_tx
     ; uart_rx_valid = of_dma ~f:Dma.uart_rx_valid
