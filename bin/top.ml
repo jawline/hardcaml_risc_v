@@ -8,7 +8,7 @@ let mhz i = i * 1_000_000
 let design_frequency = 150 |> mhz
 
 module Design =
-  Cpu.Make
+  System.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
@@ -27,6 +27,8 @@ module Design =
           ; stop_bits = 1
           }
       ;;
+
+      let include_video_out = Video_config.No_video_out
     end)
 
 module Report_command = Report_synth.Command.With_interface (Design.I) (Design.O)

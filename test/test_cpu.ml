@@ -885,6 +885,7 @@ module Cpu_with_no_io_controller =
     (struct
       let num_harts = 1
       let include_io_controller = Io_controller_config.No_io_controller
+      let include_video_out = Video_config.No_video_out
     end)
 
 module With_manually_programmed_ram = Make (struct
@@ -986,6 +987,7 @@ module Cpu_with_dma_memory =
     (struct
       let num_harts = 1
       let include_io_controller = Io_controller_config.Uart_controller uart_config
+      let include_video_out = Video_config.No_video_out
     end)
 
 module With_transmitter = struct
@@ -1015,7 +1017,7 @@ module With_transmitter = struct
       Cpu_with_dma_memory.hierarchical
         ~instance:"cpu"
         scope
-        { clock; clear; uart_rx = Some uart_tx }
+        { clock; clear; uart_rx = Some uart_tx; video_in = None }
     in
     { O.registers }
   ;;

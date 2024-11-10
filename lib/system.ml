@@ -91,6 +91,10 @@ struct
     List.zip_exn harts hart_ecall_transactions |> List.iter ~f:assign_non_io_ecall
   ;;
 
+  let video_out_read_slot = 0
+  let dma_read_slot = if include_video_out then 1 else 0
+  let dma_write_slot = 0
+
   let assign_dma_io_ecall
     ~clock
     (harts : _ Hart.O.t list)
@@ -270,6 +274,16 @@ struct
         General_config.num_harts
     in
     assign_ecalls ~clock:i.clock maybe_dma_controller harts hart_ecall_transactions scope;
+    Option.iter
+      ~f:(fun video_out ->
+        Read_bus.Rx.Of_signal.(
+          video_out.memory_request_ack
+          <== List.nth_exn controller.read_to_controller video_out_read_slot);
+        Read_response.With_valid.Of_signal.(
+          video_out.memory_response
+          <== List.nth_exn controller.read_response video_out_read_slot))
+      maybe_video_out;
+    (* TODO: Replace always assignment with wires assignments. *)
     compile
       (List.map
          ~f:(fun (hart, read_bus) -> Read_bus.Tx.Of_always.assign read_bus hart.read_bus)
@@ -284,16 +298,16 @@ struct
        | Some { read_bus; write_bus; read_response; write_response; _ } ->
          [ Read_bus.Rx.Of_always.assign
              read_bus
-             (List.nth_exn controller.read_to_controller 0)
+             (List.nth_exn controller.read_to_controller dma_read_slot)
          ; Write_bus.Rx.Of_always.assign
              write_bus
-             (List.nth_exn controller.write_to_controller 0)
+             (List.nth_exn controller.write_to_controller dma_write_slot)
          ; Read_response.With_valid.Of_always.assign
              read_response
-             (List.nth_exn controller.read_response 0)
+             (List.nth_exn controller.read_response dma_read_slot)
          ; Write_response.With_valid.Of_always.assign
              write_response
-             (List.nth_exn controller.write_response 0)
+             (List.nth_exn controller.write_response dma_write_slot)
          ]);
     { O.registers = List.map ~f:(fun o -> o.registers) harts
     ; uart_tx = of_dma ~f:Dma.uart_tx
