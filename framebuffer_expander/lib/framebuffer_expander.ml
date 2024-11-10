@@ -104,17 +104,25 @@ struct
     let open Always in
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
+    (* Reg_x and reg_y track where in the input framebuffer we are *)
     let reg_x =
       Variable.reg ~width:(num_bits_to_represent input_width) reg_spec_no_clear
     in
     let reg_y =
       Variable.reg ~width:(num_bits_to_represent input_height) reg_spec_no_clear
     in
+    (* Next_address is the address into the current line, row_start_address is
+       the address to return to if we are repeating a line *)
     let next_address =
       Variable.reg ~width:I.port_widths.start_address reg_spec_no_clear
     in
     let row_start_address =
       Variable.reg ~width:I.port_widths.start_address reg_spec_no_clear
+    in
+    (* This counters are used to keep track of where we are when doubling a
+       pixel or adding a margin line. *)
+    let y_px_ctr =
+      Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec_no_clear
     in
     let x_px_ctr =
       Variable.reg
@@ -126,9 +134,7 @@ struct
         ~width:(num_bits_to_represent (Int.max margin_y_start margin_y_end - 1))
         reg_spec_no_clear
     in
-    let y_px_ctr =
-      Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec_no_clear
-    in
+    (* When not fetched we will prefetch the next data byte of the body. *)
     let fetched = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data =
       Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec_no_clear
@@ -219,7 +225,9 @@ struct
       ; when_
           at_y_row_limit
           [ reg_y <--. 0
-          ; (* Even though Y_margin_end might be a no-op it is always ok to go on to it since a start signal will then restart for the next frame. *)
+          ; (* Even though Y_margin_end might be a no-op it is always ok to go
+               on to it since a start signal will then restart for the next frame.
+            *)
             current_state.set_next Y_margin_end
           ]
       ]
@@ -227,9 +235,7 @@ struct
     in
     let move_on_or_repeat_y_row =
       proc
-        [ (* TODO: If move on to next line then (if next line is end
-             then y margin end else y += 1 *)
-          enter_x_line
+        [ enter_x_line
         ; incr y_px_ctr
         ; next_address <-- row_start_address.value
         ; fetched <-- gnd

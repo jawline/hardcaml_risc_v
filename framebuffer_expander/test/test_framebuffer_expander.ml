@@ -79,7 +79,7 @@ let program_ram sim bits =
   Array.iteri ~f:(fun i m -> Cyclesim.Memory.of_bits ~address:i ram m) bits
 ;;
 
-let test ~name ~framebuffer =
+let test ~name ~framebuffers =
   let create_sim () =
     let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
     Sim.create
@@ -91,35 +91,38 @@ let test ~name ~framebuffer =
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
-  program_ram sim framebuffer;
   inputs.clear := vdd;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   inputs.clear := gnd;
-  let wait_some_cycles_and_sample () =
-    Sequence.range 0 10 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-    let result = Bits.to_bool !(outputs.pixel) in
-    inputs.next_pixel := vdd;
-    Cyclesim.cycle sim;
-    inputs.next_pixel := gnd;
-    result
-  in
-  inputs.start_frame := vdd;
-  Cyclesim.cycle sim;
-  inputs.start_frame := gnd;
-  let frame_buffer =
-    Array.init
-      ~f:(fun _ -> wait_some_cycles_and_sample ())
-      (FBC.output_width * FBC.output_height)
-  in
-  Sequence.range 0 FBC.output_height
-  |> Sequence.iter ~f:(fun y ->
-    Sequence.range 0 FBC.output_width
-    |> Sequence.iter ~f:(fun x ->
-      let px = Array.get frame_buffer ((y * FBC.output_width) + x) in
-      if px then printf "*" else printf "-");
-    printf "\n");
+  Array.iter
+    ~f:(fun framebuffer ->
+  program_ram sim framebuffer;
+      let wait_some_cycles_and_sample () =
+        Sequence.range 0 10 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+        let result = Bits.to_bool !(outputs.pixel) in
+        inputs.next_pixel := vdd;
+        Cyclesim.cycle sim;
+        inputs.next_pixel := gnd;
+        result
+      in
+      inputs.start_frame := vdd;
+      Cyclesim.cycle sim;
+      inputs.start_frame := gnd;
+      let frame_buffer =
+        Array.init
+          ~f:(fun _ -> wait_some_cycles_and_sample ())
+          (FBC.output_width * FBC.output_height)
+      in
+      Sequence.range 0 FBC.output_height
+      |> Sequence.iter ~f:(fun y ->
+        Sequence.range 0 FBC.output_width
+        |> Sequence.iter ~f:(fun x ->
+          let px = Array.get frame_buffer ((y * FBC.output_width) + x) in
+          if px then printf "*" else printf "-");
+        printf "\n"))
+    framebuffers;
   if debug then Waveform.Serialize.marshall waveform name
 ;;
 
@@ -148,9 +151,29 @@ let%expect_test "test" =
   let rev_strided = Bits.of_int ~width:32 0b1010 in
   test
     ~name:"/tmp/test_framebuffer_expander"
-    ~framebuffer:[| strided; rev_strided; strided |];
+    ~framebuffers:
+      [| [| strided; rev_strided; strided |]
+       ; [| rev_strided; strided; rev_strided |]
+       ; [| strided; rev_strided; strided |]
+      |];
   [%expect
     {|
+    --------
+    -**--**-
+    -**--**-
+    ---**---
+    ---**---
+    -**--**-
+    -**--**-
+    --------
+    --------
+    ---**---
+    ---**---
+    -**--**-
+    -**--**-
+    ---**---
+    ---**---
+    --------
     --------
     -**--**-
     -**--**-
