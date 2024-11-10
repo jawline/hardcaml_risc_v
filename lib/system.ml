@@ -37,6 +37,7 @@ struct
       (Transaction)
 
   module Dma = System_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
+  module Video_out = Video_out.Make (Memory_controller.Memory_bus)
 
   let include_uart_wires =
     match General_config.include_io_controller with
@@ -44,11 +45,18 @@ struct
     | _ -> false
   ;;
 
+  let include_video_out =
+    match General_config.include_video_out with
+    | No_video_out -> false
+    | Video_out _ -> true
+  ;;
+
   module I = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
       ; uart_rx : 'a option [@exists include_uart_wires]
+      ; video_in : 'a Video_out.Screen_signals.t option [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -61,6 +69,7 @@ struct
       ; parity_error : 'a option [@exists include_uart_wires]
       ; stop_bit_unstable : 'a option [@exists include_uart_wires]
       ; serial_to_packet_valid : 'a option [@exists include_uart_wires]
+      ; video_out : 'a Video_out.Video_data.t option [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -138,7 +147,61 @@ struct
     | None -> assign_empty_ecalls harts hart_ecall_transactions
   ;;
 
+  module Video_data = struct
+    type 'a t =
+      { video_data : 'a Video_out.Video_data.t
+      ; memory_request_ack : 'a Memory_controller.Memory_bus.Read_bus.Rx.t
+      ; memory_request : 'a Memory_controller.Memory_bus.Read_bus.Tx.t
+      ; memory_response : 'a Memory_controller.Memory_bus.Read_response.With_valid.t
+      }
+    [@@deriving fields ~getters]
+  end
+
+  let maybe_video_out scope (i : _ I.t) =
+    match General_config.include_video_out with
+    | No_video_out -> None
+    | Video_out
+        { output_width : int
+        ; output_height : int
+        ; framebuffer_width : int
+        ; framebuffer_height : int
+        } ->
+      let module Config = struct
+        let input_width = framebuffer_width
+        let input_height = framebuffer_height
+        let output_width = output_width
+        let output_height = output_height
+        let framebuffer_address = 0x8000
+      end
+      in
+      let memory_request_ack =
+        Memory_controller.Memory_bus.Read_bus.Rx.Of_signal.wires ()
+      in
+      let memory_response =
+        Memory_controller.Memory_bus.Read_response.With_valid.Of_signal.wires ()
+      in
+      let video_out =
+        Video_out.hierarchical
+          ~config:(module Config)
+          scope
+          { Video_out.I.clock = i.clock
+          ; clear = i.clear
+          ; screen = Option.value_exn i.video_in
+          ; memory_request = memory_request_ack
+          ; memory_response
+          }
+      in
+      Some
+        { Video_data.video_data = video_out.video_data
+        ; memory_request_ack
+        ; memory_request = video_out.memory_request
+        ; memory_response
+        }
+  ;;
+
   let create scope (i : _ I.t) =
+    (* If the design has requested a video out then initialize it. *)
+    let maybe_video_out = maybe_video_out scope i in
     (* If the design has requested a DMA controller then initialize it. *)
     let maybe_dma_controller =
       Dma.maybe_dma_controller ~uart_rx:i.uart_rx ~clock:i.clock ~clear:i.clear scope
@@ -154,6 +217,7 @@ struct
         General_config.num_harts
     in
     let of_dma ~f = Option.map ~f maybe_dma_controller in
+    let of_video_out ~f = Option.map ~f maybe_video_out in
     let controller =
       Memory_controller.hierarchical
         ~instance:"Memory_controller"
@@ -161,7 +225,8 @@ struct
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
         ; read_to_controller =
-            (of_dma ~f:(fun dma -> [ dma.read_request ]) |> Option.value ~default:[])
+            (of_video_out ~f:(fun vd -> [ vd.memory_request ]) |> Option.value ~default:[])
+            @ (of_dma ~f:(fun dma -> [ dma.read_request ]) |> Option.value ~default:[])
             @ List.map ~f:Read_bus.Tx.Of_always.value read_bus_per_hart
         ; write_to_controller =
             (of_dma ~f:(fun dma -> [ dma.write_request ]) |> Option.value ~default:[])
@@ -236,6 +301,7 @@ struct
     ; parity_error = of_dma ~f:Dma.parity_error
     ; stop_bit_unstable = of_dma ~f:Dma.stop_bit_unstable
     ; serial_to_packet_valid = of_dma ~f:Dma.serial_to_packet_valid
+    ; video_out = of_video_out ~f:Video_data.video_data
     }
   ;;
 
