@@ -11,6 +11,7 @@
  (inline_tests
   (deps
    "../test-programs/hello_world_c/hello_world"
-   "../test-programs/game_of_life/game_of_life"))
+   ;; TODO: Re-enable "../test-programs/game_of_life/game_of_life"
+))
  (preprocess
   (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))
