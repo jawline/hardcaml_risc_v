@@ -57,7 +57,7 @@ struct
     ; valid = ~:fetching &: awaiting_result &: i.read_response.valid
     ; registers
     ; instruction = i.read_response.value.read_data
-    ; error = i.read_response.value.error
+    ; error = i.read_response.valid &: i.read_response.value.error
     }
   ;;
 

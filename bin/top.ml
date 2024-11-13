@@ -8,7 +8,7 @@ let mhz i = i * 1_000_000
 let design_frequency = 150 |> mhz
 
 module Design =
-  Cpu.Make
+  System.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
@@ -27,46 +27,39 @@ module Design =
           ; stop_bits = 1
           }
       ;;
+
+      let include_video_out = Video_config.No_video_out
     end)
 
 module Report_command = Report_synth.Command.With_interface (Design.I) (Design.O)
 
 let report_command = Report_command.command_basic ~name:"Generate_top" Design.create
 
-module Rtl = struct
-  let emit
-    (type i o)
-    ~name
-    ~directory
-    (module I : Interface.S_Of_signal with type Of_signal.t = i)
-    (module O : Interface.S_Of_signal with type Of_signal.t = o)
-    create
-    =
+module Rtl (I : Interface.S) (O : Interface.S) = struct
+  let emit ~name ~directory (create : Scope.t -> Signal.t I.t -> Signal.t O.t) =
+    let module M = Circuit.With_interface (I) (O) in
     printf "Emitting %s\n" name;
     Core_unix.mkdir_p directory;
     let scope = Scope.create ~flatten_design:false () in
-    let circuit =
-      Circuit.create_with_interface ~name (module I) (module O) (create scope)
-    in
+    let circuit = M.create_exn ~name:"top" (create scope) in
     Rtl.output
       ~database:(Scope.circuit_database scope)
       ~output_mode:(In_directory directory)
       Verilog
       circuit
   ;;
-
-  let command =
-    Command.basic
-      ~summary:"generate RTL"
-      (Command.Param.return (fun () ->
-         emit
-           ~name:"cpu_top"
-           ~directory:"./rtl/cpu/"
-           (module Design.I)
-           (module Design.O)
-           (Design.hierarchical ~instance:"cpu_top")))
-  ;;
 end
+
+let rtl_command =
+  let module M = Rtl (Design.I) (Design.O) in
+  Command.basic
+    ~summary:"generate RTL"
+    (Command.Param.return (fun () ->
+       M.emit
+         ~name:"cpu_top"
+         ~directory:"./rtl/cpu/"
+         (Design.hierarchical ~instance:"cpu_top")))
+;;
 
 module Program = struct
   open Hardcaml_risc_v_test
@@ -117,7 +110,7 @@ end
 let all_commands =
   Command.group
     ~summary:"RTL tools"
-    [ "report", report_command; "generate-rtl", Rtl.command; "program", Program.command ]
+    [ "report", report_command; "generate-rtl", rtl_command; "program", Program.command ]
 ;;
 
 let () = Command_unix.run all_commands

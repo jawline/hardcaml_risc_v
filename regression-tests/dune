@@ -1,0 +1,16 @@
+(library
+ (name hardcaml_risc_v_regression_tests)
+ (libraries
+  hardcaml
+  core
+  async
+  async_unix
+  hardcaml_waveterm
+  hardcaml_risc_v
+  hardcaml_risc_v_test)
+ (inline_tests
+  (deps
+   "../test-programs/hello_world_c/hello_world"
+   "../test-programs/game_of_life/game_of_life"))
+ (preprocess
+  (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))

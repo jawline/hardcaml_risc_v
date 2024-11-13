@@ -118,7 +118,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              | Lb -> Decoder.sign_extend ~width:register_width byte
              | Lbu -> uresize ~width:register_width byte)
            funct3)
-    ; error = read_response.value.error |: inputs_are_error
+    ; error = read_response.valid &: read_response.value.error |: inputs_are_error
     ; finished = finished.value
     ; read_bus = Memory.Read_bus.Tx.Of_always.value read_request
     }

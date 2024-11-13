@@ -110,6 +110,7 @@ struct
                     reg
                       reg_spec_with_clear
                       (illegal_operation ~scope selected_read_ch.data.address)
+                    &: (reg reg_spec_with_clear which_read_ch ==:. channel)
                 ; read_data
                 }
             })
@@ -125,6 +126,7 @@ struct
                     reg
                       reg_spec_with_clear
                       (illegal_operation ~scope selected_write_ch.data.address)
+                    &: (reg reg_spec_with_clear which_write_ch ==:. channel)
                 }
             })
           M.num_write_channels

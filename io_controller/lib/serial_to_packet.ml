@@ -119,7 +119,7 @@ struct
             , [ when_
                   in_valid
                   [ should_write_packet_buffer <--. 1
-                  ; incr ~by:(-1) reading_length
+                  ; decr reading_length
                   ; when_ (reading_length.value ==:. 1) [ state.set_next Flushing ]
                   ]
               ] )

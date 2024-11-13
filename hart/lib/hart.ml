@@ -39,7 +39,7 @@ struct
       ; read_response : 'a Memory.Read_response.With_valid.t list
            [@rtlprefix "read_response$"] [@length required_read_channels]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
   end
 
   module O = struct
@@ -54,7 +54,7 @@ struct
       ; read_bus : 'a Memory.Read_bus.Tx.t list
            [@rtlprefix "read$"] [@length required_read_channels]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
   end
 
   let create scope (i : _ I.t) =
@@ -62,10 +62,7 @@ struct
     let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
     let%hw restarting =
-      reg_fb
-        ~width:1
-        ~f:(fun _t -> gnd)
-        (Reg_spec.override ~clear_to:vdd reg_spec_with_clear)
+      reg_fb ~clear_to:vdd ~width:1 ~f:(fun _t -> gnd) reg_spec_with_clear
     in
     let executor =
       Execute_pipeline.hierarchical

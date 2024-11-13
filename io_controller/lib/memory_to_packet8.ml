@@ -179,7 +179,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   }
               ; when_
                   output_packet_ready
-                  [ incr ~by:(-1) length
+                  [ decr length
                   ; incr which_step
                   ; (* TODO: Once we have exhausted our read, we return
                        to reading data. We could prefetch here to speed this

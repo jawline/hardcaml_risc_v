@@ -113,12 +113,12 @@ let op ~funct7 ~funct3 ~rs1 ~rs2 ~rd =
     ~rd:(Bits.of_int ~width:5 rd)
 ;;
 
-let ecall ~rs1 ~rd =
+let ecall =
   assemble_i_type
     ~opcode:System
     ~funct3:(Bits.of_int ~width:3 (Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
-    ~rs1:(Bits.of_int ~width:5 rs1)
-    ~rd:(Bits.of_int ~width:5 rd)
+    ~rs1:(Bits.of_int ~width:5 0)
+    ~rd:(Bits.of_int ~width:5 0)
     ~immediate:(Bits.of_int ~width:12 0)
 ;;
 
@@ -139,7 +139,7 @@ let hello_world_program =
         ~rs1:0
         ~rd:7
         ~immediate:(String.length print_string)
-    ; ecall ~rs1:0 ~rd:0
+    ; ecall
     ]
   ^ print_string
 ;;

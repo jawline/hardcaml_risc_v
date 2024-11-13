@@ -40,14 +40,13 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             else lhs +: rhs, gnd
           | Slt -> uresize ~width:32 (lhs <+ rhs), gnd
           | Sltu -> uresize ~width:32 (lhs <: rhs), gnd
-          | Sll -> Util.sll lhs rhs, gnd
+          | Sll -> log_shift ~f:sll ~by:rhs lhs, gnd
           | Xor -> lhs ^: rhs, gnd
           | Or -> lhs |: rhs, gnd
           | And -> lhs &: rhs, gnd
           | Srl_or_sra ->
-            (* TODO: Not sure if this is correct for SRA *)
-            let sra = Util.sra lhs rhs in
-            let srl = Util.srl lhs rhs in
+            let sra = log_shift ~f:sra ~by:rhs lhs in
+            let srl = log_shift ~f:srl ~by:rhs lhs in
             mux2 funct7_switch sra srl, funct7_error)
         funct3
     in

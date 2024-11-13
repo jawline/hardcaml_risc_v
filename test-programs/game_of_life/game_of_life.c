@@ -1,138 +1,165 @@
+#include <stdbool.h>
+
+extern int system_call(int ecall_mode, void* input_pointer, unsigned int input_length);
+
 #define NULL 0
-#define WIDTH 10
-#define HEIGHT 10
+
+// Width and height must be divisible by 8
+#define WIDTH 8
+#define HEIGHT 8
 
 // To save memory we use a bitvector
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
-// This function assumes that x5 - x7 are used as the registers
-int __attribute__((optimize("O0"))) system_call(int imode, void* iptr, unsigned int ilength) {
-  volatile register int mode asm("x5") = imode;
-  volatile register void* ptr asm("x6") = iptr;
-  volatile register unsigned int length asm("x7") = ilength;
-  asm volatile ("ecall");
-  return mode;
-}
-
-int send_dma_l(char* msg, int len) {
+void send_dma_l(char* msg, int len) {
   while (!system_call(0, msg, len)) {}
 }
 
-// Used when expanding the bitvector into chars 
-// for writing to stdout via DMA
-char ROW_BUFFER[BUFFER_SIZE];
-
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
-char BUFFER1[BUFFER_SIZE];
-char BUFFER2[BUFFER_SIZE];
-
-void cmemset(char* buffer, int size, char value) {
-  for (unsigned int i = 0; i < size; i++) {
-    buffer[i] = value;
-  }
-}
+char BUFFER1[BUFFER_SIZE] = { 0 };
+char BUFFER2[BUFFER_SIZE] = { 0 };
+char ROW_BUFFER[WIDTH];
 
 char* byte_address(char* buffer, unsigned int x, unsigned int y) {
-  if (x > WIDTH) { return NULL; }
-  if (y > HEIGHT) { return NULL; }
+  if (x >= WIDTH) { return NULL; }
+  if (y >= HEIGHT) { return NULL; }
   int byte_index_x = x / 8;
-  return buffer + (y * (WIDTH / 8)) + byte_index_x;
+  int row_offset = (y * (WIDTH / 8));
+  return buffer + row_offset + byte_index_x;
 }
 
-unsigned int which_bit (unsigned int x) {
+unsigned char which_bit (unsigned int x) {
   return 1 << (x % 8);
 }
 
-int get(char* buffer, unsigned int x, unsigned int y) {
+bool get(char* buffer, unsigned int x, unsigned int y) {
   char* addr = byte_address(buffer, x, y);
 
   if (addr != NULL) {
-    return (*addr & which_bit(x));
+    unsigned char byte = *addr;
+    unsigned char bit = which_bit(x);
+    return ((byte & bit) != 0);
   }
   
-  return 0;
+  return false;
 }
 
-void set(char* buffer, unsigned int x, unsigned int y, int value) {
+void set(char* buffer, unsigned int x, unsigned int y, bool value) {
   char* addr = byte_address(buffer, x, y);
+
   if (addr != NULL) {
     if (value) {
       *addr = *addr | which_bit(x);
-    } else {
-      *addr = *addr & !which_bit(x);
+    } else {      
+      unsigned char wb = which_bit(x); 
+      unsigned char flipped_bit = ~wb;
+      *addr = (*addr) & flipped_bit;
     }
   }
-}
-
-int min(int x1, int x2) {
-  if (x1 > x2) {
-    return x2;
-  } else {
-    return x1;
-  } 
-}
-
-int max(int x1, int x2) {
-  if (x1 < x2) {
-    return x2;
-  } else {
-    return x1;
-  } 
 }
 
 int neighbors(char* buffer, unsigned int x, unsigned int y) {
   // This is a little yucky, but if x or y overflow they will
   // fall out of bounds which will return an empty position upon
   // get.
-  int sum = 0;
+  unsigned int sum = 0;
 
-  for (int yi = min(y - 1, y) ; yi <= min(y + 1, HEIGHT); yi++) {
-    for (int xi = min(x - 1, x); xi <= min(x + 1, WIDTH); xi++) {
-      if (xi != x && yi != y) {
-        sum += get(buffer, xi, yi);
+  unsigned int x_min = x - 1;
+  unsigned int y_min = y - 1;
+
+  if (x_min > x) {
+    x_min = 0;
+  }
+
+  if (y_min > y) {
+    y_min = 0;
+  }
+
+  unsigned int x_max = x + 1;
+  unsigned int y_max = y + 1;
+
+  if (x_max >= WIDTH) {
+    x_max = WIDTH - 1;
+  }
+
+  if (y_max >= HEIGHT) {
+    y_max = HEIGHT - 1;
+  }
+
+  for (unsigned int yi = y_min ; yi <= y_max; yi++) {
+    for (unsigned int xi = x_min; xi <= x_max; xi++) {
+      if ((x != xi) || (y != yi)) {
+        if (get(buffer, xi, yi)) { 
+          sum += 1;
+        }
       }
     }
   }
-
-  send_dma_l("F", 1);
-
+ 
   return sum;
 }
 
 void compute(char* next, char* prev) {
-  // Compute the next state of the grid
   for (unsigned int y = 0; y < HEIGHT; y++) {
     for (unsigned int x = 0; x < WIDTH; x++) {
       int c_neighbors = neighbors(prev, x, y);
-      set(next, x, y, c_neighbors > 1 && c_neighbors < 4); 
+      bool alive = get(prev, x, y);
+      if (alive) {
+        bool stays_alive = c_neighbors >= 2 && c_neighbors <= 3;
+        set(next, x, y, stays_alive); 
+      } else {
+        set(next, x, y, c_neighbors == 3); 
+      } 
     }
   }
+
 }
 
 void expand_row(char* dst, char* buffer, int y) {
-  for (int i = 0; i < WIDTH; i++) {
-   dst[i] = get(buffer, i, y) ? '*' : ' ';
+  for (unsigned int x = 0; x < WIDTH; x++) {
+    if (get(buffer, x, y) == 1) {
+      dst[x] = '*';
+    } else {
+      dst[x] = '-';
+    }
   }
 }
 
 void send_rows(char* buffer) {
   for (int i = 0; i < HEIGHT; i++) {
     expand_row(ROW_BUFFER, buffer, i);
-    while (!send_dma_l(ROW_BUFFER, WIDTH)) {}
+    send_dma_l(ROW_BUFFER, WIDTH);
+    send_dma_l("\n", 1);
   }
 }
 
+void program_initial_state(char* buffer) {
+  set(buffer, 3, 3, true);
+  set(buffer, 3, 2, true);
+  set(buffer, 2, 3, true);
+  set(buffer, 2, 3, true);
+  set(buffer, 5, 6, true);
+  set(buffer, 6, 6, true);
+  set(buffer, 7, 6, true);
+  set(buffer, 6, 7, true);
+}
+
 void c_start() {
-  while (!send_dma_l("Starting up", 11)) {}
+  send_dma_l("Starting up\n", 12);
   char* current = BUFFER1;
   char* next = BUFFER2;
 
+  send_dma_l("Programming initial state\n", 26);
+  program_initial_state(current);
+  send_dma_l("Done\n", 5);
+
+  send_dma_l("Startup\n", 8);
+  send_rows(current);
+
+  send_dma_l("Entering loop\n", 14);
   for (;;) {
-    send_dma_l("Entering loop", 13);
-    cmemset(next, BUFFER_SIZE, 0);
-    send_dma_l("Cleared",7);
+    send_dma_l("S\n", 2);
     compute(next, current);
-    send_dma_l("Computed", 9); 
     send_rows(next);
     char* tmp = current;
     current = next;

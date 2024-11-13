@@ -4,9 +4,8 @@ open Hardcaml_memory_controller
 open Hardcaml_io_controller
 open Hardcaml_uart_controller
 open Signal
-open Always
 
-module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = struct
+module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) = struct
   module Memory_to_packet8 =
     Memory_to_packet8.Make
       (struct
@@ -19,10 +18,10 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
   type 'a t =
     { write_request : Signal.t Memory.Write_bus.Tx.t
     ; read_request : Signal.t Memory.Read_bus.Tx.t
-    ; read_response : Variable.t Memory.Read_response.With_valid.t
-    ; write_response : Variable.t Memory.Write_response.With_valid.t
-    ; write_bus : Variable.t Memory.Write_bus.Rx.t
-    ; read_bus : Variable.t Memory.Read_bus.Rx.t
+    ; read_response : Signal.t Memory.Read_response.With_valid.t
+    ; write_response : Signal.t Memory.Write_response.With_valid.t
+    ; write_bus : Signal.t Memory.Write_bus.Rx.t
+    ; read_bus : Signal.t Memory.Read_bus.Rx.t
     ; uart_rx_valid : 'a
     ; tx_input : Signal.t Tx_input.With_valid.t
     ; tx_busy : 'a
@@ -65,10 +64,10 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
     in
     let module Pulse = Pulse.Make (Packet) in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let read_bus = Memory.Read_bus.Rx.Of_always.wire zero in
-    let write_bus = Memory.Write_bus.Rx.Of_always.wire zero in
-    let read_response = Memory.Read_response.With_valid.Of_always.wire zero in
-    let write_response = Memory.Write_response.With_valid.Of_always.wire zero in
+    let read_bus = Memory.Read_bus.Rx.Of_signal.wires () in
+    let write_bus = Memory.Write_bus.Rx.Of_signal.wires () in
+    let read_response = Memory.Read_response.With_valid.Of_signal.wires () in
+    let write_response = Memory.Write_response.With_valid.Of_signal.wires () in
     let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
       Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
     in
@@ -104,8 +103,8 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         { Dma.I.clock
         ; clear
         ; in_ = List.nth_exn router.outs 0
-        ; out = Memory.Write_bus.Rx.Of_always.value write_bus
-        ; out_ack = Memory.Write_response.With_valid.Of_always.value write_response
+        ; out = write_bus
+        ; out_ack = write_response
         }
     in
     dma_ready <== dma.in_.ready;
@@ -125,8 +124,8 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
         { Memory_to_packet8.I.clock
         ; clear
         ; enable = tx_enable
-        ; memory = Memory.Read_bus.Rx.Of_always.value read_bus
-        ; memory_response = Memory.Read_response.With_valid.Of_always.value read_response
+        ; memory = read_bus
+        ; memory_response = read_response
         ; output_packet = { ready = uart_tx_ready }
         }
     in
@@ -169,6 +168,7 @@ module Make (General_config : Cpu_intf.Config) (Memory : Memory_bus_intf.S) = st
   let maybe_dma_controller ~uart_rx ~clock ~clear scope =
     match General_config.include_io_controller with
     | No_io_controller -> None
-    | Uart_controller config -> dma_controller ~config ~uart_rx ~clock ~clear scope
+    | Uart_controller config ->
+      dma_controller ~config ~uart_rx:(Option.value_exn uart_rx) ~clock ~clear scope
   ;;
 end
