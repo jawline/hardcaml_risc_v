@@ -5,4 +5,5 @@ type t =
       ; output_height : int
       ; framebuffer_width : int
       ; framebuffer_height : int
+      ; framebuffer_address : int
       }

@@ -8,6 +8,11 @@ extern int system_call(int ecall_mode, void* input_pointer, unsigned int input_l
 #define WIDTH 8
 #define HEIGHT 8
 
+// This is the hardware framebuffer size, changing this must also be changed in the hardware RTL.
+// Must be a multiple of hardware words * 8
+#define FRAMEBUFFER_WIDTH 32
+#define FRAMEBUFFER_HEIGHT 32
+
 // To save memory we use a bitvector
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
@@ -19,6 +24,7 @@ void send_dma_l(char* msg, int len) {
 char BUFFER1[BUFFER_SIZE] = { 0 };
 char BUFFER2[BUFFER_SIZE] = { 0 };
 char ROW_BUFFER[WIDTH];
+char* FRAMEBUFFER_START = (void*) 0x8000;
 
 char* byte_address(char* buffer, unsigned int x, unsigned int y) {
   if (x >= WIDTH) { return NULL; }
@@ -112,10 +118,9 @@ void compute(char* next, char* prev) {
       } 
     }
   }
-
 }
 
-void expand_row(char* dst, char* buffer, int y) {
+void expand_row_text(char* dst, char* buffer, int y) {
   for (unsigned int x = 0; x < WIDTH; x++) {
     if (get(buffer, x, y) == 1) {
       dst[x] = '*';
@@ -127,9 +132,37 @@ void expand_row(char* dst, char* buffer, int y) {
 
 void send_rows(char* buffer) {
   for (int i = 0; i < HEIGHT; i++) {
-    expand_row(ROW_BUFFER, buffer, i);
+    expand_row_text(ROW_BUFFER, buffer, i);
     send_dma_l(ROW_BUFFER, WIDTH);
     send_dma_l("\n", 1);
+  }
+}
+
+
+void expand_row_framebuffer(char* dst, char* buffer) {
+
+  unsigned int limit = WIDTH / 8;
+
+  for (unsigned int x = 0; x < limit; x++) {
+    dst[x] = buffer[x]; 
+  }
+}
+
+// The framebuffer format is a row-word aligned bitvector.  To write the
+// framebuffer we copy the selected buffer row by row into it, moving the
+// framebuffer pointer ahead by a row width and the buffer pointer ahead by a
+// game of life width.
+void expand_rows_framebuffer(char* buffer) {
+
+  char* row_ptr = FRAMEBUFFER_START;
+
+  unsigned int framebuffer_row_size_in_bytes = FRAMEBUFFER_WIDTH / 8;
+  unsigned int bitvector_row_size_in_bytes = WIDTH / 8;
+
+  for (int i = 0; i < HEIGHT; i++) {
+    expand_row_framebuffer(row_ptr, buffer);
+    row_ptr += framebuffer_row_size_in_bytes;
+    buffer += bitvector_row_size_in_bytes;
   }
 }
 
@@ -153,14 +186,10 @@ void c_start() {
   program_initial_state(current);
   send_dma_l("Done\n", 5);
 
-  send_dma_l("Startup\n", 8);
-  send_rows(current);
-
   send_dma_l("Entering loop\n", 14);
   for (;;) {
-    send_dma_l("S\n", 2);
     compute(next, current);
-    send_rows(next);
+    expand_rows_framebuffer(next);
     char* tmp = current;
     current = next;
     next = tmp;
