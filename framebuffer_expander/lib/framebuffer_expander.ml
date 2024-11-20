@@ -126,17 +126,24 @@ struct
     (* This counters are used to keep track of where we are when doubling a
        pixel or adding a margin line. *)
     let y_px_ctr =
-      Variable.reg ~width:(num_bits_to_represent (output_width - 1)) reg_spec_no_clear
+      let max_elt = Int.max (output_width - 1) (scaling_factor_y - 1) in
+      Variable.reg ~width:(num_bits_to_represent max_elt) reg_spec_no_clear
     in
     let x_px_ctr =
-      Variable.reg
-        ~width:(num_bits_to_represent (Int.max margin_x_start margin_x_end - 1))
-        reg_spec_no_clear
+      let max_elt =
+        let margins = Int.max margin_x_start margin_x_end - 1 in
+        let scaling = scaling_factor_x - 1 in
+        Int.max margins scaling
+      in
+      Variable.reg ~width:(num_bits_to_represent max_elt) reg_spec_no_clear
     in
     let y_line_ctr =
-      Variable.reg
-        ~width:(num_bits_to_represent (Int.max margin_y_start margin_y_end - 1))
-        reg_spec_no_clear
+      let max_elt =
+        let margins = Int.max margin_y_start margin_y_end - 1 in
+        let min = 1 in
+        Int.max margins min
+      in
+      Variable.reg ~width:(num_bits_to_represent max_elt) reg_spec_no_clear
     in
     (* When not fetched we will prefetch the next data byte of the body. *)
     let fetched = Variable.reg ~width:1 reg_spec_no_clear in
@@ -151,10 +158,15 @@ struct
       then sel_bottom ~width:num_bits reg_x.value
       else uresize ~width:num_bits reg_x.value
     in
+    let enter_x_line =
+      if margin_x_start = 0
+      then current_state.set_next X_body
+      else current_state.set_next X_margin_start
+    in
     let start =
       let enter_state =
         (if margin_y_start = 0
-         then [ current_state.set_next X_margin_start ]
+         then [ enter_x_line ]
          else [ current_state.set_next Y_margin_start ])
         |> proc
       in
@@ -189,34 +201,6 @@ struct
         ; when_ (x_px_ctr.value ==:. size - 1) [ x_px_ctr <--. 0; stop_behaviour ]
         ]
     in
-    let enter_x_line =
-      if margin_x_start = 0
-      then current_state.set_next X_body
-      else current_state.set_next X_margin_start
-    in
-    let x_body_next_pixel =
-      let move_on_to_next_part =
-        if margin_x_end <> 0
-        then current_state.set_next X_margin_end
-        else current_state.set_next X_margin_start
-      in
-      proc
-        [ incr x_px_ctr
-        ; when_
-            (x_px_ctr.value ==:. scaling_factor_x - 1)
-            [ x_px_ctr <--. 0
-            ; incr reg_x
-            ; when_
-                (which_bit ==: ones (width which_bit))
-                [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 1)
-                ; fetched <-- gnd
-                ]
-            ; when_
-                (reg_x.value ==:. input_width - 1)
-                [ reg_x <--. 0; move_on_to_next_part ]
-            ]
-        ]
-    in
     let move_on_to_next_y_row =
       let next_row_address =
         reg reg_spec_no_clear (row_start_address.value +:. row_offset_in_bytes)
@@ -246,6 +230,30 @@ struct
         ; when_ (y_px_ctr.value ==:. scaling_factor_y - 1) [ move_on_to_next_y_row ]
         ]
     in
+    let end_x_line =
+      if margin_x_end = 0
+      then move_on_or_repeat_y_row
+      else current_state.set_next X_margin_end
+    in
+    let x_body_next_pixel =
+      let move_on_to_next_part = end_x_line in
+      proc
+        [ incr x_px_ctr
+        ; when_
+            (x_px_ctr.value ==:. scaling_factor_x - 1)
+            [ x_px_ctr <--. 0
+            ; incr reg_x
+            ; when_
+                (which_bit ==: ones (width which_bit))
+                [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 1)
+                ; fetched <-- gnd
+                ]
+            ; when_
+                (reg_x.value ==:. input_width - 1)
+                [ reg_x <--. 0; move_on_to_next_part ]
+            ]
+        ]
+    in
     let proceed =
       current_state.switch
         [ ( State.Y_margin_start
@@ -255,10 +263,13 @@ struct
               [ y_margin_line ~stop_condition:margin_y_start ~stop_behaviour:enter_x_line
               ] )
         ; ( State.X_margin_start
-          , [ x_margin
-                ~size:margin_x_start
-                ~stop_behaviour:(proc [ current_state.set_next X_body ])
-            ] )
+          , if margin_x_start = 0
+            then []
+            else
+              [ x_margin
+                  ~size:margin_x_start
+                  ~stop_behaviour:(proc [ current_state.set_next X_body ])
+              ] )
         ; State.X_body, [ x_body_next_pixel ]
         ; ( State.X_margin_end
           , if margin_x_end = 0

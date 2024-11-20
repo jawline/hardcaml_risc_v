@@ -3,8 +3,8 @@
 #define NULL 0
 
 // Width and height must be divisible by 8
-#define WIDTH 32
-#define HEIGHT 32
+#define WIDTH 8
+#define HEIGHT 8
 
 // This is the hardware framebuffer size, changing this must also be changed in the hardware RTL.
 // Must be a multiple of hardware words * 8
@@ -15,7 +15,7 @@
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
 // The framebuffer lives at this address and is hardcoded in the hardware.
-char* FRAMEBUFFER_START = (void*) 0x8000;
+char* FRAMEBUFFER_START = (void*) 0x4000;
 
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
 char BUFFER1[BUFFER_SIZE] = { 0 };
