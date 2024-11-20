@@ -55,8 +55,7 @@ struct
         then (List.hd_exn outs).ready
         else mux which_tag.value (List.map ~f:(fun out -> out.ready) outs)
       in
-      state.is Routing
-      &: output_is_ready
+      (state.is Routing &: output_is_ready)
       |: state.is Waiting_for_start_of_packet
       |: state.is Discarding_bad_tag
     in
@@ -84,7 +83,6 @@ struct
             , [ when_ in_.data.last [ state.set_next Waiting_for_start_of_packet ] ] )
           ]
       ];
-    (* TODO: Register the router *)
     { O.in_ = { ready = selected_out_ready }
     ; outs =
         List.init
