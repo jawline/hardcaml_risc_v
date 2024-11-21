@@ -173,7 +173,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                           [ word_to_write <-- value
                           ; current_state.set_next Preparing_store
                           ]
-                          [ idle_or_starting ]
+                          [ current_state.set_next Preparing_load; idle_or_starting ]
                       ]
                   ]
               ] )

@@ -8,7 +8,7 @@
 
 // This is the hardware framebuffer size, changing this must also be changed in the hardware RTL.
 // Must be a multiple of hardware words * 8
-#define FRAMEBUFFER_WIDTH 64
+#define FRAMEBUFFER_WIDTH 32
 #define FRAMEBUFFER_HEIGHT 32
 
 // To save memory we use a bitvector
@@ -17,7 +17,7 @@
 // The framebuffer lives at this address and is hardcoded in the hardware.
 char* FRAMEBUFFER_START = (void*) 0x8000;
 
-const unsigned int FRAMEBUFFER_ROW_SIZE_IN_WORDS = FRAMEBUFFER_WIDTH / 32 + ((FRAMEBUFFER_WIDTH % 32 != 0) ? 1 : 0);
+const unsigned int FRAMEBUFFER_ROW_SIZE_IN_WORDS = (FRAMEBUFFER_WIDTH / 32) + ((FRAMEBUFFER_WIDTH % 32 != 0) ? 1 : 0);
 const unsigned int FRAMEBUFFER_ROW_SIZE_IN_BYTES = FRAMEBUFFER_ROW_SIZE_IN_WORDS * 4;
 
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
@@ -161,18 +161,31 @@ void program_initial_state(char* buffer) {
   set(buffer, 6, 7, true);
 }
 
+void program_initial_state_all(char* buffer) {
+  for (unsigned int x = 0; x < WIDTH; x++) {
+          for (unsigned int y = 0; y < HEIGHT; y++) {
+                  set(buffer, x, y, true);
+          }
+  }
+}
+
+void initialize(char* current) {
+  send_dma_l("Programming initial state\n", 26);
+  program_initial_state(current);
+  expand_rows_framebuffer(current);
+  send_dma_l("Done\n", 5);
+}
+
 void c_start() {
   send_dma_l("Starting up\n", 12);
   char* current = BUFFER1;
   char* next = BUFFER2;
 
-  send_dma_l("Programming initial state\n", 26);
-  program_initial_state(current);
-  send_dma_l("Done\n", 5);
+  initialize(current);
 
   send_dma_l("Entering loop\n", 14);
   for (;;) {
-          send_dma_l("S\n", 2);
+    send_dma_l("S\n", 2);
     compute(next, current);
     expand_rows_framebuffer(next);
     char* tmp = current;
