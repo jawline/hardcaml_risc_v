@@ -3,8 +3,8 @@
 #define NULL 0
 
 // Width and height must be divisible by 8
-#define WIDTH 8
-#define HEIGHT 8
+#define WIDTH 16
+#define HEIGHT 16
 
 // This is the hardware framebuffer size, changing this must also be changed in the hardware RTL.
 // Must be a multiple of hardware words * 8
@@ -15,7 +15,10 @@
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
 
 // The framebuffer lives at this address and is hardcoded in the hardware.
-char* FRAMEBUFFER_START = (void*) 0x4000;
+char* FRAMEBUFFER_START = (void*) 0x8000;
+
+const unsigned int FRAMEBUFFER_ROW_SIZE_IN_WORDS = FRAMEBUFFER_WIDTH / 32 + ((FRAMEBUFFER_WIDTH % 32 != 0) ? 1 : 0);
+const unsigned int FRAMEBUFFER_ROW_SIZE_IN_BYTES = FRAMEBUFFER_ROW_SIZE_IN_WORDS * 4;
 
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
 char BUFFER1[BUFFER_SIZE] = { 0 };
@@ -33,8 +36,8 @@ char* byte_address(char* buffer, unsigned int x, unsigned int y) {
     return NULL;
   }
 
-  int byte_index_x = x / 8;
-  int row_offset = (y * (WIDTH / 8));
+  const int byte_index_x = x / 8;
+  const int row_offset = (y * (WIDTH / 8));
   return buffer + row_offset + byte_index_x;
 }
 
@@ -43,11 +46,11 @@ unsigned char which_bit (unsigned int x) {
 }
 
 bool get(char* buffer, unsigned int x, unsigned int y) {
-  char* addr = byte_address(buffer, x, y);
+  const char* addr = byte_address(buffer, x, y);
 
   if (addr != NULL) {
-    unsigned char byte = *addr;
-    unsigned char bit = which_bit(x);
+    const unsigned char byte = *addr;
+    const unsigned char bit = which_bit(x);
     return ((byte & bit) != 0);
   }
   
@@ -122,8 +125,9 @@ void compute(char* next, char* prev) {
   }
 }
 
+
 void expand_row_framebuffer(char* dst, char* buffer) {
-  unsigned int num_bytes_to_copy = WIDTH / 8;
+  const unsigned int num_bytes_to_copy = WIDTH / 8;
 
   for (unsigned int x = 0; x < num_bytes_to_copy; x++) {
     dst[x] = buffer[x]; 
@@ -137,12 +141,11 @@ void expand_row_framebuffer(char* dst, char* buffer) {
 void expand_rows_framebuffer(char* buffer) {
   char* row_ptr = FRAMEBUFFER_START;
 
-  unsigned int framebuffer_row_size_in_bytes = FRAMEBUFFER_WIDTH / 8;
-  unsigned int bitvector_row_size_in_bytes = WIDTH / 8;
+  const unsigned int bitvector_row_size_in_bytes = WIDTH / 8;
 
   for (int i = 0; i < HEIGHT; i++) {
     expand_row_framebuffer(row_ptr, buffer);
-    row_ptr += framebuffer_row_size_in_bytes;
+    row_ptr += FRAMEBUFFER_ROW_SIZE_IN_BYTES;
     buffer += bitvector_row_size_in_bytes;
   }
 }
@@ -169,10 +172,12 @@ void c_start() {
 
   send_dma_l("Entering loop\n", 14);
   for (;;) {
+          send_dma_l("S\n", 2);
     compute(next, current);
     expand_rows_framebuffer(next);
     char* tmp = current;
     current = next;
     next = tmp;
+    send_dma_l("Computed row\n", 13);
   }
 }

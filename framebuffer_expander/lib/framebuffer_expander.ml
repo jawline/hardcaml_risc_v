@@ -109,27 +109,27 @@ struct
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     (* Reg_x and reg_y track where in the input framebuffer we are *)
-    let reg_x =
+    let%hw_var reg_x =
       Variable.reg ~width:(num_bits_to_represent input_width) reg_spec_no_clear
     in
-    let reg_y =
+    let%hw_var reg_y =
       Variable.reg ~width:(num_bits_to_represent input_height) reg_spec_no_clear
     in
     (* Next_address is the address into the current line, row_start_address is
        the address to return to if we are repeating a line *)
-    let next_address =
+    let%hw_var next_address =
       Variable.reg ~width:I.port_widths.start_address reg_spec_no_clear
     in
-    let row_start_address =
+    let%hw_var row_start_address =
       Variable.reg ~width:I.port_widths.start_address reg_spec_no_clear
     in
     (* This counters are used to keep track of where we are when doubling a
        pixel or adding a margin line. *)
-    let y_px_ctr =
+    let%hw_var y_px_ctr =
       let max_elt = Int.max (output_width - 1) (scaling_factor_y - 1) in
       Variable.reg ~width:(num_bits_to_represent max_elt) reg_spec_no_clear
     in
-    let x_px_ctr =
+    let%hw_var x_px_ctr =
       let max_elt =
         let margins = Int.max margin_x_start margin_x_end - 1 in
         let scaling = scaling_factor_x - 1 in
@@ -137,7 +137,7 @@ struct
       in
       Variable.reg ~width:(num_bits_to_represent max_elt) reg_spec_no_clear
     in
-    let y_line_ctr =
+    let%hw_var y_line_ctr =
       let max_elt =
         let margins = Int.max margin_y_start margin_y_end - 1 in
         let min = 1 in
@@ -146,7 +146,7 @@ struct
       Variable.reg ~width:(num_bits_to_represent max_elt) reg_spec_no_clear
     in
     (* When not fetched we will prefetch the next data byte of the body. *)
-    let fetched = Variable.reg ~width:1 reg_spec_no_clear in
+    let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data =
       Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec_no_clear
     in
@@ -245,7 +245,7 @@ struct
             ; incr reg_x
             ; when_
                 (which_bit ==: ones (width which_bit))
-                [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 1)
+                [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 4)
                 ; fetched <-- gnd
                 ]
             ; when_
