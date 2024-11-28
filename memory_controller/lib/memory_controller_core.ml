@@ -65,11 +65,13 @@ struct
   ;;
 
   let create
+    ~read_latency
     scope
     ({ clock; clear; which_read_ch; selected_read_ch; which_write_ch; selected_write_ch } :
       _ I.t)
     =
     let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let memory =
       Ram.create
         ~name:"main_memory_bram"
@@ -103,15 +105,19 @@ struct
         List.init
           ~f:(fun channel ->
             { With_valid.valid =
-                reg reg_spec_with_clear selected_read_ch.valid
-                &: (reg reg_spec_with_clear which_read_ch ==:. channel)
+                pipeline
+                  ~n:(read_latency - 1)
+                  reg_spec_no_clear
+                  (reg reg_spec_with_clear selected_read_ch.valid
+                   &: (reg reg_spec_with_clear which_read_ch ==:. channel))
             ; value =
                 { Read_response.error =
                     reg
                       reg_spec_with_clear
                       (illegal_operation ~scope selected_read_ch.data.address)
                     &: (reg reg_spec_with_clear which_read_ch ==:. channel)
-                ; read_data
+                    |> pipeline ~n:(read_latency - 1) reg_spec_no_clear
+                ; read_data = pipeline ~n:(read_latency - 1) reg_spec_no_clear read_data
                 }
             })
           M.num_read_channels
@@ -133,8 +139,13 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~instance ~read_latency (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"memory_controller_core" ~instance create input
+    H.hierarchical
+      ~scope
+      ~name:"memory_controller_core"
+      ~instance
+      (create ~read_latency)
+      input
   ;;
 end

@@ -23,6 +23,8 @@ struct
       ~config:Cyclesim.Config.trace_all
       (Memory_controller.create
          ~priority_mode:Priority_order
+         ~request_delay:1
+         ~read_latency:1
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   ;;
 

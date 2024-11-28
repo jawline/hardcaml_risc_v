@@ -1,5 +1,6 @@
 open! Core
 open Hardcaml
+open Signal
 
 module Make (M : sig
     val capacity_in_bytes : int
@@ -50,10 +51,13 @@ struct
   end
 
   let create
+    ~read_latency
+    ~request_delay
     ~priority_mode
     scope
     ({ clock; clear; write_to_controller; read_to_controller } : _ I.t)
     =
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let write_arbitrator =
       Write_arbitrator.hierarchical
         ~instance:"write"
@@ -71,13 +75,24 @@ struct
     let core =
       Core.hierarchical
         ~instance:"core"
+        ~read_latency
         scope
         { Core.I.clock
         ; clear
-        ; which_write_ch = write_arbitrator.which_ch
-        ; selected_write_ch = write_arbitrator.selected_ch
-        ; which_read_ch = read_arbitrator.which_ch
-        ; selected_read_ch = read_arbitrator.selected_ch
+        ; which_write_ch =
+            pipeline ~n:request_delay reg_spec_no_clear write_arbitrator.which_ch
+        ; selected_write_ch =
+            Memory_bus.Write_bus.Tx.Of_signal.pipeline
+              ~n:request_delay
+              reg_spec_no_clear
+              write_arbitrator.selected_ch
+        ; which_read_ch =
+            pipeline ~n:request_delay reg_spec_no_clear read_arbitrator.which_ch
+        ; selected_read_ch =
+            Memory_bus.Read_bus.Tx.Of_signal.pipeline
+              ~n:request_delay
+              reg_spec_no_clear
+              read_arbitrator.selected_ch
         }
     in
     { O.write_to_controller = write_arbitrator.acks
@@ -87,13 +102,20 @@ struct
     }
   ;;
 
-  let hierarchical ~instance ~priority_mode (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical
+    ~instance
+    ~read_latency
+    ~request_delay
+    ~priority_mode
+    (scope : Scope.t)
+    (input : Signal.t I.t)
+    =
     let module H = Hierarchy.In_scope (I) (O) in
     H.hierarchical
       ~scope
       ~name:"memory_controller"
       ~instance
-      (create ~priority_mode)
+      (create ~priority_mode ~request_delay ~read_latency)
       input
   ;;
 end
