@@ -32,9 +32,9 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
-      ; error : 'a
+      { valid : 'a [@rtlname "output_valid"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
+      ; error : 'a [@rtlname "output_error"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

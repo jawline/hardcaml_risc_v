@@ -32,7 +32,7 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.t
       ; error : 'a
@@ -47,11 +47,11 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
-      ; instruction : 'a Decoded_instruction.t
-      ; transaction : 'a Transaction.t
-      ; error : 'a
+      { valid : 'a [@rtlname "output_valid"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
+      ; instruction : 'a Decoded_instruction.t [@rtlprefix "output_instruction$"]
+      ; transaction : 'a Transaction.t [@rtlprefix "output_transaction$"]
+      ; error : 'a [@rtlname "output_error"]
       ; is_ecall : 'a
       ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
       ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]

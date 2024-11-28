@@ -29,7 +29,7 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
       ; ecall_transaction : 'a Transaction.t
       ; write_bus : 'a Memory.Write_bus.Rx.t list
            [@rtlprefix "write$"] [@length required_write_channels]
@@ -45,8 +45,8 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      { valid : 'a [@rtlname "output_valid"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
       ; is_ecall : 'a
       ; error : 'a
       ; write_bus : 'a Memory.Write_bus.Tx.t list

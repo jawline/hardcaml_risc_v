@@ -13,7 +13,7 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
       ; read_bus : 'a Memory.Read_bus.Rx.t
       ; read_response : 'a Memory.Read_response.With_valid.t
       }
@@ -22,8 +22,8 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      { valid : 'a [@rtlprefix "output_"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
       ; instruction : 'a [@bits 32]
       ; error : 'a
       ; read_bus : 'a Memory.Read_bus.Tx.t

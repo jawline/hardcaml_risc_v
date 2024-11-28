@@ -28,7 +28,15 @@ module Design =
           }
       ;;
 
-      let include_video_out = Video_config.No_video_out
+      let include_video_out =
+        Video_config.Video_out
+          { output_width = 1280
+          ; output_height = 768
+          ; framebuffer_width = 32
+          ; framebuffer_height = 32
+          ; framebuffer_address = 0x8000
+          }
+      ;;
     end)
 
 module Report_command = Report_synth.Command.With_interface (Design.I) (Design.O)

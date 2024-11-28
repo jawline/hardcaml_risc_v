@@ -12,7 +12,7 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
       ; instruction : 'a [@bits 32]
       ; error : 'a
       }
@@ -21,10 +21,10 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "registers$"]
+      { valid : 'a [@rtlname "output_valid"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
       ; instruction : 'a Decoded_instruction.t
-      ; error : 'a
+      ; error : 'a [@rtlname "output_error"]
       }
     [@@deriving hardcaml]
   end
