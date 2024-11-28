@@ -4,8 +4,7 @@ open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
 module Report_synth = Hardcaml_xilinx_reports
 
-let mhz i = i * 1_000_000
-let design_frequency = 150 |> mhz
+let design_frequency = 148_500_000
 
 module Design =
   System.Make
