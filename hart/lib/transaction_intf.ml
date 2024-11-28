@@ -10,4 +10,6 @@ module type S = sig
   [@@deriving hardcaml]
 
   val generic_error : Signal.t t
+
+  module With_valid : With_valid.Wrap.S with type 'a value := 'a t
 end

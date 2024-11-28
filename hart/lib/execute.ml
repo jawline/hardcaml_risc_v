@@ -34,7 +34,7 @@ struct
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
       ; instruction : 'a Decoded_instruction.t
-      ; ecall_transaction : 'a Transaction.t
+      ; ecall_transaction : 'a Transaction.With_valid.t
       ; error : 'a
       ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
       ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
@@ -335,7 +335,7 @@ struct
     ~clear:_
     ~valid
     ~(registers : _ Registers.t)
-    ~ecall_transaction
+    ~(ecall_transaction : _ Transaction.With_valid.t)
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
@@ -348,11 +348,14 @@ struct
       }
     in
     let%hw is_ecall = decoded_instruction.is_ecall in
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: mux2 is_ecall ecall_transaction.valid vdd
     ; write_bus = None
     ; read_bus = None
     ; transaction =
-        Transaction.Of_signal.mux2 is_ecall ecall_transaction unsupported_increment_pc
+        Transaction.Of_signal.mux2
+          is_ecall
+          ecall_transaction.value
+          unsupported_increment_pc
     }
   ;;
 

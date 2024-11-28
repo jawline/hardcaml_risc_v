@@ -115,8 +115,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let write_request = Memory.Write_bus.Tx.Of_always.wire zero in
-    let read_request = Memory.Read_bus.Tx.Of_always.wire zero in
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
       destination &: ~:(of_int ~width:register_width 0b11)
@@ -146,6 +144,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       Variable.reg ~width:register_width reg_spec_no_clear
     in
     let store_finished = Variable.wire ~default:gnd in
+    let issue_read = Variable.wire ~default:gnd in
+    let issue_write = Variable.wire ~default:gnd in
     let idle_or_starting =
       proc
         [ (* If we are loading a whole word and it is aligned
@@ -153,9 +153,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              we can just write the whole thing skipping the
              load step.
           *)
-          Memory.Read_bus.Tx.Of_always.assign
-            read_request
-            { valid = vdd; data = { address = aligned_address } }
+          issue_read <-- vdd
         ; when_ read_bus.ready [ current_state.set_next Waiting_for_load ]
         ]
     in
@@ -195,11 +193,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   ]
               ] )
           ; ( Preparing_store
-            , [ Memory.Write_bus.Tx.Of_always.assign
-                  write_request
-                  { valid = vdd
-                  ; data = { address = aligned_address; write_data = word_to_write.value }
-                  }
+            , [ issue_write <-- vdd
               ; when_ write_bus.ready [ current_state.set_next Waiting_for_store ]
               ] )
           ; ( Waiting_for_store
@@ -215,8 +209,11 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            write finished signal OR immediately with error if we are unaligned.
         *)
         store_finished.value
-    ; write_bus = Memory.Write_bus.Tx.Of_always.value write_request
-    ; read_bus = Memory.Read_bus.Tx.Of_always.value read_request
+    ; write_bus =
+        { valid = issue_write.value
+        ; data = { address = aligned_address; write_data = word_to_write.value }
+        }
+    ; read_bus = { valid = issue_read.value; data = { address = aligned_address } }
     }
   ;;
 

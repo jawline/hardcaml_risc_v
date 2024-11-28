@@ -139,6 +139,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
+          ~priority_mode:Priority_order
           scope
           { Memory_controller.I.clock
           ; clear

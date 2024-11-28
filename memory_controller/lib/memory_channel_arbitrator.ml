@@ -3,6 +3,12 @@ open Hardcaml
 open Hardcaml_stream
 open Signal
 
+module Priority_mode = struct
+  type t =
+    | Round_robin
+    | Priority_order
+end
+
 module Make
     (S : Stream_intf.S)
     (M : sig
@@ -51,11 +57,27 @@ struct
       M.num_channels
   ;;
 
-  let create scope ({ clock; clear = _; ch_to_controller } : _ I.t) =
+  let priority_order ~clock:_ ~ch_to_controller _scope =
+    let channels =
+      List.mapi
+        ~f:(fun (ch : int) (t : Signal.t S.Tx.t) : Signal.t With_valid.t ->
+          { With_valid.valid = t.valid
+          ; value = of_int ~width:(num_bits_to_represent (M.num_channels - 1)) ch
+          })
+        ch_to_controller
+    in
+    (priority_select channels).value
+  ;;
+
+  let create ~priority_mode scope ({ clock; clear = _; ch_to_controller } : _ I.t) =
     let%hw which_ch =
       if M.num_channels = 1
       then gnd
-      else round_robin_priority_select ~clock ~ch_to_controller scope
+      else (
+        match priority_mode with
+        | Priority_mode.Round_robin ->
+          round_robin_priority_select ~clock ~ch_to_controller scope
+        | Priority_order -> priority_order ~clock ~ch_to_controller scope)
     in
     let selected_ch =
       if M.num_channels = 1
@@ -71,8 +93,13 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~instance ~priority_mode (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"memory_channel_arbitrator" ~instance create input
+    H.hierarchical
+      ~scope
+      ~name:"memory_channel_arbitrator"
+      ~instance
+      (create ~priority_mode)
+      input
   ;;
 end

@@ -90,13 +90,13 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     ignore (state.current -- "current_state" : Signal.t);
     let output_packet = Packet8.Contents_stream.Tx.Of_always.wire zero in
     let address_stride = width memory_response.value.read_data / 8 in
-    let memory = Memory.Read_bus.Tx.Of_always.wire zero in
     let read_data =
       Variable.reg ~width:(width memory_response.value.read_data) reg_spec_no_clear
     in
     let alignment_mask =
       width memory_response.value.read_data / 8 |> Int.floor_log2 |> ones
     in
+    let do_read = Variable.wire ~default:gnd in
     compile
       [ state.switch
           [ ( State.Idle
@@ -153,9 +153,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                   ]
               ] )
           ; ( Reading_data
-            , [ Memory.Read_bus.Tx.Of_always.assign
-                  memory
-                  { valid = vdd; data = { address = address.value } }
+            , [ do_read <-- vdd
               ; when_
                   (memory_response.valid -- "is_memory_response_valid")
                   [ (* Memory read can fail, if they do return zero. *)
@@ -201,7 +199,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     { O.busy = ~:(state.is State.Idle)
     ; done_ = done_.value
     ; output_packet = Packet8.Contents_stream.Tx.Of_always.value output_packet
-    ; memory = Memory.Read_bus.Tx.Of_always.value memory
+    ; memory = { valid = do_read.value; data = { address = address.value } }
     }
   ;;
 

@@ -49,16 +49,22 @@ struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create scope ({ clock; clear; write_to_controller; read_to_controller } : _ I.t) =
+  let create
+    ~priority_mode
+    scope
+    ({ clock; clear; write_to_controller; read_to_controller } : _ I.t)
+    =
     let write_arbitrator =
       Write_arbitrator.hierarchical
         ~instance:"write"
+        ~priority_mode
         scope
         { Write_arbitrator.I.clock; clear; ch_to_controller = write_to_controller }
     in
     let read_arbitrator =
       Read_arbitrator.hierarchical
         ~instance:"read"
+        ~priority_mode
         scope
         { Read_arbitrator.I.clock; clear; ch_to_controller = read_to_controller }
     in
@@ -81,8 +87,13 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~instance ~priority_mode (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"memory_controller" ~instance create input
+    H.hierarchical
+      ~scope
+      ~name:"memory_controller"
+      ~instance
+      (create ~priority_mode)
+      input
   ;;
 end

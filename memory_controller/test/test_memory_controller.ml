@@ -22,6 +22,7 @@ struct
     Sim.create
       ~config:Cyclesim.Config.trace_all
       (Memory_controller.create
+         ~priority_mode:Priority_order
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   ;;
 

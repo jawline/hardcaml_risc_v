@@ -122,16 +122,19 @@ struct
   end
 
   let default_transaction (hart : _ Hart.O.t) =
-    { Transaction.set_rd = vdd
-    ; new_rd = zero register_width
-    ; new_pc = hart.registers.pc +:. 4
-    ; error = gnd
+    { With_valid.valid = vdd
+    ; value =
+        { Transaction.set_rd = vdd
+        ; new_rd = zero register_width
+        ; new_pc = hart.registers.pc +:. 4
+        ; error = gnd
+        }
     }
   ;;
 
   let assign_non_io_ecall ((hart : _ Hart.O.t), transaction) =
     (* Default the remainders *)
-    Transaction.Of_signal.(transaction <== default_transaction hart)
+    Transaction.With_valid.Of_signal.(transaction <== default_transaction hart)
   ;;
 
   let assign_empty_ecalls harts hart_ecall_transactions =
@@ -153,36 +156,40 @@ struct
        necessary, but it makes it easier to stop them both
        issuing commands at the same time and entering a weird
        state. *)
-    let ( -- ) = Scope.naming scope in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let hart0 = List.nth_exn harts 0 in
     (* Delay the ecall by a cycle so we can register all the relevant
-     * registers, reducing routing pressure. *)
+       registers, reducing routing pressure. *)
     (* TODO: This is pretty jank - move ecall to write back and pass 'ecall registers' out of the pipeline *)
-    let%hw delayed_r5 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 5) in
+    let%hw delayed_r5 =
+      reg reg_spec_no_clear (List.nth_exn hart0.registers.general 5 ==:. 0)
+    in
     let%hw delayed_r6 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 6) in
-    let%hw delayed_r7 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 7) in
-    let%hw is_dma_write = hart0.is_ecall &: (delayed_r5 ==:. 0) in
+    let%hw delayed_r7 =
+      reg
+        reg_spec_no_clear
+        (List.nth_exn hart0.registers.general 7
+         |> uresize ~width:Dma.Tx_input.port_widths.length)
+    in
+    let%hw is_dma_write = hart0.is_ecall &: delayed_r5 in
     let%hw next_pc = reg reg_spec_no_clear (hart0.registers.pc +:. 4) in
     (* TODO: I think this can race. *)
     let not_busy = ~:tx_busy in
     Dma.Tx_input.With_valid.Of_signal.(
       tx_input
       <== { valid = is_dma_write &: not_busy
-          ; value =
-              { address = delayed_r6 -- "dma$address"
-              ; length =
-                  uresize ~width:Dma.Tx_input.port_widths.length delayed_r7
-                  -- "dma$length"
-              }
+          ; value = { address = delayed_r6; length = delayed_r7 }
           });
     (* Assign the Hart0 transaction. *)
-    Transaction.Of_signal.(
+    Transaction.With_valid.Of_signal.(
       List.hd_exn hart_ecall_transactions
-      <== { Transaction.set_rd = vdd
-          ; new_rd = uresize ~width:register_width (is_dma_write &: not_busy)
-          ; new_pc = next_pc
-          ; error = gnd
+      <== { With_valid.valid = vdd
+          ; value =
+              { Transaction.set_rd = vdd
+              ; new_rd = uresize ~width:register_width (is_dma_write &: not_busy)
+              ; new_pc = next_pc
+              ; error = gnd
+              }
           });
     (* Default the remainders *)
     List.zip_exn harts hart_ecall_transactions
@@ -282,6 +289,8 @@ struct
     let controller =
       Memory_controller.hierarchical
         ~instance:"Memory_controller"
+          (* TODO: We should straddled each of the hart read and write bus signals if in Priority order mode to ensure fairness between harts (assuming each hart correctly priority orders its ports. *)
+        ~priority_mode:Priority_order
         scope
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
@@ -295,7 +304,9 @@ struct
         }
     in
     let hart_ecall_transactions =
-      List.init ~f:(fun _ -> Transaction.Of_signal.wires ()) General_config.num_harts
+      List.init
+        ~f:(fun _ -> Transaction.With_valid.Of_signal.wires ())
+        General_config.num_harts
     in
     let harts =
       List.init

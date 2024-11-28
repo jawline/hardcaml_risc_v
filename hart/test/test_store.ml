@@ -76,6 +76,7 @@ module Test_machine = struct
     let controller =
       Memory_controller.hierarchical
         ~instance:"memory_controller"
+        ~priority_mode:Priority_order
         scope
         { Memory_controller.I.clock
         ; clear

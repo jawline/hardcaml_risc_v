@@ -30,7 +30,7 @@ struct
       ; clear : 'a
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
-      ; ecall_transaction : 'a Transaction.t
+      ; ecall_transaction : 'a Transaction.With_valid.t
       ; write_bus : 'a Memory.Write_bus.Rx.t list
            [@rtlprefix "write$"] [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list

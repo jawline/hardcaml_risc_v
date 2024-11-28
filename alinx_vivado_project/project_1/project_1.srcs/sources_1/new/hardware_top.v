@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module top(
+module hardware_top(
  input sys_clock_p,
  input sys_clock_n,
  input uart_rx,
@@ -15,7 +15,7 @@ module top(
     wire locked;
     
    clk_wiz_0 ( .clk_in1_p(sys_clock_p), .clk_in1_n(sys_clock_n), .clk_out1(clock), .reset(0), .locked(locked) );
-   cpu_top
+   top
         cpu
         ( .clock(clock), .clear(~reset_btn), .uart_rx(uart_rx));
  

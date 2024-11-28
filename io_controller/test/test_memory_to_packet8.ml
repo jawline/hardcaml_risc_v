@@ -50,6 +50,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
+          ~priority_mode:Priority_order
           scope
           { Memory_controller.I.clock
           ; clear

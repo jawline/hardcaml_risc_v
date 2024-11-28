@@ -26,7 +26,7 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; ecall_transaction : 'a Transaction.t
+      ; ecall_transaction : 'a Transaction.With_valid.t
           (* When is_ecall is high the opcode will be considered finished when
              ecall_transaction is finished. If a user wants custom behaviour on ecall
              they should hold ecall finished low, do the work, then raise finished. *)

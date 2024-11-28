@@ -42,6 +42,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     [@@deriving sexp, enumerate, compare]
   end
 
+  let unaligned_bits = 2
+
   let create
     (scope : Scope.t)
     ({ I.clock; clear; enable; funct3; address; read_bus; read_response } : _ I.t)
@@ -49,35 +51,35 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     (* TODO: We currently disallow loads that are not aligned on a {load width}
        boundary. We could support this by loading a second word and muxing the
        result at the cost of an extra load cycle.  *)
+    (* TODO: Alignment is currently decided by hardcoded bit numbers but it is
+       computable from our word size which would make this module generic over
+       64 and 32 bit harts. *)
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let read_request = Memory.Read_bus.Tx.Of_always.wire zero in
+    let load_valid = Variable.wire ~default:gnd in
     let%hw aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      address &: ~:(of_int ~width:register_width 0b11)
+      concat_msb [ drop_bottom address ~width:2; zero 2 ]
     in
-    let%hw unaligned_bits =
+    let%hw is_unaligned =
       Util.switch
         (module Funct3.Load)
-        ~if_not_found:(zero 2)
+        ~if_not_found:gnd
         ~f:(function
-          | Funct3.Load.Lw -> sel_bottom ~width:2 address &:. 0b11
-          | Lh | Lhu -> sel_bottom ~width:2 address &:. 0b1
-          | Lb | Lbu -> zero 2)
+          | Funct3.Load.Lw -> sel_bottom ~width:2 address <>:. 0
+          | Lh | Lhu -> sel_bottom ~width:1 address
+          | Lb | Lbu -> gnd)
         funct3
     in
-    let is_unaligned = unaligned_bits <>:. 0 in
     let funct3_is_error =
       Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
     in
     let inputs_are_error = is_unaligned |: funct3_is_error in
     let issue_load =
       proc
-        [ Memory.Read_bus.Tx.Of_always.assign
-            read_request
-            { valid = vdd; data = { address = aligned_address } }
+        [ load_valid <-- vdd
         ; when_ read_bus.ready [ current_state.set_next Waiting_for_load ]
         ]
     in
@@ -120,7 +122,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            funct3)
     ; error = read_response.valid &: read_response.value.error |: inputs_are_error
     ; finished = finished.value
-    ; read_bus = Memory.Read_bus.Tx.Of_always.value read_request
+    ; read_bus = { valid = load_valid.value; data = { address = aligned_address } }
     }
   ;;
 
