@@ -13,7 +13,7 @@ module Design =
       let num_registers = 32
     end)
     (struct
-      let num_bytes = 1024 * 16
+      let num_bytes = 1024 * 64
     end)
     (struct
       let num_harts = 1
