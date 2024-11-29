@@ -105,11 +105,13 @@ struct
         List.init
           ~f:(fun channel ->
             { With_valid.valid =
+                let read_was_valid = (reg reg_spec_with_clear selected_read_ch.valid
+                   &: (reg reg_spec_with_clear which_read_ch ==:. channel)) in
                 pipeline
                   ~n:(read_latency - 1)
                   reg_spec_no_clear
-                  (reg reg_spec_with_clear selected_read_ch.valid
-                   &: (reg reg_spec_with_clear which_read_ch ==:. channel))
+                  read_was_valid
+                  
             ; value =
                 { Read_response.error =
                     reg
