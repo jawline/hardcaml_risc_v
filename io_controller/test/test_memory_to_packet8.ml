@@ -5,7 +5,7 @@ open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 let test ~name ~load_memory ~dma_address ~dma_length =
   let module Packet =
@@ -112,7 +112,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
       incr count
     done;
     print_s [%message "" ~_:(!data : String.Hexdump.t)];
-    printf "%i\n" !count
+    printf "Cycles: %i\n" !count
   in
   inputs.clear := Bits.vdd;
   Cyclesim.cycle sim;
@@ -132,7 +132,7 @@ let%expect_test "test" =
   [%expect
     {|
     ("00000000  51 00 09 20 71 75 69 63  6b 20 62 72              |Q.. quick br|")
-    17
+    Cycles: 20
     |}];
   test
     ~name:"/tmp/test_memory_to_packet8_2"
@@ -144,7 +144,7 @@ let%expect_test "test" =
     ("00000000  51 00 2b 54 68 65 20 71  75 69 63 6b 20 62 72 6f  |Q.+The quick bro|"
      "00000010  77 6e 20 66 6f 78 20 6a  75 6d 70 73 20 6f 76 65  |wn fox jumps ove|"
      "00000020  72 20 74 68 65 20 6c 61  7a 79 20 64 6f 67        |r the lazy dog|")
-    67
+    Cycles: 78
     |}];
   test
     ~name:"/tmp/test_memory_to_packet8_3"
@@ -154,6 +154,6 @@ let%expect_test "test" =
   [%expect
     {|
     ("00000000  51 00 01 6b                                       |Q..k|")
-    5
+    Cycles: 6
     |}]
 ;;

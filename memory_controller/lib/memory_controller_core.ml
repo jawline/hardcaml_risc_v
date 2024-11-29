@@ -105,20 +105,20 @@ struct
         List.init
           ~f:(fun channel ->
             { With_valid.valid =
-                let read_was_valid = (reg reg_spec_with_clear selected_read_ch.valid
-                   &: (reg reg_spec_with_clear which_read_ch ==:. channel)) in
-                pipeline
-                  ~n:(read_latency - 1)
-                  reg_spec_no_clear
-                  read_was_valid
-                  
+                (let read_was_valid =
+                   reg reg_spec_with_clear selected_read_ch.valid
+                   &: (reg reg_spec_with_clear which_read_ch ==:. channel)
+                 in
+                 pipeline ~n:(read_latency - 1) reg_spec_no_clear read_was_valid)
             ; value =
                 { Read_response.error =
-                    reg
-                      reg_spec_with_clear
-                      (illegal_operation ~scope selected_read_ch.data.address)
-                    &: (reg reg_spec_with_clear which_read_ch ==:. channel)
-                    |> pipeline ~n:(read_latency - 1) reg_spec_no_clear
+                    (let read_was_error =
+                       reg
+                         reg_spec_with_clear
+                         (illegal_operation ~scope selected_read_ch.data.address)
+                       &: (reg reg_spec_with_clear which_read_ch ==:. channel)
+                     in
+                     pipeline ~n:(read_latency - 1) reg_spec_no_clear read_was_error)
                 ; read_data = pipeline ~n:(read_latency - 1) reg_spec_no_clear read_data
                 }
             })

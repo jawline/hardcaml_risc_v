@@ -75,7 +75,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
          }
      ; memory_response
      ; output_packet = { ready = output_packet_ready }
-     ; (* We don't really care about memory acks. *) memory = _
+     ; memory = memory_ack
      } :
       _ I.t)
     =
@@ -96,7 +96,8 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     let alignment_mask =
       width memory_response.value.read_data / 8 |> Int.floor_log2 |> ones
     in
-    let do_read = Variable.wire ~default:gnd in
+    let do_read = Variable.reg ~width:1 reg_spec_no_clear in
+    let enter_reading_data = proc [ state.set_next Reading_data; do_read <-- vdd ] in
     compile
       [ state.switch
           [ ( State.Idle
@@ -113,6 +114,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                      | Some _ -> Writing_header
                      | None -> Writing_length)
                     |> state.set_next
+                  ; do_read <-- gnd
                   ]
               ] )
           ; ( Writing_header
@@ -148,13 +150,15 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                         address
                         <-- (address.value
                              &: ~:(uresize ~width:(width address.value) alignment_mask))
-                      ; state.set_next Reading_data
+                      ; enter_reading_data
                       ]
                   ]
               ] )
           ; ( Reading_data
-            , [ do_read <-- vdd
-              ; when_
+            , [ (* We will lower the memory request when the memory controller acks then wait for the response. *)
+                when_ memory_ack.ready [ do_read <-- gnd ]
+              ; (* There will only be one request in flight on our line so we don't need to worry about other data. *)
+                when_
                   (memory_response.valid -- "is_memory_response_valid")
                   [ (* Memory read can fail, if they do return zero. *)
                     read_data
@@ -186,7 +190,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                       (which_step.value ==:. address_stride - 1)
                       [ which_step <--. 0
                       ; incr ~by:address_stride address
-                      ; state.set_next Reading_data
+                      ; enter_reading_data
                       ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
                     when_

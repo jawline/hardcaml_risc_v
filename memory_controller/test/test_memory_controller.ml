@@ -80,22 +80,31 @@ struct
     else write ~assertion ~address ~value ~ch sim
   ;;
 
-  let rec read ~assertion ~address ~ch sim =
+  let read ~assertion ~address ~ch sim =
     Cyclesim.cycle sim;
     let inputs : _ Memory_controller.I.t = Cyclesim.inputs sim in
-    let ch_tx = List.nth_exn inputs.read_to_controller ch in
-    ch_tx.valid := Bits.vdd;
-    ch_tx.data.address := Bits.of_int ~width:32 address;
     let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
     let ch_rx = List.nth_exn outputs.read_response ch in
-    Cyclesim.cycle sim;
-    if Bits.to_bool !(ch_rx.valid)
-    then (
-      ch_tx.valid := Bits.gnd;
-      let error = Bits.to_bool !(ch_rx.value.error) in
-      assert_error_bit ~assertion error;
-      Bits.to_int !(ch_rx.value.read_data))
-    else read ~assertion ~address ~ch sim
+    let ch_rx_ack = List.nth_exn outputs.read_to_controller ch in
+    let ch_tx = List.nth_exn inputs.read_to_controller ch in
+    let rec wait_for_ready () =
+      ch_tx.valid := Bits.vdd;
+      ch_tx.data.address := Bits.of_int ~width:32 address;
+      Cyclesim.cycle sim;
+      if Bits.to_bool !(ch_rx_ack.ready) then () else wait_for_ready ()
+    in
+    let rec wait_for_data () =
+      Cyclesim.cycle sim;
+      if Bits.to_bool !(ch_rx.valid)
+      then (
+        ch_tx.valid := Bits.gnd;
+        let error = Bits.to_bool !(ch_rx.value.error) in
+        assert_error_bit ~assertion error;
+        Bits.to_int !(ch_rx.value.read_data))
+      else wait_for_data ()
+    in
+    wait_for_ready ();
+    wait_for_data ()
   ;;
 
   let read_and_assert ~assertion ~address ~value ~ch sim =
@@ -142,6 +151,7 @@ struct
         read_and_assert ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
         ());
     [%expect {| |}]
+  
   ;;
 
   let%expect_test "write unaligned" =
