@@ -98,6 +98,9 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
     in
     let do_read = Variable.reg ~width:1 reg_spec_no_clear in
     let enter_reading_data = proc [ state.set_next Reading_data; do_read <-- vdd ] in
+    let clear_state =
+      proc [ done_ <-- vdd; which_step <--. 0; do_read <-- gnd; state.set_next Idle ]
+    in
     compile
       [ state.switch
           [ ( State.Idle
@@ -105,7 +108,8 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                    when zero length is requested to avoid sending null
                    packets out. This isn't strictly necessary but makes
                    the state machine much easier to think about. *)
-                when_
+                clear_state
+              ; when_
                   (input_enable &: (input_length <>:. 0))
                   [ length <-- input_length
                   ; address <-- input_address
@@ -114,7 +118,6 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                      | Some _ -> Writing_header
                      | None -> Writing_length)
                     |> state.set_next
-                  ; do_read <-- gnd
                   ]
               ] )
           ; ( Writing_header
@@ -159,7 +162,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                 when_ memory_ack.ready [ do_read <-- gnd ]
               ; (* There will only be one request in flight on our line so we don't need to worry about other data. *)
                 when_
-                  (memory_response.valid -- "is_memory_response_valid")
+                  memory_response.valid
                   [ (* Memory read can fail, if they do return zero. *)
                     read_data
                     <-- mux2
@@ -193,9 +196,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
                       ; enter_reading_data
                       ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
-                    when_
-                      (length.value ==:. 1)
-                      [ done_ <-- vdd; which_step <--. 0; state.set_next Idle ]
+                    when_ (length.value ==:. 1) [ clear_state ]
                   ]
               ] )
           ]

@@ -151,7 +151,6 @@ struct
         read_and_assert ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
         ());
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "write unaligned" =
