@@ -4,7 +4,7 @@ open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
 module Report_synth = Hardcaml_xilinx_reports
 
-let design_frequency = 148_500_000
+let design_frequency = 50_000_000 (* TODO: The core can be clocked much higher but I have no written anything to synchronize the pixel output with the video output yet. 150_000_000 *) 
 
 module Design =
   System.Make

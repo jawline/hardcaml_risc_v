@@ -3,8 +3,8 @@
 module hardware_top(
         input sys_clock_p,
         input sys_clock_n,
+        input rst_n,
         input uart_rx,
-        input reset_btn,
         output led1,
         output led2,
         output led3,
@@ -22,20 +22,15 @@ module hardware_top(
 wire i2c_clock;
 wire hart_clock;
 wire locked;
-wire vdata;
 
-IBUFDS sys_clk_ibufgds
-(
-        .O                          (i2c_clock                ),
-        .I                          (sys_clk_p                ),
-        .IB                         (sys_clk_n                )
-);
+wire done_9134;
+wire                       video_hs;
+wire                       video_vs;
+wire                       video_de;
 
-clk_wiz_0 ( .clk_in1_p(sys_clock_p), .clk_in1_n(sys_clock_n), .clk_out1(hart_clock), .reset(0), .locked(locked) );
-top
-cpu
-( .clock(hart_clock), .clear(~reset_btn), .uart_rx(uart_rx), .video_out$vdata(vdata));
+clk_wiz_0 ( .clk_in1_p(sys_clock_p), .clk_in1_n(sys_clock_n), .clk_out1(hart_clock), .clk_out2(i2c_clock), .reset(~rst_n), .locked(locked) );
 
+top cpu ( .clock(hart_clock), .clear(~rst_n), .uart_rx(uart_rx), .video_in$pixel(video_de), .video_in$hsync(video_hs), .video_in$vsync(video_vs), .video_out$vdata(vdata));
 
 wire[9:0]                  lut_index;
 wire[31:0]                 lut_data;
@@ -60,10 +55,25 @@ lut_hdmi lut_hdmi_m0(
         .lut_data                   (lut_data                 )
 );
 
+video_signal_generator sync_signals(
+.clk                        (hart_clock                ),
+.rst                        (~done_9134               ),
+.hs                         (video_hs                 ),
+.vs                         (video_vs                 ),
+.de                         (video_de                 )
+);
+
 assign uart_tx = cpu.uart_tx;
-assign led1 = reset_btn;
+assign led1 = rst_n;
 assign led2 = ~cpu.stop_bit_unstable;
 assign led3 = ~cpu.uart_rx_valid;
 assign led4 = ~cpu.serial_to_packet_valid;
+
+assign vout_clk = hart_clock;
+assign vout_hs = video_hs;
+assign vout_vs = video_vs;
+assign vout_de = video_de;
 assign vout_data = {24{vdata}};
+assign hdmi_nreset = locked;
+
 endmodule
