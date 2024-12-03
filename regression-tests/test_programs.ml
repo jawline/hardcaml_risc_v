@@ -14,7 +14,7 @@ let output_height = 32
 
 let uart_config =
   { Hardcaml_uart_controller.Config.clock_frequency = 200
-  ; baud_rate = 200
+  ; baud_rate = 50
   ; include_parity_bit = true
   ; stop_bits = 1
   }
@@ -168,8 +168,7 @@ let send_dma_message ~address ~packet sim =
       inputs.data_in := of_int ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := of_int ~width:1 0;
-      (* TODO: Tighter loop *)
-      loop_for 20)
+      loop_for 44)
     whole_packet
 ;;
 
@@ -1362,10 +1361,10 @@ let%expect_test "Game of life" =
     ----------------------------------------------------------------
     ----------------------------------------------------------------
     ----------------------------------------------------------------
-    ((pc 432)
+    ((pc 452)
      (general
-      (0 696 61360 0 0 1 2472 2 12 2472 0 12 9 14 32 0 13 16 9 1 18 2504 16 3 0 0
-       0 0 1 8 11 10)))
+      (0 696 61360 0 0 1 2472 2 9 2472 0 9 9 11 0 0 10 18 9 1 18 2504 16 3 0 0 0
+       0 1 10 8 10)))
     ("00000000  37 f1 00 00 ef 00 c0 78  6f 00 00 00 93 02 05 00  |7......xo.......|"
      "00000010  13 83 05 00 93 03 06 00  73 00 00 00 13 85 02 00  |........s.......|"
      "00000020  67 80 00 00 13 01 01 ff  23 24 81 00 23 22 91 00  |g.......#$..#\"..|"

@@ -114,7 +114,6 @@ struct
       ; uart_tx : 'a option [@exists include_uart_wires]
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
       ; parity_error : 'a option [@exists include_uart_wires]
-      ; stop_bit_unstable : 'a option [@exists include_uart_wires]
       ; serial_to_packet_valid : 'a option [@exists include_uart_wires]
       ; video_out : 'a Video_out.Video_data.t option [@exists include_video_out]
       }
@@ -310,6 +309,10 @@ struct
         ~f:(fun _ -> Transaction.With_valid.Of_signal.wires ())
         General_config.num_harts
     in
+    let io_clear =
+      (* Allow resets via remote IO if a DMA controller is attached. *)
+      of_dma ~f:Dma.clear_message |> Option.value ~default:gnd
+    in
     let harts =
       List.init
         ~f:(fun which_hart ->
@@ -318,9 +321,7 @@ struct
               ~instance:[%string "hart_%{which_hart#Int}"]
               scope
               { Hart.I.clock = i.clock
-              ; clear =
-                  (* Allow resets via remote IO if a DMA controller is attached. *)
-                  of_dma ~f:Dma.clear_message |> Option.value ~default:gnd |: i.clear
+              ; clear = io_clear |: i.clear
               ; read_bus = select_rd_chs_for_hart which_hart controller.read_to_controller
               ; write_bus =
                   select_wr_chs_for_hart which_hart controller.write_to_controller
@@ -366,7 +367,6 @@ struct
     ; uart_tx = of_dma ~f:Dma.uart_tx
     ; uart_rx_valid = of_dma ~f:Dma.uart_rx_valid
     ; parity_error = of_dma ~f:Dma.parity_error
-    ; stop_bit_unstable = of_dma ~f:Dma.stop_bit_unstable
     ; serial_to_packet_valid = of_dma ~f:Dma.serial_to_packet_valid
     ; video_out = of_video_out ~f:Video_data.video_data
     }

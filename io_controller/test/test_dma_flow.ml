@@ -92,7 +92,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     module O = struct
       type 'a t =
         { parity_error : 'a
-        ; stop_bit_unstable : 'a
         ; write_response : 'a Write_response.With_valid.t
         ; read_response : 'a Read_response.With_valid.t
         }
@@ -106,7 +105,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error } =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
@@ -160,7 +159,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       (* We echo the read and write responses to avoid dead code elimination
          deleting the entire BRAM *)
       { O.parity_error
-      ; stop_bit_unstable
       ; write_response = List.nth_exn controller.write_response 0
       ; read_response = List.nth_exn controller.read_response 0
       }
@@ -195,9 +193,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       inputs.data_in := of_int ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := of_int ~width:1 0;
-      loop_for 11)
+      loop_for 44)
     all_inputs;
-  loop_for 100;
+  loop_for 1000;
   if debug
   then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform;
   print_ram sim
@@ -207,7 +205,7 @@ let%expect_test "test" =
   test
     ~name:"/tmp/test_dma_hello_world"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~address:0
@@ -226,7 +224,7 @@ let%expect_test "test" =
   test
     ~name:"/tmp/test_dma_hello_world"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~address:0

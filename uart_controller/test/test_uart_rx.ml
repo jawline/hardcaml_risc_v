@@ -4,7 +4,7 @@ open Hardcaml_waveterm
 open Hardcaml_uart_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_inputs =
   let module Config = struct
@@ -36,7 +36,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
         { data_out_valid : 'a
         ; data_out : 'a [@bits 8]
         ; parity_error : 'a
-        ; stop_bit_unstable : 'a
         }
       [@@deriving hardcaml]
     end
@@ -48,13 +47,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error } =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
           { Uart_rx.I.clock; clear; uart_rx = uart_tx }
       in
-      { O.data_out_valid; data_out; parity_error; stop_bit_unstable }
+      { O.data_out_valid; data_out; parity_error }
     ;;
   end
   in
@@ -69,6 +68,10 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
   let waveform, sim = Waveform.create sim in
   let inputs : _ Machine.I.t = Cyclesim.inputs sim in
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
+  inputs.clear := vdd;
+  Cyclesim.cycle sim;
+  inputs.clear := gnd;
+  Cyclesim.cycle sim;
   let all_outputs = ref [] in
   let total_cycles = ref 0 in
   List.iter
@@ -94,7 +97,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~all_i
       in
       let cycles_per_bit = clock_frequency / baud_rate in
       let number_of_cycles_to_loop_for =
-        (cycles_per_bit * (1 + 8 + (if include_parity_bit then 1 else 0) + stop_bits)) + 1
+        (cycles_per_bit * (1 + 8 + (if include_parity_bit then 1 else 0) + stop_bits))
+        + cycles_per_bit
       in
       let outputs = loop_until_finished [] number_of_cycles_to_loop_for in
       all_outputs := !all_outputs @ outputs)
@@ -112,22 +116,22 @@ let%expect_test "test" =
     ~baud_rate:1
     ~include_parity_bit:false
     ~stop_bits:1
-    ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {| ((10 7 153 255 0 170) 612) |}];
+    ~all_inputs:[ 255; 0; 10; 7; 153; 170 ];
+  [%expect {| ((255 0 10 7 153 170) 666) |}];
   test
     ~name:"/tmp/one_stop_bit_with_parity"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:true
     ~stop_bits:1
     ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {| ((10 7 153 255 0 170) 78) |}];
+  [%expect {| ((10 7 153 255 0 170) 294) |}];
   test
     ~name:"/tmp/two_stop_bits_with_parity"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:true
     ~stop_bits:2
     ~all_inputs:[ 0b1010; 0b111; 0b1001_1001; 0b1111_1111; 0b0000_0000; 0b1010_1010 ];
-  [%expect {| ((10 7 153 255 0 170) 84) |}]
+  [%expect {| ((10 7 153 255 0 170) 318) |}]
 ;;

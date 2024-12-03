@@ -70,7 +70,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error = _; stop_bit_unstable = _ } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
@@ -125,7 +125,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       inputs.data_in := of_int ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := of_int ~width:1 0;
-      loop_for 11)
+      loop_for 44)
     all_inputs;
   loop_for 100;
   if debug then Waveform.Serialize.marshall waveform name
@@ -135,7 +135,7 @@ let%expect_test "test" =
   test
     ~name:"/tmp/test_dma_hello_world"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"Hio";

@@ -27,7 +27,6 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     ; tx_busy : 'a
     ; uart_tx : Signal.t
     ; parity_error : 'a
-    ; stop_bit_unstable : 'a
     ; serial_to_packet_valid : 'a
     ; clear_message : 'a
     }
@@ -51,7 +50,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         (struct
           let header = 'Q'
           let serial_input_width = 8
-          let max_packet_length_in_data_widths = 16
+          let max_packet_length_in_data_widths = 2048
         end)
         (Packet)
     in
@@ -63,12 +62,11 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         (Packet)
     in
     let module Pulse = Pulse.Make (Packet) in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let read_bus = Memory.Read_bus.Rx.Of_signal.wires () in
     let write_bus = Memory.Write_bus.Rx.Of_signal.wires () in
     let read_response = Memory.Read_response.With_valid.Of_signal.wires () in
     let write_response = Memory.Write_response.With_valid.Of_signal.wires () in
-    let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
+    let { Uart_rx.O.data_out_valid; data_out; parity_error } =
       Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
     in
     let router_ready = wire 1 in
@@ -140,13 +138,6 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         }
     in
     uart_tx_ready <== dma_out_uart_tx.data_in_ready;
-    let pulse_held =
-      reg_fb
-        ~width:8
-        ~f:(fun t ->
-          mux2 pulse.signal (of_int ~width:8 255) (mux2 (t ==:. 0) (zero 8) (t -:. 1)))
-        reg_spec_no_clear
-    in
     Some
       { write_request = dma.out
       ; read_request = dma_out.memory
@@ -159,9 +150,8 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       ; uart_tx = dma_out_uart_tx.uart_tx
       ; uart_rx_valid = data_out_valid
       ; parity_error
-      ; stop_bit_unstable
       ; serial_to_packet_valid = out.valid
-      ; clear_message = pulse_held <>:. 0
+      ; clear_message = pulse.signal
       }
   ;;
 

@@ -58,7 +58,7 @@ struct
            serial input bus"];
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
-    let should_write_packet_buffer = Variable.wire ~default:gnd in
+    let%hw_var should_write_packet_buffer = Variable.wire ~default:gnd in
     let reading_packet_buffer = Variable.wire ~default:gnd in
     let reading_length = Variable.reg ~width:16 reg_spec_no_clear in
     let which_length_packet = Variable.reg ~width:4 reg_spec_no_clear in
@@ -95,7 +95,7 @@ struct
           new_length)
         num_length_packets
     in
-    let have_buffered_packets = ~:(packet_buffer.empty) in
+    let%hw have_buffered_packets = ~:(packet_buffer.empty) in
     compile
       [ reading_packet_buffer <-- (have_buffered_packets &: out_ready)
       ; state.switch

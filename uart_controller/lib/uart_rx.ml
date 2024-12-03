@@ -24,13 +24,13 @@ module Make (C : Config_intf.S) = struct
       { data_out_valid : 'a
       ; data_out : 'a [@bits 8]
       ; parity_error : 'a
-      ; stop_bit_unstable : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
     type t =
+      | Idle
       | Waiting_for_start_bit
       | Waiting_for_data_bits
       | Waiting_for_parity_bit
@@ -38,15 +38,15 @@ module Make (C : Config_intf.S) = struct
     [@@deriving sexp, enumerate, compare]
   end
 
-  let switch_cycle spec =
-    if switching_frequency = 1
-    then vdd
-    else (
-      let bits_to_repr_switching_frequency = Int.ceil_log2 switching_frequency in
-      (reg_fb ~width:bits_to_repr_switching_frequency ~f:(fun t ->
-         mod_counter ~max:(switching_frequency - 1) t))
-        spec
-      ==:. 0)
+  type 'a switches =
+    { bit : 'a
+    ; half : 'a
+    }
+
+  let switch_cycle ~frequency spec =
+    let width = num_bits_to_represent (frequency - 1) in
+    let ctr = (reg_fb ~width ~f:(fun t -> mod_counter ~max:(frequency - 1) t)) spec in
+    { bit = ctr ==:. frequency - 1; half = ctr ==:. (frequency / 2) - 1 }
   ;;
 
   let create (scope : Scope.t) ({ I.clock; clear; uart_rx } : _ I.t) =
@@ -54,10 +54,18 @@ module Make (C : Config_intf.S) = struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let current_state = State_machine.create (module State) reg_spec in
-    let switch_cycle = switch_cycle reg_spec_no_clear in
-    let data = Variable.reg ~width:8 reg_spec_no_clear in
+    let clear_switch_counters = Variable.wire ~default:gnd in
+    let reg_spec_clear_counters =
+      Reg_spec.create ~clock ~clear:clear_switch_counters.value ()
+    in
+    assert (switching_frequency > 1);
+    let { bit = full_bit; half = half_bit } =
+      switch_cycle ~frequency:switching_frequency reg_spec_clear_counters
+    in
+    let%hw full_bit = full_bit in
+    let%hw half_bit = half_bit in
+    let%hw_var data = Variable.reg ~width:8 reg_spec_no_clear in
     let which_data_bit = Variable.reg ~width:3 reg_spec_no_clear in
-    let which_stop_bit = Variable.reg ~width:2 reg_spec_no_clear in
     (* Data with which_data_bit replaced with the current uart_rx *)
     let data_with_new_data_bit =
       mux_init
@@ -75,29 +83,34 @@ module Make (C : Config_intf.S) = struct
       then parity_bit.value ==: rx_parity_bit.value
       else vdd
     in
-    let stop_bit_not_stable = Variable.reg ~width:1 reg_spec_no_clear in
     ignore (current_state.current -- "current_state" : Signal.t);
     let data_out_valid = Variable.wire ~default:gnd in
     let parity_error = Variable.wire ~default:gnd in
+    let%hw uart_rx_negative_edge = reg reg_spec_no_clear uart_rx &: ~:uart_rx in
     compile
       [ current_state.switch
-          [ ( State.Waiting_for_start_bit
+          [ ( State.Idle
             , [ data <--. 0
               ; parity_bit <--. 0
               ; rx_parity_bit <--. 0
               ; which_data_bit <--. 0
-              ; stop_bit_not_stable <--. 0
-              ; which_stop_bit <--. 0
               ; when_
-                  (switch_cycle &: (uart_rx ==:. 0))
-                  [ current_state.set_next State.Waiting_for_data_bits ]
+                  uart_rx_negative_edge
+                  [ clear_switch_counters <-- vdd
+                  ; current_state.set_next State.Waiting_for_start_bit
+                  ]
               ] )
-          ; ( State.Waiting_for_data_bits
+          ; ( Waiting_for_start_bit
+            , [ when_ full_bit [ current_state.set_next Waiting_for_data_bits ] ] )
+          ; ( Waiting_for_data_bits
             , [ when_
-                  switch_cycle
+                  half_bit
                   [ parity_bit <-- parity_bit.value +: uart_rx
                   ; data <-- data_with_new_data_bit
-                  ; incr which_data_bit
+                  ]
+              ; when_
+                  full_bit
+                  [ incr which_data_bit
                   ; when_
                       (which_data_bit.value ==:. 7)
                       [ (if C.config.include_parity_bit
@@ -106,32 +119,22 @@ module Make (C : Config_intf.S) = struct
                       ]
                   ]
               ] )
-          ; ( State.Waiting_for_parity_bit
-            , [ when_
-                  switch_cycle
-                  [ rx_parity_bit <-- uart_rx
-                  ; current_state.set_next Waiting_for_stop_bits
-                  ]
+          ; ( Waiting_for_parity_bit
+            , [ when_ half_bit [ rx_parity_bit <-- uart_rx ]
+              ; when_ full_bit [ current_state.set_next Waiting_for_stop_bits ]
               ] )
-          ; ( State.Waiting_for_stop_bits
+          ; ( Waiting_for_stop_bits
             , [ when_
-                  switch_cycle
-                  [ incr which_stop_bit
-                  ; when_ (uart_rx ==:. 0) [ stop_bit_not_stable <--. 1 ]
-                  ; when_
-                      (which_stop_bit.value ==:. C.config.stop_bits - 1)
-                      [ data_out_valid
-                        <-- (~:(stop_bit_not_stable.value) &: parity_bit_matches)
-                      ; parity_error <-- ~:parity_bit_matches
-                      ; current_state.set_next Waiting_for_start_bit
-                      ]
+                  half_bit
+                  [ data_out_valid <-- vdd
+                  ; parity_error <-- ~:parity_bit_matches
+                  ; current_state.set_next Idle
                   ]
               ] )
           ]
       ];
     { O.data_out_valid = data_out_valid.value
     ; parity_error = parity_error.value
-    ; stop_bit_unstable = stop_bit_not_stable.value
     ; data_out = data.value
     }
   ;;

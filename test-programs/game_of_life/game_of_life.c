@@ -21,8 +21,8 @@ const unsigned int FRAMEBUFFER_ROW_SIZE_IN_WORDS = (FRAMEBUFFER_WIDTH / 32) + ((
 const unsigned int FRAMEBUFFER_ROW_SIZE_IN_BYTES = FRAMEBUFFER_ROW_SIZE_IN_WORDS * 4;
 
 // Buffer 1 and buffer 2 act as a double buffered bitvector of the current game state.
-char BUFFER1[BUFFER_SIZE] = { 0 };
-char BUFFER2[BUFFER_SIZE] = { 0 };
+char BUFFER1 = (void*) 0x3000;
+char BUFFER2 = (void*) 0x4000;
 
 extern int system_call(int ecall_mode, void* input_pointer, unsigned int input_length);
 
@@ -151,6 +151,11 @@ void expand_rows_framebuffer(char* buffer) {
 }
 
 void program_initial_state(char* buffer) {
+
+        for (unsigned int i = 0; i < (WIDTH * HEIGHT) / 8; i++) {
+                buffer[i] = 0;
+        }
+
   set(buffer, 3, 3, true);
   set(buffer, 3, 2, true);
   set(buffer, 2, 3, true);
@@ -183,14 +188,14 @@ void c_start() {
 
   initialize(current);
 
-  send_dma_l("Entering loop\n", 14);
-  for (;;) {
-    send_dma_l("S\n", 2);
-    compute(next, current);
-    expand_rows_framebuffer(next);
-    char* tmp = current;
-    current = next;
-    next = tmp;
-    send_dma_l("Computed row\n", 13);
-  }
+ // send_dma_l("Entering loop\n", 14);
+ // for (;;) {
+ //   send_dma_l("S\n", 2);
+ //   compute(next, current);
+ //   expand_rows_framebuffer(next);
+ //   char* tmp = current;
+ //   current = next;
+ //   next = tmp;
+ //   send_dma_l("Computed row\n", 13);
+ // }
 }

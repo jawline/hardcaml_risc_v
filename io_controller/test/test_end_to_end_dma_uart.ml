@@ -6,7 +6,7 @@ open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 module Memory_controller = Memory_controller.Make (struct
     let capacity_in_bytes = 128
@@ -118,7 +118,7 @@ let test
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error = _; stop_bit_unstable = _ } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
@@ -245,8 +245,8 @@ let test
       inputs.data_in_valid := vdd;
       inputs.data_in := of_int ~width:8 input;
       Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
-      loop_for 11)
+      inputs.data_in_valid := gnd;
+      loop_for 50)
     all_inputs;
   loop_for 100;
   if verbose
@@ -269,7 +269,7 @@ let test
       else ()
     in
     let count = ref 0 in
-    while !count <> 500 do
+    while !count <> 1500 do
       Cyclesim.cycle sim;
       store_outputs ();
       incr count
@@ -285,16 +285,16 @@ let test
       printf "%i\n" !count)
     else ()
   in
-  issue_read ~address ~length:(String.length packet);
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
+  Core.protect
+    ~f:(fun () -> issue_read ~address ~length:(String.length packet))
+    ~finally:(fun () -> if debug then Waveform.Serialize.marshall waveform name)
 ;;
 
 let%expect_test "test" =
   test
     ~name:"/tmp/test_e2e_dma_hio"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~address:0
@@ -313,12 +313,12 @@ let%expect_test "test" =
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
     Doing a DMA read:
     ("00000000  51 00 03 48 69 6f                                 |Q..Hio|")
-    500
+    1500
     |}];
   test
     ~name:"/tmp/test_e2e_dma_hello_world"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~address:0
@@ -337,7 +337,7 @@ let%expect_test "test" =
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
     Doing a DMA read:
     ("00000000  51 00 0c 48 65 6c 6c 6f  20 77 6f 72 6c 64 21     |Q..Hello world!|")
-    500
+    1500
     |}]
 ;;
 
@@ -346,7 +346,7 @@ let%expect_test "fuzz" =
     test
       ~name:"/tmp/test_qcheck"
       ~clock_frequency:200
-      ~baud_rate:200
+      ~baud_rate:50
       ~include_parity_bit:false
       ~stop_bits:1
       ~address:0

@@ -965,7 +965,7 @@ module With_manually_programmed_ram = Make (struct
 
 let uart_config =
   { Hardcaml_uart_controller.Config.clock_frequency = 200
-  ; baud_rate = 200
+  ; baud_rate = 50
   ; include_parity_bit = true
   ; stop_bits = 1
   }
@@ -1078,7 +1078,7 @@ module With_dma_ram = struct
           Cyclesim.cycle sim;
           inputs.data_in_valid := of_int ~width:1 0;
           (* TODO: Tighter loop *)
-          loop_for 20)
+          loop_for 44)
         whole_packet
     ;;
 

@@ -5,7 +5,7 @@ open Hardcaml_uart_controller
 open Hardcaml_io_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
   let all_inputs =
@@ -62,7 +62,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         ; data_out : 'a [@bits 8]
         ; last : 'a
         ; parity_error : 'a
-        ; stop_bit_unstable : 'a
         }
       [@@deriving hardcaml]
     end
@@ -74,7 +73,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error; stop_bit_unstable } =
+      let { Uart_rx.O.data_out_valid; data_out; parity_error } =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
@@ -95,7 +94,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       ; data_out = out.data.data
       ; last = out.data.last
       ; parity_error
-      ; stop_bit_unstable
       }
     ;;
   end
@@ -140,48 +138,57 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     all_inputs;
   let output_packet = List.map ~f:Char.of_int_exn !all_outputs |> String.of_char_list in
   print_s [%message "" ~input_packet:packet ~output_packet];
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
-  else ();
+  if debug then Waveform.Serialize.marshall waveform name;
   if not (String.( = ) output_packet packet)
-  then raise_s [%message "output packet did not match input"]
+  then raise_s [%message "output packet did not match input"];
+  print_s [%message "PASS"]
 ;;
 
 let%expect_test "test" =
   test
     ~name:"/tmp/test_serial_to_packet_no_parity_hello_world"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"Hello world";
-  [%expect {|
-     ((input_packet "Hello world") (output_packet "Hello world")) |}];
+  [%expect
+    {|
+    ((input_packet "Hello world") (output_packet "Hello world"))
+    PASS
+    |}];
   test
     ~name:"/tmp/test_serial_to_packet_parity_hello_world"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:true
     ~stop_bits:1
     ~packet:"Hello world";
-  [%expect {|
-    ((input_packet "Hello world") (output_packet "Hello world")) |}];
+  [%expect
+    {|
+    ((input_packet "Hello world") (output_packet "Hello world"))
+    PASS
+    |}];
   test
     ~name:"/tmp/test_serial_to_packet_no_parity_a"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"A";
   [%expect {|
-    ((input_packet A) (output_packet A)) |}];
+    ((input_packet A) (output_packet A))
+    PASS
+    |}];
   test
     ~name:"/tmp/test_serial_to_packet_parity_a"
     ~clock_frequency:200
-    ~baud_rate:200
+    ~baud_rate:50
     ~include_parity_bit:true
     ~stop_bits:1
     ~packet:"A";
   [%expect {|
-    ((input_packet A) (output_packet A)) |}]
+    ((input_packet A) (output_packet A))
+    PASS
+    |}]
 ;;

@@ -4,7 +4,7 @@ open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
 module Report_synth = Hardcaml_xilinx_reports
 
-let design_frequency = 50_000_000 (* TODO: The core can be clocked much higher but I have no written anything to synchronize the pixel output with the video output yet. 150_000_000 *) 
+let design_frequency = 50_000_000
 
 module Design =
   System.Make
@@ -23,7 +23,7 @@ module Design =
           { baud_rate = 9600
           ; clock_frequency = design_frequency
           ; include_parity_bit = false
-          ; stop_bits = 1
+          ; stop_bits = 2
           }
       ;;
 
@@ -75,6 +75,7 @@ module Program = struct
   let read_packet t =
     let rec wait_for_header () =
       let header = In_channel.input_char t |> Option.value_exn in
+      print_s [%message "RD" (header : char)];
       if Char.(header <> 'D') then wait_for_header () else header
     in
     let header = wait_for_header () in
@@ -89,28 +90,43 @@ module Program = struct
     header, length, bytes_
   ;;
 
+  let device_file = "/dev/ttyUSB0"
+
+  let do_write data =
+    let ch = Out_channel.create ~binary:true device_file in
+    List.iter ~f:(fun byte -> Out_channel.output_byte ch byte) data;
+    Out_channel.close ch
+  ;;
+
   let command =
     Command.basic
       ~summary:"program running design and then listen for output"
-      (Command.Param.return (fun () ->
-         let whole_packet = dma_packet ~address:0 hello_world_program in
-         printf "Sending program via DMA\n%!";
-         Out_channel.write_all
-           "/dev/ttyUSB0"
-           ~data:(List.map ~f:Char.of_int_exn whole_packet |> String.of_char_list);
+      (let open Command.Let_syntax in
+       let open Command.Param in
+       let%map program_filename = anon ("program_filename" %: string) in
+       fun () ->
          printf "Opening in channel\n%!";
          let reader = In_channel.create ~binary:true "/dev/ttyUSB0" in
+         print_s [%message "Loading" (program_filename : string)];
+         let packet = In_channel.read_all program_filename in
+         print_s [%message "Loaded" (String.length packet : int)];
+         let chunk_sz = 256 in
+         String.to_list hello_world_program
+         |> List.chunks_of ~length:chunk_sz
+         |> List.iteri ~f:(fun index data ->
+           let formatted_packet =
+             dma_packet ~address:(index * chunk_sz) (String.of_char_list data)
+           in
+           do_write formatted_packet);
          printf "Sending clear signal via DMA\n%!";
-         Out_channel.write_all
-           "/dev/ttyUSB0"
-           ~data:(List.map ~f:Char.of_int_exn clear_packet |> String.of_char_list);
+         do_write clear_packet;
          printf "Waiting\n%!";
          let rec loop () =
            let header, length, bytes_ = read_packet reader in
            printf "%c %i %s\n%!" header length bytes_;
            loop ()
          in
-         loop ()))
+         loop ())
   ;;
 end
 
