@@ -1,6 +1,0 @@
-# compile verilog/system verilog design source files
-verilog xil_defaultlib  --include "../../../../../project_1.ip_user_files/ipstatic" \
-"i2c_config_func_synth.v" \
-
-# Do not sort compile order
-nosort
