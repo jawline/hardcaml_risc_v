@@ -32,7 +32,7 @@ module Design =
           ( (module struct
               let output_width = 1024
               let output_height = 600
-              let input_width = 32
+              let input_width = 64
               let input_height = 32
               let framebuffer_address = 0x8000
             end : Video_out.Config)

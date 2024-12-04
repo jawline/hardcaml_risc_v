@@ -57,8 +57,6 @@ lut_hdmi lut_hdmi_m0(
         .lut_data                   (lut_data                 )
 );
 
-//uart_loopback_top uart_loopback_top( .clock(hart_clock), .clear(~locked), .uart_rx(uart_rx));
-//assign uart_tx = uart_loopback_top.uart_tx;
 assign uart_tx = cpu.uart_tx;
 assign led1 = rst_n;
 assign led2 = ~uart_rx;

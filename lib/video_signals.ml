@@ -1,3 +1,4 @@
+(* This module generates h_sync, v_sync, v_pixel, and next_frame signals from the provided  assuming that the clock input is the same as the pixel clock. *)
 open! Core
 open Hardcaml
 open Signal
@@ -18,6 +19,7 @@ module Video_signals = struct
     { video_active : 'a
     ; v_sync : 'a
     ; h_sync : 'a
+    ; next_frame : 'a
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
 end
@@ -46,11 +48,24 @@ module Make (Config : Config) = struct
         reg_spec
     in
     let is_end_of_line = h_cnt ==:. h_total_pixels - 1 in
+    let last_beat_of_horizontal_front_porch = h_cnt ==:. Config.h_fp - 1 in
+    let last_beat_of_horizontal_sync = h_cnt ==:. Config.h_fp + Config.h_sync - 1 in
+    let last_beat_of_horizontal_back_porch =
+      h_cnt ==:. Config.h_fp + Config.h_sync + Config.h_bp - 1
+    in
     let v_cnt =
       reg_fb
         ~width:(num_bits_to_represent (v_total_lines - 1))
         ~f:(fun t -> mux2 is_end_of_line (mod_counter ~max:(v_total_lines - 1) t) t)
         reg_spec
+    in
+    (* Pre-cache last-line to simplify the path a little. *)
+    let last_line = reg reg_spec (v_cnt ==:. v_total_lines - 1) in
+    let next_frame = is_end_of_line &: last_line in
+    let last_beat_of_vertical_front_porch = v_cnt ==:. Config.v_fp - 1 in
+    let last_beat_of_vertical_sync = v_cnt ==:. Config.v_fp + Config.v_sync - 1 in
+    let last_beat_of_vertical_back_porch =
+      v_cnt ==:. Config.v_fp + Config.v_sync + Config.v_bp - 1
     in
     let is_last_line = v_cnt ==:. v_total_lines - 1 in
     (* Inside the real horizontal area of the signal rather than the margins *)
@@ -58,10 +73,7 @@ module Make (Config : Config) = struct
       reg_fb
         ~width:1
         ~f:(fun t ->
-          mux2
-            (h_cnt ==:. Config.h_fp + Config.h_sync + Config.h_bp - 1)
-            vdd
-            (mux2 is_end_of_line gnd t))
+          mux2 last_beat_of_horizontal_back_porch vdd (mux2 is_end_of_line gnd t))
         reg_spec
     in
     (* Inside the real vertical area of the signal rather than the margins *)
@@ -70,36 +82,37 @@ module Make (Config : Config) = struct
         ~width:1
         ~f:(fun t ->
           mux2
-            (h_cnt
-             ==:. Config.h_fp - 1
-             &: (v_cnt ==:. Config.v_fp + Config.v_sync + Config.v_bp - 1))
+            (last_beat_of_horizontal_front_porch &: last_beat_of_vertical_back_porch)
             vdd
-            (mux2 (is_last_line &: (h_cnt ==:. Config.h_fp - 1)) gnd t))
+            (mux2 (is_last_line &: last_beat_of_horizontal_front_porch) gnd t))
         reg_spec
     in
     let h_sync =
+      (* The horizontal line signal is
+         [data] [ front porch ] [ sync ] [ back porch ] *)
       reg_fb
         ~width:1
         ~f:(fun t ->
-          let start = h_cnt ==:. Config.h_fp - 1 in
-          let end_ = h_cnt ==:. h_total_pixels - 1 in
-          mux2 start vdd (mux2 end_ gnd t))
+          mux2
+            last_beat_of_horizontal_front_porch
+            vdd
+            (mux2 last_beat_of_horizontal_sync gnd t))
         reg_spec
     in
     let v_sync =
       reg_fb
         ~width:1
         ~f:(fun t ->
-          let start = v_cnt ==:. Config.v_fp - 1 &: (h_cnt ==:. Config.h_fp - 1) in
-          let end_ =
-            v_cnt ==:. Config.v_fp + Config.v_sync - 1 &: (h_cnt ==:. Config.h_fp - 1)
+          let start =
+            last_beat_of_horizontal_front_porch &: last_beat_of_vertical_front_porch
           in
+          let end_ = last_beat_of_vertical_sync &: last_beat_of_horizontal_front_porch in
           mux2 start vdd (mux2 end_ gnd t))
         reg_spec
     in
     (* We are draining data now and not margin *)
     let video_active = v_active &: h_active in
-    { O.h_sync; v_sync; video_active }
+    { O.h_sync; v_sync; video_active; next_frame }
   ;;
 
   let hierarchical (scope : Scope.t) =

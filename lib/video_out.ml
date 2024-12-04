@@ -56,7 +56,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
         scope
         { Framebuffer_expander.I.clock = i.clock
         ; clear = i.clear
-        ; start = ~:(video_signals.video_active)
+        ; start = video_signals.next_frame
         ; next = pre_fetch_pixel
         ; memory_request = i.memory_request
         ; memory_response = i.memory_response
@@ -72,7 +72,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
       Fifo.create
         ~showahead:true
         ~clock:i.clock
-        ~clear:(i.clear |: video_signals.v_sync)
+        ~clear:(i.clear |: video_signals.next_frame)
         ~capacity:2048
         ~wr:pre_fetch_pixel
         ~d:expander.pixel

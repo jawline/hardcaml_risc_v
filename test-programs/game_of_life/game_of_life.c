@@ -3,12 +3,12 @@
 #define NULL 0
 
 // Width and height must be divisible by 8
-#define WIDTH 16
-#define HEIGHT 16
+#define WIDTH 64
+#define HEIGHT 32
 
 // This is the hardware framebuffer size, changing this must also be changed in the hardware RTL.
 // Must be a multiple of hardware words * 8
-#define FRAMEBUFFER_WIDTH 32
+#define FRAMEBUFFER_WIDTH 64
 #define FRAMEBUFFER_HEIGHT 32
 
 // To save memory we use a bitvector
@@ -197,7 +197,6 @@ void c_start() {
 
   initialize(current);
 
-  for (;;) { }
   send_dma_l("Entering loop\n", 14);
   for (;;) {
     send_dma_l("S\n", 2);
@@ -207,5 +206,8 @@ void c_start() {
     current = next;
     next = tmp;
     send_dma_l("Computed row\n", 13);
+    for (unsigned int i = 0; i < 500000; i++) {
+           
+    }
   }
 }

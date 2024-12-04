@@ -270,8 +270,7 @@ let%expect_test "Hello world" =
   test ~print_frames:false ~cycles:5000 ~data:program sim;
   finalize_sim sim;
   [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
+[@@expect.uncaught_exn {|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
@@ -280,20 +279,18 @@ let%expect_test "Hello world" =
     (conversion_error ("[of_unsigned_int] input value is less than 0" (x -1))))
   Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
   Called from Hardcaml__Comb.Make.op_int_right in file "src/comb.ml" (inlined), line 529, characters 4-45
-  Called from Hardcaml_risc_v__Video_signals.Make.create.(fun) in file "lib/video_signals.ml", line 63, characters 12-70
-  Called from Hardcaml__Signal.reg_fb in file "src/signal.ml" (inlined), line 388, characters 8-11
-  Called from Hardcaml_risc_v__Video_signals.Make.create in file "lib/video_signals.ml", lines 59-66, characters 6-16
+  Called from Hardcaml_risc_v__Video_signals.Make.create in file "lib/video_signals.ml", line 51, characters 46-72
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
   Called from Hardcaml_risc_v__Video_out.Make.create in file "lib/video_out.ml", lines 47-49, characters 6-60
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
   Called from Hardcaml_risc_v__System.Make.maybe_video_out in file "lib/system.ml", lines 229-237, characters 8-11
   Called from Hardcaml_risc_v__System.Make.create in file "lib/system.ml", line 249, characters 26-49
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 98-104, characters 6-9
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 98-101, characters 6-48
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 424, characters 18-34
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 146, characters 18-81
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 125-128, characters 4-84
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 273, characters 12-45
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 122-125, characters 4-84
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 269, characters 12-45
   Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
   |}]
 ;;
@@ -304,8 +301,7 @@ let%expect_test "Game of life" =
   test ~print_frames:true ~cycles:500_000 ~data:program sim;
   finalize_sim sim;
   [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
+[@@expect.uncaught_exn {|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
@@ -314,20 +310,18 @@ let%expect_test "Game of life" =
     (conversion_error ("[of_unsigned_int] input value is less than 0" (x -1))))
   Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
   Called from Hardcaml__Comb.Make.op_int_right in file "src/comb.ml" (inlined), line 529, characters 4-45
-  Called from Hardcaml_risc_v__Video_signals.Make.create.(fun) in file "lib/video_signals.ml", line 63, characters 12-70
-  Called from Hardcaml__Signal.reg_fb in file "src/signal.ml" (inlined), line 388, characters 8-11
-  Called from Hardcaml_risc_v__Video_signals.Make.create in file "lib/video_signals.ml", lines 59-66, characters 6-16
+  Called from Hardcaml_risc_v__Video_signals.Make.create in file "lib/video_signals.ml", line 51, characters 46-72
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
   Called from Hardcaml_risc_v__Video_out.Make.create in file "lib/video_out.ml", lines 47-49, characters 6-60
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
   Called from Hardcaml_risc_v__System.Make.maybe_video_out in file "lib/system.ml", lines 229-237, characters 8-11
   Called from Hardcaml_risc_v__System.Make.create in file "lib/system.ml", line 249, characters 26-49
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 98-104, characters 6-9
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 98-101, characters 6-48
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 424, characters 18-34
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 146, characters 18-81
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 125-128, characters 4-84
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 307, characters 12-46
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 122-125, characters 4-84
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 303, characters 12-46
   Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
   |}]
 ;;
