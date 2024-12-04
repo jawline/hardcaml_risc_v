@@ -84,7 +84,7 @@ struct
       (Transaction)
 
   module Dma = System_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
-  module Video_out = Video_out.Make (Memory_controller.Memory_bus)
+  module Video_out_with_memory = Video_out.Make (Memory_controller.Memory_bus)
 
   let include_uart_wires =
     match General_config.include_io_controller with
@@ -103,7 +103,8 @@ struct
       { clock : 'a
       ; clear : 'a
       ; uart_rx : 'a option [@exists include_uart_wires]
-      ; video_in : 'a Video_out.Screen_signals.t option [@exists include_video_out]
+      ; video_in : 'a Video_out_with_memory.Screen_signals.t option
+           [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -115,7 +116,8 @@ struct
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
       ; parity_error : 'a option [@exists include_uart_wires]
       ; serial_to_packet_valid : 'a option [@exists include_uart_wires]
-      ; video_out : 'a Video_out.Video_data.t option [@exists include_video_out]
+      ; video_out : 'a Video_out_with_memory.Video_data.t option
+           [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -206,7 +208,7 @@ struct
 
   module Video_data = struct
     type 'a t =
-      { video_data : 'a Video_out.Video_data.t
+      { video_data : 'a Video_out_with_memory.Video_data.t
       ; memory_request_ack : 'a Memory_controller.Memory_bus.Read_bus.Rx.t
       ; memory_request : 'a Memory_controller.Memory_bus.Read_bus.Tx.t
       ; memory_response : 'a Memory_controller.Memory_bus.Read_response.With_valid.t
@@ -218,20 +220,8 @@ struct
     match General_config.include_video_out with
     | No_video_out -> None
     | Video_out
-        { output_width : int
-        ; output_height : int
-        ; framebuffer_width : int
-        ; framebuffer_height : int
-        ; framebuffer_address : int
-        } ->
-      let module Config = struct
-        let input_width = framebuffer_width
-        let input_height = framebuffer_height
-        let output_width = output_width
-        let output_height = output_height
-        let framebuffer_address = framebuffer_address
-      end
-      in
+        ( (module Framebuffer_config : Video_out.Config)
+        , (module Video_signals_config : Video_signals.Config) ) ->
       let memory_request_ack =
         Memory_controller.Memory_bus.Read_bus.Rx.Of_signal.wires ()
       in
@@ -239,10 +229,11 @@ struct
         Memory_controller.Memory_bus.Read_response.With_valid.Of_signal.wires ()
       in
       let video_out =
-        Video_out.hierarchical
-          ~config:(module Config)
+        Video_out_with_memory.hierarchical
+          ~framebuffer_config:(module Framebuffer_config)
+          ~video_signals_config:(module Video_signals_config)
           scope
-          { Video_out.I.clock = i.clock
+          { Video_out_with_memory.I.clock = i.clock
           ; clear = i.clear
           ; screen = Option.value_exn i.video_in
           ; memory_request = memory_request_ack

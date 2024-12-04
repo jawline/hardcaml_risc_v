@@ -45,7 +45,11 @@ module Make (C : Config_intf.S) = struct
 
   let switch_cycle ~frequency spec =
     let width = num_bits_to_represent (frequency - 1) in
-    let ctr = (reg_fb ~width ~f:(fun t -> mod_counter ~max:(frequency - 1) t)) spec in
+    let ctr =
+      (reg_fb ~width ~clear_to:(one width) ~f:(fun t ->
+         mod_counter ~max:(frequency - 1) t))
+        spec
+    in
     { bit = ctr ==:. frequency - 1; half = ctr ==:. (frequency / 2) - 1 }
   ;;
 
@@ -53,19 +57,23 @@ module Make (C : Config_intf.S) = struct
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let uart_rx =
+      pipeline ~n:3 reg_spec_no_clear uart_rx
+      |: pipeline ~n:2 reg_spec_no_clear uart_rx
+      |: pipeline ~n:1 reg_spec_no_clear uart_rx
+    in
     let current_state = State_machine.create (module State) reg_spec in
     let clear_switch_counters = Variable.wire ~default:gnd in
-    let reg_spec_clear_counters =
-      Reg_spec.create ~clock ~clear:clear_switch_counters.value ()
-    in
     assert (switching_frequency > 1);
     let { bit = full_bit; half = half_bit } =
-      switch_cycle ~frequency:switching_frequency reg_spec_clear_counters
+      switch_cycle
+        ~frequency:switching_frequency
+        (Reg_spec.create ~clock ~clear:clear_switch_counters.value ())
     in
     let%hw full_bit = full_bit in
     let%hw half_bit = half_bit in
     let%hw_var data = Variable.reg ~width:8 reg_spec_no_clear in
-    let which_data_bit = Variable.reg ~width:3 reg_spec_no_clear in
+    let%hw_var which_data_bit = Variable.reg ~width:3 reg_spec_no_clear in
     (* Data with which_data_bit replaced with the current uart_rx *)
     let data_with_new_data_bit =
       mux_init
@@ -84,8 +92,8 @@ module Make (C : Config_intf.S) = struct
       else vdd
     in
     ignore (current_state.current -- "current_state" : Signal.t);
-    let data_out_valid = Variable.wire ~default:gnd in
-    let parity_error = Variable.wire ~default:gnd in
+    let%hw_var data_out_valid = Variable.wire ~default:gnd in
+    let%hw_var parity_error = Variable.wire ~default:gnd in
     let%hw uart_rx_negative_edge = reg reg_spec_no_clear uart_rx &: ~:uart_rx in
     compile
       [ current_state.switch

@@ -41,7 +41,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       (struct
         let header = 'Q'
         let serial_input_width = 8
-        let max_packet_length_in_data_widths = 16
       end)
       (Packet)
   in
@@ -76,7 +75,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           scope
           { Uart_rx.I.clock; clear; uart_rx = uart_tx }
       in
-      let { Serial_to_packet.O.out } =
+      let { Serial_to_packet.O.out; ready = _ } =
         Serial_to_packet.hierarchical
           ~instance:"serial_to_packet"
           scope

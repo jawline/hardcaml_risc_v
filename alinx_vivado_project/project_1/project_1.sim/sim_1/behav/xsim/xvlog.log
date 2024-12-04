@@ -1,0 +1,88 @@
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.gen/sources_1/ip/clk_wiz_0/clk_wiz_0_clk_wiz.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module clk_wiz_0_clk_wiz
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.gen/sources_1/ip/clk_wiz_0/clk_wiz_0.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module clk_wiz_0
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/branch.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module branch
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/decode.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module decode
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/dma_memory_to_packet.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module dma_memory_to_packet
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/execute.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module execute
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/execute_pipeline.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module execute_pipeline
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/fetch.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module fetch
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/framebuffer_expander.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module framebuffer_expander
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/hart.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module hart
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/i2c_master/i2c_config.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module i2c_config
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/i2c_master/i2c_master_defines.v" into library xil_defaultlib
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/i2c_master/i2c_master_bit_ctrl.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module i2c_master_bit_ctrl
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/i2c_master/i2c_master_byte_ctrl.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module i2c_master_byte_ctrl
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/i2c_master/i2c_master_top.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module i2c_master_top
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/load.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module load
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/lut_hdmi.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module lut_hdmi
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/memory_channel_arbitrator.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module memory_channel_arbitrator
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/memory_channel_arbitrator_0.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module memory_channel_arbitrator_0
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/memory_controller.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module memory_controller
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/memory_controller_core.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module memory_controller_core
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/op.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module op
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/op_0.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module op_0
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/packet_router.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module packet_router
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/packet_to_memory.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module packet_to_memory
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/pulse.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module pulse
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/serial_to_packet.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module serial_to_packet
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/store.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module store
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/system.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module system
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/top.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module top
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/uart_rx.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module uart_rx
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/uart_tx.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module uart_tx
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/video_out.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module video_out
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/video_signal_generator.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module video_signal_generator
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/write_back.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module write_back
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/hardware_top.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module hardware_top
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/video_define.v" into library xil_defaultlib
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.srcs/sources_1/new/timescale.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module timescale
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/uart/uart_rx.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module uart_rx
+WARNING: [VRFC 10-3609] overwriting previous definition of module 'uart_rx' [/home/blake/hardcaml_risc_v/rtl/uart/uart_rx.v:1]
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/uart/uart_tx.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module uart_tx
+WARNING: [VRFC 10-3609] overwriting previous definition of module 'uart_tx' [/home/blake/hardcaml_risc_v/rtl/uart/uart_tx.v:1]
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/uart/uart_loopback.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module uart_loopback
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/uart/uart_loopback_top.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module uart_loopback_top
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/serial_buffer.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module serial_buffer
+INFO: [VRFC 10-2263] Analyzing Verilog file "/home/blake/hardcaml_risc_v/rtl/cpu/packet_router_0.v" into library xil_defaultlib
+INFO: [VRFC 10-311] analyzing module packet_router_0

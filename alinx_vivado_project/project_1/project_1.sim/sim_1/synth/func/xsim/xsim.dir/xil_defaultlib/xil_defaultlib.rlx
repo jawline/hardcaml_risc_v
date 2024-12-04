@@ -1,0 +1,5 @@
+0.7
+2020.2
+Jun 16 2023
+19:36:26
+/home/blake/hardcaml_risc_v/alinx_vivado_project/project_1/project_1.sim/sim_1/synth/func/xsim/i2c_config_func_synth.v,1733309507,verilog,,,,branch;clk_wiz_0;clk_wiz_0_clk_wiz;decode;dma_memory_to_packet;execute;execute_pipeline;fetch;framebuffer_expander;glbl;hardware_top;hart;i2c_config;i2c_master_bit_ctrl;i2c_master_byte_ctrl;i2c_master_top;load;lut_hdmi;memory_channel_arbitrator;memory_channel_arbitrator_0;memory_controller;memory_controller_core;op;op_0;packet_router;packet_router_0;packet_router_0__1;packet_to_memory;pulse;serial_buffer;serial_to_packet;store;system;top;uart_rx;uart_tx;video_out;video_signal_generator;write_back,,,../../../../../project_1.ip_user_files/ipstatic,,,,,

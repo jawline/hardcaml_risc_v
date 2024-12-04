@@ -1,0 +1,1 @@
+stty -F /dev/ttyUSB0 speed 9600 raw cstopb -clocal -hup -onlcr -echo -echoe -iexten -echoke -echok -echonl -echoprt -xcase -echoctl

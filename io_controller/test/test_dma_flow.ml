@@ -6,7 +6,7 @@ open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 module Memory_controller = Memory_controller.Make (struct
     let capacity_in_bytes = 128
@@ -65,12 +65,16 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Packet) in
   let module Uart_tx = Uart_tx.Make (Config) in
   let module Uart_rx = Uart_rx.Make (Config) in
+  let module Serial_buffer =
+    Serial_buffer.Make (struct
+      let serial_input_width = 8
+    end)
+  in
   let module Serial_to_packet =
     Serial_to_packet.Make
       (struct
         let header = 'Q'
         let serial_input_width = 8
-        let max_packet_length_in_data_widths = 16
       end)
       (Packet)
   in
@@ -105,23 +109,45 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           scope
           { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
-      let { Uart_rx.O.data_out_valid; data_out; parity_error } =
+      let { Uart_rx.O.data_out_valid = uart_rx_valid
+          ; data_out = uart_rx_data
+          ; parity_error
+          }
+        =
         Uart_rx.hierarchical
           ~instance:"rx"
           scope
           { Uart_rx.I.clock; clear; uart_rx = uart_tx }
       in
-      let { Serial_to_packet.O.out } =
+      let serial_to_packet_ready = wire 1 in
+      let { Serial_buffer.O.out_valid = serial_to_buffer_valid
+          ; out_data = serial_to_buffer_data
+          }
+        =
+        Serial_buffer.hierarchical
+          ~instance:"serial_buffer"
+          ~capacity:8192
+          scope
+          { Serial_buffer.I.clock
+          ; clear
+          ; in_valid = uart_rx_valid
+          ; in_data = uart_rx_data
+          ; out_ready = serial_to_packet_ready
+          }
+      in
+      let dma_ready = wire 1 in
+      let { Serial_to_packet.O.out; ready = serial_to_packet_ready' } =
         Serial_to_packet.hierarchical
           ~instance:"serial_to_packet"
           scope
           { Serial_to_packet.I.clock
           ; clear
-          ; in_valid = data_out_valid
-          ; in_data = data_out
+          ; in_valid = serial_to_buffer_valid
+          ; in_data = serial_to_buffer_data
           ; out = { ready = vdd }
           }
       in
+      serial_to_packet_ready <== serial_to_packet_ready';
       let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
       let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
@@ -135,6 +161,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
       in
+      dma_ready <== dma.in_.ready;
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
@@ -196,14 +223,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       loop_for 44)
     all_inputs;
   loop_for 1000;
-  if debug
-  then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform;
+  if debug then Waveform.Serialize.marshall waveform name;
   print_ram sim
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_dma_hello_world"
+    ~name:"/tmp/test_dma_hio"
     ~clock_frequency:200
     ~baud_rate:50
     ~include_parity_bit:false

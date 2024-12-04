@@ -5,6 +5,16 @@ open Signal
 open Always
 
 module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
+  module Address_buffer = Data_resize.Make (struct
+      let input_width = 8
+      let output_width = 32
+    end)
+
+  module Word_buffer = Data_resize.Make (struct
+      let input_width = 8
+      let output_width = 32
+    end)
+
   module I = struct
     type 'a t =
       { clock : 'a
@@ -27,139 +37,84 @@ module Make (Memory : Memory_bus_intf.S) (P : Packet_intf.S) = struct
   module State = struct
     type t =
       | Reading_memory_address
-      | Buffering_word
-      | Consume_remaining_buffer
-      | Writing_word
+      | Transferring
+      | Transfer_final_beat
       | Ignoring_illegal_address
     [@@deriving sexp, enumerate, compare]
   end
 
-  let buffer_n_elements
-    ?(reset_when = gnd)
-    ~reg_spec
-    ~reg_spec_no_clear
-    ~n
-    (input : Signal.t With_valid.t)
-    =
-    let next_element =
-      reg_fb
-        ~width:(Int.ceil_log2 n)
-        ~f:(fun t ->
-          mux2
-            reset_when
-            (of_int ~width:(width t) 0)
-            (mux2 input.valid (mod_counter ~max:(n - 1) t) t))
-        reg_spec
-    in
-    let data_parts =
-      List.init
-        ~f:(fun i ->
-          reg_fb
-            ~width:(width input.value)
-            ~f:(fun t ->
-              (* We wipe the state of the buffer on the first cycle
-                 of a buffering round to make sure previous state doesn't leak into
-                 the next DMA request and instead its zeroed out. *)
-              mux2
-                (input.valid &: (next_element ==:. i))
-                input.value
-                (mux2 (next_element ==:. 0) (zero (width t)) t))
-            reg_spec_no_clear)
-        n
-    in
-    { With_valid.valid =
-        next_element ==:. n - 1 &: input.valid &: ~:reset_when |> reg reg_spec_no_clear
-    ; value = data_parts
-    }
-  ;;
-
   let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack = _ } : _ I.t) =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
     if Memory.data_bus_width % width in_.data.data <> 0
     then raise_s [%message "BUG: Memory width must be a multiple of DMA stream input"];
-    (* We assume that memory address width is data width here *)
-    let num_cycle_to_buffer = Memory.data_bus_width / width in_.data.data in
-    let input_ready = Variable.wire ~default:gnd in
-    let address_buffer =
-      buffer_n_elements
-      (* Reset when last so we don't get stuck with a mis-sized packet. *)
-        ~reset_when:in_.data.last
-        ~reg_spec
-        ~reg_spec_no_clear
-        ~n:num_cycle_to_buffer
-        { valid = state.is Reading_memory_address &: in_.valid; value = in_.data.data }
-      |> With_valid.map_value ~f:concat_msb
-    in
-    let data_buffer =
-      buffer_n_elements
-        ~reg_spec
-        ~reg_spec_no_clear
-        ~n:num_cycle_to_buffer
-        { valid = state.is Buffering_word &: in_.valid; value = in_.data.data }
-      |> With_valid.map_value ~f:concat_lsb
-    in
-    (* TODO: We copy the memory address to current_address so we can increment
-       it as we write. It's a little bit wasteful to have two registers where
-       one won't be used at once - consider refactoring down the line. *)
     let current_address =
-      Variable.reg ~width:(width address_buffer.value) reg_spec_no_clear
+      Variable.reg ~width:Address_buffer.O.port_widths.out_data reg_spec
     in
-    let current_data = Variable.reg ~width:(width data_buffer.value) reg_spec_no_clear in
-    let was_last = Variable.reg ~width:1 reg_spec_no_clear in
+    let address_buffer =
+      Address_buffer.hierarchical
+        ~instance:"address_buffer"
+        scope
+        { Address_buffer.I.clock
+        ; clear = ~:(state.is Reading_memory_address)
+        ; in_valid = in_.valid &: state.is Reading_memory_address
+        ; in_data = in_.data.data
+        ; out_ready = vdd
+        }
+    in
+    let word_buffer =
+      Word_buffer.hierarchical
+        ~instance:"word_buffer"
+        scope
+        { Word_buffer.I.clock
+        ; clear = state.is Reading_memory_address
+        ; in_valid = in_.valid &: state.is Transferring
+        ; in_data = in_.data.data
+        ; out_ready = out.ready
+        }
+    in
     compile
       [ state.switch
           [ ( State.Reading_memory_address
-            , [ input_ready <--. 1
-              ; when_
-                  address_buffer.valid
-                  [ current_address <-- address_buffer.value
+            , [ when_
+                  address_buffer.out_valid
+                  [ current_address <-- address_buffer.out_data
                   ; if_
-                      (Memory.address_is_word_aligned address_buffer.value)
-                      [ state.set_next Buffering_word ]
+                      (Memory.address_is_word_aligned address_buffer.out_data)
+                      [ state.set_next Transferring ]
                       [ state.set_next Ignoring_illegal_address ]
                   ]
               ] )
-          ; (* TODO: In principle, we can buffer a word while waiting for a
-               write, but that makes the state machine more complicated. *)
-            ( Buffering_word
-            , [ input_ready <--. 1
-              ; (* If in_.last we will reset to Reading_memory_address unless
-                   next_data.valid is also high in which case we will write the last
-                   word first. This causes us to loose the last bytes of an unaligned
-                   write. *)
-                was_last <-- in_.data.last
-              ; current_data <-- data_buffer.value
-              ; when_ in_.data.last [ state.set_next Consume_remaining_buffer ]
-              ; when_ data_buffer.valid [ state.set_next Writing_word ]
+          ; ( Transferring
+            , [ when_ (in_.valid &: in_.data.last) [ state.set_next Transfer_final_beat ]
+              ; when_ (word_buffer.out_valid &: out.ready) [ incr ~by:4 current_address ]
               ] )
-          ; ( Consume_remaining_buffer
-            , [ (* We pause a cycle to let the in_.data.data get into the data buffer *)
-                current_data <-- data_buffer.value
-              ; state.set_next Writing_word
-              ] )
-          ; ( Writing_word
+          ; ( Transfer_final_beat
             , [ when_
-                  out.ready
-                  [ current_address
-                    <-- current_address.value +:. (width data_buffer.value / 8)
-                  ; state.set_next Buffering_word
-                  ]
+                  (out.ready |: ~:(word_buffer.interim_data_buffered))
+                  [ state.set_next Reading_memory_address ]
               ] )
           ; ( Ignoring_illegal_address
-            , [ (* Ignore the packet *)
-                input_ready <--. 1
-              ; when_ in_.data.last [ state.set_next Reading_memory_address ]
+            , [ when_
+                  (in_.valid &: in_.data.last)
+                  [ state.set_next Reading_memory_address ]
               ] )
           ]
       ];
-    { O.in_ = { ready = input_ready.value }
+    { O.in_ =
+        { ready =
+            state.is Reading_memory_address
+            &: address_buffer.ready
+            |: (state.is Transferring &: word_buffer.ready)
+            |: state.is Ignoring_illegal_address
+        }
     ; out =
-        { valid = state.is Writing_word
-        ; data = { address = current_address.value; write_data = current_data.value }
+        { valid =
+            word_buffer.out_valid
+            |: (state.is Transfer_final_beat &: word_buffer.interim_data_buffered)
+        ; data = { address = current_address.value; write_data = word_buffer.out_data }
         }
     }
   ;;

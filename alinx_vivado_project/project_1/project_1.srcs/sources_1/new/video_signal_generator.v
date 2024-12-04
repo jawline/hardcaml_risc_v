@@ -4,9 +4,8 @@ module video_signal_generator(
 	output                hs,            //horizontal synchronization
 	output                vs,            //vertical synchronization
 	output                de,            //video valid
-	output[7:0]           rgb_r,         //video red data
-	output[7:0]           rgb_g,         //video green data
-	output[7:0]           rgb_b          //video blue data
+	output                w_x_changed,
+	output[11:0]          w_active_x
 );
 
 `define VIDEO_1024_600;
@@ -127,44 +126,20 @@ parameter V_BP  = 16'd36;
 parameter HS_POL = 1'b1;
 parameter VS_POL = 1'b1;
 `endif
+
 parameter H_TOTAL = H_ACTIVE + H_FP + H_SYNC + H_BP;//horizontal total time (pixels)
 parameter V_TOTAL = V_ACTIVE + V_FP + V_SYNC + V_BP;//vertical total time (lines)
-//define the RGB values for 8 colors
-parameter WHITE_R       = 8'hff;
-parameter WHITE_G       = 8'hff;
-parameter WHITE_B       = 8'hff;
-parameter YELLOW_R      = 8'hff;
-parameter YELLOW_G      = 8'hff;
-parameter YELLOW_B      = 8'h00;                                
-parameter CYAN_R        = 8'h00;
-parameter CYAN_G        = 8'hff;
-parameter CYAN_B        = 8'hff;                                
-parameter GREEN_R       = 8'h00;
-parameter GREEN_G       = 8'hff;
-parameter GREEN_B       = 8'h00;
-parameter MAGENTA_R     = 8'hff;
-parameter MAGENTA_G     = 8'h00;
-parameter MAGENTA_B     = 8'hff;
-parameter RED_R         = 8'hff;
-parameter RED_G         = 8'h00;
-parameter RED_B         = 8'h00;
-parameter BLUE_R        = 8'h00;
-parameter BLUE_G        = 8'h00;
-parameter BLUE_B        = 8'hff;
-parameter BLACK_R       = 8'h00;
-parameter BLACK_G       = 8'h00;
-parameter BLACK_B       = 8'h00;
+
+reg x_changed;
 reg hs_reg;                      //horizontal sync register
 reg vs_reg;                      //vertical sync register
 reg hs_reg_d0;                   //delay 1 clock of 'hs_reg'
 reg vs_reg_d0;                   //delay 1 clock of 'vs_reg'
 reg[11:0] h_cnt;                 //horizontal counter
 reg[11:0] v_cnt;                 //vertical counter
+reg[11:0] prev_active_x;              //video x position 
 reg[11:0] active_x;              //video x position 
 reg[11:0] active_y;              //video y position 
-reg[7:0] rgb_r_reg;              //video red data register
-reg[7:0] rgb_g_reg;              //video green data register
-reg[7:0] rgb_b_reg;              //video blue data register
 reg h_active;                    //horizontal video active
 reg v_active;                    //vertical video active
 wire video_active;               //video active(horizontal active and vertical active)
@@ -173,9 +148,9 @@ assign hs = hs_reg_d0;
 assign vs = vs_reg_d0;
 assign video_active = h_active & v_active;
 assign de = video_active_d0;
-assign rgb_r = rgb_r_reg;
-assign rgb_g = rgb_g_reg;
-assign rgb_b = rgb_b_reg;
+assign w_active_x  = active_x;
+assign w_x_changed = x_changed;
+
 always@(posedge clk or posedge rst)
 begin
 	if(rst == 1'b1)
@@ -204,12 +179,28 @@ end
 
 always@(posedge clk or posedge rst)
 begin
-	if(rst == 1'b1)
-		active_x <= 12'd0;
-	else if(h_cnt >= H_FP + H_SYNC + H_BP - 1)//horizontal video active
-		active_x <= h_cnt - (H_FP[11:0] + H_SYNC[11:0] + H_BP[11:0] - 12'd1);
-	else
-		active_x <= active_x;
+    if (rst == 1'b1) 
+        active_x <= 12'd0;
+    else if(h_cnt >= H_FP + H_SYNC + H_BP - 1)//horizontal video active
+        active_x <= h_cnt - (H_FP[11:0] + H_SYNC[11:0] + H_BP[11:0] - 12'd1);
+    else
+        active_x <= 12'd0;
+end
+
+always@(posedge clk or posedge rst)
+begin
+    if (rst == 1'b1) 
+        prev_active_x <= 12'd0;
+    else
+        prev_active_x <= active_x;
+end
+
+always@(posedge clk or posedge rst)
+begin
+    if (rst == 1'b1) 
+        x_changed <= 12'd0;
+    else 
+        x_changed <= (active_x != prev_active_x);
 end
 
 always@(posedge clk or posedge rst)
@@ -271,77 +262,6 @@ begin
 		v_active <= 1'b0;   
 	else
 		v_active <= v_active;
-end
-
-always@(posedge clk or posedge rst)
-begin
-	if(rst == 1'b1)
-		begin
-			rgb_r_reg <= 8'h00;
-			rgb_g_reg <= 8'h00;
-			rgb_b_reg <= 8'h00;
-		end
-	else if(video_active)
-		if(active_x == 12'd0)
-			begin
-				rgb_r_reg <= WHITE_R;
-				rgb_g_reg <= WHITE_G;
-				rgb_b_reg <= WHITE_B;
-			end
-		else if(active_x == (H_ACTIVE/8) * 1)
-			begin
-				rgb_r_reg <= YELLOW_R;
-				rgb_g_reg <= YELLOW_G;
-				rgb_b_reg <= YELLOW_B;
-			end         
-		else if(active_x == (H_ACTIVE/8) * 2)
-			begin
-				rgb_r_reg <= CYAN_R;
-				rgb_g_reg <= CYAN_G;
-				rgb_b_reg <= CYAN_B;
-			end
-		else if(active_x == (H_ACTIVE/8) * 3)
-			begin
-				rgb_r_reg <= GREEN_R;
-				rgb_g_reg <= GREEN_G;
-				rgb_b_reg <= GREEN_B;
-			end
-		else if(active_x == (H_ACTIVE/8) * 4)
-			begin
-				rgb_r_reg <= MAGENTA_R;
-				rgb_g_reg <= MAGENTA_G;
-				rgb_b_reg <= MAGENTA_B;
-			end
-		else if(active_x == (H_ACTIVE/8) * 5)
-			begin
-				rgb_r_reg <= RED_R;
-				rgb_g_reg <= RED_G;
-				rgb_b_reg <= RED_B;
-			end
-		else if(active_x == (H_ACTIVE/8) * 6)
-			begin
-				rgb_r_reg <= BLUE_R;
-				rgb_g_reg <= BLUE_G;
-				rgb_b_reg <= BLUE_B;
-			end 
-		else if(active_x == (H_ACTIVE/8) * 7)
-			begin
-				rgb_r_reg <= BLACK_R;
-				rgb_g_reg <= BLACK_G;
-				rgb_b_reg <= BLACK_B;
-			end
-		else
-			begin
-				rgb_r_reg <= rgb_r_reg;
-				rgb_g_reg <= rgb_g_reg;
-				rgb_b_reg <= rgb_b_reg;
-			end         
-	else
-		begin
-			rgb_r_reg <= 8'h00;
-			rgb_g_reg <= 8'h00;
-			rgb_b_reg <= 8'h00;
-		end
 end
 
 endmodule 

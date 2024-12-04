@@ -45,12 +45,16 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     let module Dma = Packet_to_memory.Make (Memory) (Packet) in
     let module Uart_tx = Uart_tx.Make (Config) in
     let module Uart_rx = Uart_rx.Make (Config) in
+    let module Serial_buffer =
+      Serial_buffer.Make (struct
+        let serial_input_width = 8
+      end)
+    in
     let module Serial_to_packet =
       Serial_to_packet.Make
         (struct
           let header = 'Q'
           let serial_input_width = 8
-          let max_packet_length_in_data_widths = 2048
         end)
         (Packet)
     in
@@ -66,21 +70,40 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     let write_bus = Memory.Write_bus.Rx.Of_signal.wires () in
     let read_response = Memory.Read_response.With_valid.Of_signal.wires () in
     let write_response = Memory.Write_response.With_valid.Of_signal.wires () in
-    let { Uart_rx.O.data_out_valid; data_out; parity_error } =
+    let { Uart_rx.O.data_out_valid = uart_rx_valid
+        ; data_out = uart_rx_data
+        ; parity_error
+        }
+      =
       Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
     in
+    let serial_to_packet_ready = wire 1 in
+    let { Serial_buffer.O.out_valid = serial_buffer_valid; out_data = serial_buffer_data }
+      =
+      Serial_buffer.hierarchical
+        ~instance:"serial_buffer"
+        ~capacity:8192
+        scope
+        { Serial_buffer.I.clock
+        ; clear
+        ; in_valid = uart_rx_valid
+        ; in_data = uart_rx_data
+        ; out_ready = serial_to_packet_ready
+        }
+    in
     let router_ready = wire 1 in
-    let { Serial_to_packet.O.out } =
+    let { Serial_to_packet.O.out; ready = serial_to_packet_ready' } =
       Serial_to_packet.hierarchical
         ~instance:"serial_to_packet"
         scope
         { Serial_to_packet.I.clock
         ; clear
-        ; in_valid = data_out_valid
-        ; in_data = data_out
-        ; out = { ready = vdd }
+        ; in_valid = serial_buffer_valid
+        ; in_data = serial_buffer_data
+        ; out = { ready = router_ready }
         }
     in
+    serial_to_packet_ready <== serial_to_packet_ready';
     let dma_ready = wire 1 in
     let pulse_ready = wire 1 in
     let router =
@@ -148,7 +171,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       ; tx_input = tx_enable
       ; tx_busy = dma_out.busy
       ; uart_tx = dma_out_uart_tx.uart_tx
-      ; uart_rx_valid = data_out_valid
+      ; uart_rx_valid
       ; parity_error
       ; serial_to_packet_valid = out.valid
       ; clear_message = pulse.signal

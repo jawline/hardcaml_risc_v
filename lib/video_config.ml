@@ -1,9 +1,3 @@
 type t =
   | No_video_out
-  | Video_out of
-      { output_width : int
-      ; output_height : int
-      ; framebuffer_width : int
-      ; framebuffer_height : int
-      ; framebuffer_address : int
-      }
+  | Video_out of ((module Video_out.Config) * (module Video_signals.Config))

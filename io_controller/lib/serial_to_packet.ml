@@ -14,7 +14,6 @@ module Make
     (Config : sig
        val header : char
        val serial_input_width : int
-       val max_packet_length_in_data_widths : int
      end)
     (P : Packet_intf.S) =
 struct
@@ -30,7 +29,11 @@ struct
   end
 
   module O = struct
-    type 'a t = { out : 'a P.Contents_stream.Tx.t } [@@deriving hardcaml ~rtlmangle:"$"]
+    type 'a t =
+      { out : 'a P.Contents_stream.Tx.t
+      ; ready : 'a
+      }
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
@@ -38,9 +41,19 @@ struct
       | Waiting_for_start
       | Waiting_for_length
       | Streaming_in
-      | Flushing
     [@@deriving sexp, enumerate, compare]
   end
+
+  let output_width = P.Contents_stream.Tx.port_widths.data.data
+
+  let () =
+    if output_width <> Config.serial_input_width
+    then
+      raise_s
+        [%message
+          "ERROR: We do not currently support packets with larger data buses than the \
+           serial input bus"]
+  ;;
 
   let create
     (scope : Scope.t)
@@ -48,36 +61,14 @@ struct
     =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let wout = width (P.Contents_stream.Tx.Of_signal.of_int 0).data.data in
-    if wout <> Config.serial_input_width
-    then
-      raise_s
-        [%message
-          "ERROR: We do not currently support packets with larger data buses than the \
-           serial input bus"];
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
-    let%hw_var should_write_packet_buffer = Variable.wire ~default:gnd in
-    let reading_packet_buffer = Variable.wire ~default:gnd in
-    let reading_length = Variable.reg ~width:16 reg_spec_no_clear in
-    let which_length_packet = Variable.reg ~width:4 reg_spec_no_clear in
+    let reading_length = Variable.reg ~width:16 reg_spec in
+    let which_length_packet = Variable.reg ~width:4 reg_spec in
     let num_length_packets =
       let wserial = width in_data in
       let wlen = width reading_length.value in
       if wlen % wserial <> 0 then (wlen / wserial) + 1 else wlen / wserial
-    in
-    let packet_buffer =
-      Fifo.create
-        ~showahead:true
-        ~capacity:Config.max_packet_length_in_data_widths
-        ~clock
-        ~clear
-        ~wr:should_write_packet_buffer.value
-        ~d:in_data
-        ~rd:reading_packet_buffer.value
-        ~scope:(Scope.sub_scope scope "fifo")
-        ()
     in
     let length_this_cycle =
       mux_init
@@ -95,10 +86,8 @@ struct
           new_length)
         num_length_packets
     in
-    let%hw have_buffered_packets = ~:(packet_buffer.empty) in
     compile
-      [ reading_packet_buffer <-- (have_buffered_packets &: out_ready)
-      ; state.switch
+      [ state.switch
           [ ( State.Waiting_for_start
             , [ which_length_packet <--. 0
               ; when_
@@ -112,28 +101,33 @@ struct
                   ; reading_length <-- length_this_cycle
                   ; when_
                       (which_length_packet.value ==:. num_length_packets - 1)
-                      [ state.set_next Streaming_in ]
+                      [ (* Zero length packets are disallowed *)
+                        if_
+                          (length_this_cycle ==:. 0)
+                          [ state.set_next Waiting_for_start ]
+                          [ state.set_next Streaming_in ]
+                      ]
                   ]
               ] )
           ; ( Streaming_in
             , [ when_
-                  in_valid
-                  [ should_write_packet_buffer <--. 1
-                  ; decr reading_length
-                  ; when_ (reading_length.value ==:. 1) [ state.set_next Flushing ]
+                  (in_valid &: out_ready)
+                  [ decr reading_length
+                  ; when_
+                      (reading_length.value ==:. 1)
+                      [ state.set_next Waiting_for_start ]
                   ]
               ] )
-          ; ( Flushing
-            , [ when_ ~:have_buffered_packets [ state.set_next Waiting_for_start ] ] )
           ]
       ];
     { O.out =
-        { P.Contents_stream.Tx.valid = have_buffered_packets
-        ; data =
-            { data = packet_buffer.q
-            ; last = state.is State.Flushing &: (packet_buffer.used ==:. 1)
-            }
+        { P.Contents_stream.Tx.valid = in_valid &: state.is Streaming_in
+        ; data = { data = in_data; last = reading_length.value ==:. 1 }
         }
+    ; ready =
+        state.is Waiting_for_start
+        |: state.is Waiting_for_length
+        |: (state.is Streaming_in &: out_ready)
     }
   ;;
 

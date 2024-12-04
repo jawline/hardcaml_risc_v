@@ -40,33 +40,48 @@ module Make (Memory : Memory_bus_intf.S) = struct
   module O = struct
     type 'a t =
       { video_data : 'a Video_data.t
+      ; video_signals : 'a Video_signals.Video_signals.t
       ; memory_request : 'a Memory.Read_bus.Tx.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create ~config scope (i : _ I.t) =
-    let module Config = (val config : Config) in
-    let module Framebuffer_expander = Framebuffer_expander.Make (Config) (Memory) in
+  let create ~framebuffer_config ~video_signals_config scope (i : _ I.t) =
+    let module Video_signals_config = (val video_signals_config : Video_signals.Config) in
+    let module Video_signals = Video_signals.Make (Video_signals_config) in
+    let module Framebuffer_config = (val framebuffer_config : Config) in
+    let module Framebuffer_expander =
+      Framebuffer_expander.Make (Framebuffer_config) (Memory)
+    in
+    let video_signals =
+      Video_signals.hierarchical
+        scope
+        { Video_signals.I.clock = i.clock; clear = i.clear }
+    in
     let expander =
       Framebuffer_expander.hierarchical
         scope
         { Framebuffer_expander.I.clock = i.clock
         ; clear = i.clear
-        ; start = i.screen.vsync
-        ; next = i.screen.pixel
+        ; start = ~:(video_signals.video_active)
+        ; next = video_signals.next_pixel
         ; memory_request = i.memory_request
         ; memory_response = i.memory_response
-        ; start_address = of_int ~width:32 Config.framebuffer_address
+        ; start_address = of_int ~width:32 Framebuffer_config.framebuffer_address
         }
     in
-    { O.video_data = { vdata = List.init ~f:(fun _ -> expander.pixel) 24 |> concat_lsb }
+    let pixel_buffer = Fifo.create ~capacity:2048 ~wr:expander.pixel in
+    { O.video_data = { vdata = repeat ~count:24 expander.pixel }
+    ; video_signals
     ; memory_request = expander.memory_request
     }
   ;;
 
-  let hierarchical ~config (scope : Scope.t) =
+  let hierarchical ~framebuffer_config ~video_signals_config (scope : Scope.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"video_out" (create ~config)
+    H.hierarchical
+      ~scope
+      ~name:"video_out"
+      (create ~framebuffer_config ~video_signals_config)
   ;;
 end

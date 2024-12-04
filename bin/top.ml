@@ -13,7 +13,7 @@ module Design =
       let num_registers = 32
     end)
     (struct
-      let num_bytes = 1024 * 64
+      let num_bytes = 65536
     end)
     (struct
       let num_harts = 1
@@ -29,12 +29,25 @@ module Design =
 
       let include_video_out =
         Video_config.Video_out
-          { output_width = 1280
-          ; output_height = 768
-          ; framebuffer_width = 32
-          ; framebuffer_height = 32
-          ; framebuffer_address = 0x8000
-          }
+          ( (module struct
+              let output_width = 1024
+              let output_height = 600
+              let input_width = 32
+              let input_height = 32
+              let framebuffer_address = 0x8000
+            end : Video_out.Config)
+          , (module struct
+              (* TODO: Add a clock requirement *)
+
+              let h_active = 1024
+              let v_active = 600
+              let h_fp = 32
+              let h_sync = 48
+              let h_bp = 240
+              let v_fp = 10
+              let v_sync = 3
+              let v_bp = 12
+            end : Video_signals.Config) )
       ;;
     end)
 
@@ -108,16 +121,10 @@ module Program = struct
          printf "Opening in channel\n%!";
          let reader = In_channel.create ~binary:true "/dev/ttyUSB0" in
          print_s [%message "Loading" (program_filename : string)];
-         let packet = In_channel.read_all program_filename in
-         print_s [%message "Loaded" (String.length packet : int)];
-         let chunk_sz = 256 in
-         String.to_list hello_world_program
-         |> List.chunks_of ~length:chunk_sz
-         |> List.iteri ~f:(fun index data ->
-           let formatted_packet =
-             dma_packet ~address:(index * chunk_sz) (String.of_char_list data)
-           in
-           do_write formatted_packet);
+         let program = In_channel.read_all program_filename in
+         print_s [%message "Loaded" (String.length program : int)];
+         let formatted_packet = dma_packet ~address:0 program in
+         do_write formatted_packet;
          printf "Sending clear signal via DMA\n%!";
          do_write clear_packet;
          printf "Waiting\n%!";

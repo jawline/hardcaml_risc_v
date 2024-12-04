@@ -41,13 +41,10 @@ struct
   let create (scope : Scope.t) ({ I.clock; clear; in_; outs } : _ I.t) =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
     let which_tag =
-      Variable.reg
-        ~width:(Signal.num_bits_to_represent (Config.num_tags - 1))
-        reg_spec_no_clear
+      Variable.reg ~width:(Signal.num_bits_to_represent (Config.num_tags - 1)) reg_spec
     in
     let selected_out_ready =
       let output_is_ready =
@@ -79,9 +76,15 @@ struct
                   ]
               ] )
           ; ( Routing
-            , [ when_ in_.data.last [ state.set_next Waiting_for_start_of_packet ] ] )
+            , [ when_
+                  (in_.valid &: in_.data.last)
+                  [ state.set_next Waiting_for_start_of_packet ]
+              ] )
           ; ( Discarding_bad_tag
-            , [ when_ in_.data.last [ state.set_next Waiting_for_start_of_packet ] ] )
+            , [ when_
+                  (in_.valid &: in_.data.last)
+                  [ state.set_next Waiting_for_start_of_packet ]
+              ] )
           ]
       ];
     { O.in_ = { ready = selected_out_ready }
