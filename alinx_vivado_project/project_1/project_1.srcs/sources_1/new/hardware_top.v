@@ -32,7 +32,7 @@ wire                       x_changed;
 
 clk_wiz_0 ( .clk_in1_p(sys_clock_p), .clk_in1_n(sys_clock_n), .hart_clock(hart_clock), .i2c_clock(i2c_clock), .video_clock(video_clock), .reset(~rst_n), .locked(locked) );
 
-top cpu ( .clock(hart_clock), .clear(~locked), .uart_rx(uart_rx), .video_in$pixel(x_changed), .video_in$hsync(1'b0), .video_in$vsync(video_vs), .video_out$vdata(vout_data));
+top cpu ( .clock(hart_clock), .clear(~done_9134), .uart_rx(uart_rx));
 
 wire[9:0]                  lut_index;
 wire[31:0]                 lut_data;
@@ -57,15 +57,6 @@ lut_hdmi lut_hdmi_m0(
         .lut_data                   (lut_data                 )
 );
 
-video_signal_generator sync_signals(
-.clk                        (video_clock                ),
-.rst                        (~done_9134               ),
-.hs                         (video_hs                 ),
-.vs                         (video_vs                 ),
-.de                         (video_de                 ),
-.w_x_changed (x_changed)
-);
-
 //uart_loopback_top uart_loopback_top( .clock(hart_clock), .clear(~locked), .uart_rx(uart_rx));
 //assign uart_tx = uart_loopback_top.uart_tx;
 assign uart_tx = cpu.uart_tx;
@@ -75,9 +66,10 @@ assign led3 = ~cpu.uart_rx_valid;
 assign led4 = ~cpu.serial_to_packet_valid;
 
 assign vout_clk = video_clock;
-assign vout_hs = video_hs;
-assign vout_vs = video_vs;
-assign vout_de = video_de;
+assign vout_data = cpu.video_out$video_data$vdata;
+assign vout_hs = cpu.video_out$video_signals$h_sync;
+assign vout_vs = cpu.video_out$video_signals$v_sync;
+assign vout_de = cpu.video_out$video_signals$video_active;
 assign hdmi_nreset = locked;
 
 endmodule

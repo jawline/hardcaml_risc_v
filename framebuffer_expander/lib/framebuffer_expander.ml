@@ -43,7 +43,8 @@ struct
 
   module O = struct
     type 'a t =
-      { pixel : 'a
+      { valid : 'a
+      ; pixel : 'a
       ; memory_request : 'a Memory.Read_bus.Tx.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -290,7 +291,11 @@ struct
       ; when_ i.memory_response.valid [ data <-- i.memory_response.value.read_data ]
       ];
     let body_bit = (log_shift ~f:srl ~by:which_bit data.value).:(0) in
-    { O.pixel = mux2 (current_state.is X_body) body_bit gnd
+    { O.valid =
+        ~:(current_state.is X_body)
+        |: (* Two cycles of delay between fetching and the data being available *)
+        (fetched.value &: reg reg_spec fetched.value)
+    ; pixel = mux2 (current_state.is X_body) body_bit gnd
     ; memory_request =
         { Memory.Read_bus.Tx.valid = request_read
         ; data = { address = next_address.value }

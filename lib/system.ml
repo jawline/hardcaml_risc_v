@@ -103,8 +103,6 @@ struct
       { clock : 'a
       ; clear : 'a
       ; uart_rx : 'a option [@exists include_uart_wires]
-      ; video_in : 'a Video_out_with_memory.Screen_signals.t option
-           [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -116,8 +114,7 @@ struct
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
       ; parity_error : 'a option [@exists include_uart_wires]
       ; serial_to_packet_valid : 'a option [@exists include_uart_wires]
-      ; video_out : 'a Video_out_with_memory.Video_data.t option
-           [@exists include_video_out]
+      ; video_out : 'a Video_out_with_memory.O.t option [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -208,7 +205,7 @@ struct
 
   module Video_data = struct
     type 'a t =
-      { video_data : 'a Video_out_with_memory.Video_data.t
+      { video_data : 'a Video_out_with_memory.O.t
       ; memory_request_ack : 'a Memory_controller.Memory_bus.Read_bus.Rx.t
       ; memory_request : 'a Memory_controller.Memory_bus.Read_bus.Tx.t
       ; memory_response : 'a Memory_controller.Memory_bus.Read_response.With_valid.t
@@ -235,13 +232,12 @@ struct
           scope
           { Video_out_with_memory.I.clock = i.clock
           ; clear = i.clear
-          ; screen = Option.value_exn i.video_in
           ; memory_request = memory_request_ack
           ; memory_response
           }
       in
       Some
-        { Video_data.video_data = video_out.video_data
+        { Video_data.video_data = video_out
         ; memory_request_ack
         ; memory_request = video_out.memory_request
         ; memory_response

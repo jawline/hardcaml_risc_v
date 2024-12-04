@@ -72,9 +72,6 @@ module With_transmitter = struct
       ; clear : 'a
       ; data_in_valid : 'a
       ; data_in : 'a [@bits 8]
-      ; hsync : 'a
-      ; vsync : 'a
-      ; pixelsync : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
@@ -89,7 +86,7 @@ module With_transmitter = struct
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
-  let create scope { I.clock; clear; data_in_valid; data_in; hsync; vsync; pixelsync } =
+  let create scope { I.clock; clear; data_in_valid; data_in } =
     let open Signal in
     let { Uart_tx.O.uart_tx; _ } =
       Uart_tx.hierarchical
@@ -101,11 +98,7 @@ module With_transmitter = struct
       Cpu_with_dma_memory.hierarchical
         ~instance:"cpu"
         scope
-        { clock
-        ; clear
-        ; uart_rx = Some uart_tx
-        ; video_in = Some { hsync; vsync; pixel = pixelsync }
-        }
+        { clock; clear; uart_rx = Some uart_tx }
     in
     let { Uart_rx.O.data_out_valid; data_out; _ } =
       Uart_rx.hierarchical
@@ -114,7 +107,7 @@ module With_transmitter = struct
         { Uart_rx.I.clock; clear; uart_rx = Option.value_exn cpu_uart_tx }
     in
     let video_out = Option.value_exn video_out in
-    { O.registers; data_out_valid; data_out; pixel = video_out.vdata.:(0) }
+    { O.registers; data_out_valid; data_out; pixel = video_out.video_data.vdata.:(0) }
   ;;
 end
 
@@ -197,23 +190,6 @@ let clear_video_state () =
   which_px := 0
 ;;
 
-let consider_video_out_settings ~(inputs : Bits.t ref With_transmitter.I.t) () =
-  inputs.hsync := gnd;
-  inputs.vsync := gnd;
-  inputs.pixelsync := gnd;
-  if !which_cycle % cycles_per_pixel = 0
-  then (
-    inputs.pixelsync := vdd;
-    incr which_px;
-    if !which_px = output_width * output_height
-    then (
-      which_px := 0;
-      inputs.vsync := vdd)
-    else if !which_px % output_width = 0
-    then inputs.hsync := vdd
-    else ())
-;;
-
 let consider_collecting_frame_buffer (outputs : Bits.t ref With_transmitter.O.t) =
   let write_framebuffer () =
     Array.set current_frame !which_px (Bits.to_bool !(outputs.pixel))
@@ -248,16 +224,12 @@ let test ~print_frames ~cycles ~data sim =
   Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
   (* Send a clear signal and then start the vsync logic *)
   clear_registers ~inputs sim;
-  inputs.vsync := vdd;
-  Cyclesim.cycle sim;
-  inputs.vsync := gnd;
   clear_video_state ();
   print_s [%message "Printing RAM before registers"];
   let rec loop_for cycles =
     if cycles = 0
     then ()
     else (
-      consider_video_out_settings ~inputs ();
       Cyclesim.cycle sim;
       consider_collecting_frame_buffer outputs;
       incr which_cycle;
@@ -312,16 +284,16 @@ let%expect_test "Hello world" =
   Called from Hardcaml__Signal.reg_fb in file "src/signal.ml" (inlined), line 388, characters 8-11
   Called from Hardcaml_risc_v__Video_signals.Make.create in file "lib/video_signals.ml", lines 59-66, characters 6-16
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v__Video_out.Make.create in file "lib/video_out.ml", lines 57-59, characters 6-60
+  Called from Hardcaml_risc_v__Video_out.Make.create in file "lib/video_out.ml", lines 47-49, characters 6-60
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v__System.Make.maybe_video_out in file "lib/system.ml", lines 232-241, characters 8-11
-  Called from Hardcaml_risc_v__System.Make.create in file "lib/system.ml", line 253, characters 26-49
+  Called from Hardcaml_risc_v__System.Make.maybe_video_out in file "lib/system.ml", lines 229-237, characters 8-11
+  Called from Hardcaml_risc_v__System.Make.create in file "lib/system.ml", line 249, characters 26-49
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 101-108, characters 6-9
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 98-104, characters 6-9
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 424, characters 18-34
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 146, characters 18-81
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 129-132, characters 4-84
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 297, characters 12-45
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 125-128, characters 4-84
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 273, characters 12-45
   Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
   |}]
 ;;
@@ -346,16 +318,16 @@ let%expect_test "Game of life" =
   Called from Hardcaml__Signal.reg_fb in file "src/signal.ml" (inlined), line 388, characters 8-11
   Called from Hardcaml_risc_v__Video_signals.Make.create in file "lib/video_signals.ml", lines 59-66, characters 6-16
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v__Video_out.Make.create in file "lib/video_out.ml", lines 57-59, characters 6-60
+  Called from Hardcaml_risc_v__Video_out.Make.create in file "lib/video_out.ml", lines 47-49, characters 6-60
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v__System.Make.maybe_video_out in file "lib/system.ml", lines 232-241, characters 8-11
-  Called from Hardcaml_risc_v__System.Make.create in file "lib/system.ml", line 253, characters 26-49
+  Called from Hardcaml_risc_v__System.Make.maybe_video_out in file "lib/system.ml", lines 229-237, characters 8-11
+  Called from Hardcaml_risc_v__System.Make.create in file "lib/system.ml", line 249, characters 26-49
   Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 105, characters 18-40
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 101-108, characters 6-9
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.With_transmitter.create in file "regression-tests/test_programs.ml", lines 98-104, characters 6-9
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 424, characters 18-34
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 146, characters 18-81
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 129-132, characters 4-84
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 570, characters 12-46
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 125-128, characters 4-84
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 307, characters 12-46
   Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
   |}]
 ;;

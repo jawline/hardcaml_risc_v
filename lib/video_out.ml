@@ -13,15 +13,6 @@ module type Config = sig
 end
 
 module Make (Memory : Memory_bus_intf.S) = struct
-  module Screen_signals = struct
-    type 'a t =
-      { hsync : 'a
-      ; vsync : 'a
-      ; pixel : 'a
-      }
-    [@@deriving hardcaml ~rtlmangle:"$"]
-  end
-
   module Video_data = struct
     type 'a t = { vdata : 'a [@bits 24] } [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -30,7 +21,6 @@ module Make (Memory : Memory_bus_intf.S) = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; screen : 'a Screen_signals.t
       ; memory_request : 'a Memory.Read_bus.Rx.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
@@ -58,20 +48,39 @@ module Make (Memory : Memory_bus_intf.S) = struct
         scope
         { Video_signals.I.clock = i.clock; clear = i.clear }
     in
+    let pixel_buffer_full = wire 1 in
+    let expander_valid = wire 1 in
+    let pre_fetch_pixel = expander_valid &: ~:pixel_buffer_full in
     let expander =
       Framebuffer_expander.hierarchical
         scope
         { Framebuffer_expander.I.clock = i.clock
         ; clear = i.clear
         ; start = ~:(video_signals.video_active)
-        ; next = video_signals.next_pixel
+        ; next = pre_fetch_pixel
         ; memory_request = i.memory_request
         ; memory_response = i.memory_response
         ; start_address = of_int ~width:32 Framebuffer_config.framebuffer_address
         }
     in
-    let pixel_buffer = Fifo.create ~capacity:2048 ~wr:expander.pixel in
-    { O.video_data = { vdata = repeat ~count:24 expander.pixel }
+    expander_valid <== expander.valid;
+    (* We can pre-fetch up to two rows at 1024 * 600 *)
+    (* TODO: Rather than pre-fetching here it would be a lot more efficient in
+       memory to pre-fetch words in the framebuffer expander, but this isn't
+       awful since we can use 1 bit wide BRAMs. *)
+    let pixel_buffer =
+      Fifo.create
+        ~showahead:true
+        ~clock:i.clock
+        ~clear:(i.clear |: video_signals.v_sync)
+        ~capacity:2048
+        ~wr:pre_fetch_pixel
+        ~d:expander.pixel
+        ~rd:video_signals.video_active
+        ()
+    in
+    pixel_buffer_full <== pixel_buffer.full;
+    { O.video_data = { vdata = repeat ~count:24 pixel_buffer.q }
     ; video_signals
     ; memory_request = expander.memory_request
     }

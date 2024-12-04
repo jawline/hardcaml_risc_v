@@ -18,7 +18,6 @@ module Video_signals = struct
     { video_active : 'a
     ; v_sync : 'a
     ; h_sync : 'a
-    ; next_pixel : 'a
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
 end
@@ -42,14 +41,14 @@ module Make (Config : Config) = struct
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let h_cnt =
       reg_fb
-        ~width:(num_bits_to_represent h_total_pixels - 1)
+        ~width:(num_bits_to_represent (h_total_pixels - 1))
         ~f:(fun t -> mod_counter ~max:(h_total_pixels - 1) t)
         reg_spec
     in
     let is_end_of_line = h_cnt ==:. h_total_pixels - 1 in
     let v_cnt =
       reg_fb
-        ~width:(num_bits_to_represent v_total_lines - 1)
+        ~width:(num_bits_to_represent (v_total_lines - 1))
         ~f:(fun t -> mux2 is_end_of_line (mod_counter ~max:(v_total_lines - 1) t) t)
         reg_spec
     in
@@ -100,16 +99,7 @@ module Make (Config : Config) = struct
     in
     (* We are draining data now and not margin *)
     let video_active = v_active &: h_active in
-    let x_pixel =
-      reg_fb
-        ~width:(num_bits_to_represent Config.h_active)
-        ~f:(fun t ->
-          let modifier = Config.h_fp + Config.h_sync + Config.h_bp + 1 in
-          mux2 h_active (t -:. modifier) (zero (width t)))
-        reg_spec
-    in
-    let next_pixel = x_pixel <>: reg reg_spec x_pixel in
-    { O.h_sync; v_sync; video_active; next_pixel }
+    { O.h_sync; v_sync; video_active }
   ;;
 
   let hierarchical (scope : Scope.t) =

@@ -1017,7 +1017,7 @@ module With_transmitter = struct
       Cpu_with_dma_memory.hierarchical
         ~instance:"cpu"
         scope
-        { clock; clear; uart_rx = Some uart_tx; video_in = None }
+        { clock; clear; uart_rx = Some uart_tx }
     in
     { O.registers }
   ;;
