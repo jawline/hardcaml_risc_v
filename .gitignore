@@ -5,3 +5,6 @@ _build/
 *.cache/
 *.runs/
 rtl/
+*.o
+*.elf
+*.bin
