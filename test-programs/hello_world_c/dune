@@ -1,0 +1,5 @@
+(rule
+ (target hello_world.bin)
+ (deps ./compile ./hello_world.c ./entry.s ./link.ld)
+ (action
+  (run %{deps} -o %{target})))

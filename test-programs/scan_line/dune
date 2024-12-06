@@ -1,5 +1,5 @@
 (rule
- (target game_of_life)
- (deps ./compile ./game_of_life.c ./entry.s ./link.ld)
+ (target scan_line.bin)
+ (deps ./compile ./scan_line.c ../shared/shared.c ../shared/shared.h ./entry.s ./link.ld)
  (action
   (run %{deps} -o %{target})))

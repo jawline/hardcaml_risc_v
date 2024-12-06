@@ -265,7 +265,7 @@ let test ~print_frames ~cycles ~data sim =
 ;;
 
 let%expect_test "Hello world" =
-  let program = In_channel.read_all "../test-programs/hello_world_c/hello_world" in
+  let program = In_channel.read_all "../test-programs/hello_world_c/hello_world.bin" in
   let sim = create_sim "test_dma_hello_world" in
   test ~print_frames:false ~cycles:5000 ~data:program sim;
   finalize_sim sim;
@@ -296,7 +296,7 @@ let%expect_test "Hello world" =
 ;;
 
 let%expect_test "Game of life" =
-  let program = In_channel.read_all "../test-programs/game_of_life/game_of_life" in
+  let program = In_channel.read_all "../test-programs/game_of_life/game_of_life.bin" in
   let sim = create_sim "test_dma_game_of_life" in
   test ~print_frames:true ~cycles:500_000 ~data:program sim;
   finalize_sim sim;
