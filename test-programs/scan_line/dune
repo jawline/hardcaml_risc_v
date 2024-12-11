@@ -1,5 +1,11 @@
 (rule
  (target scan_line.bin)
- (deps ./compile ./scan_line.c ../shared/shared.c ../shared/shared.h ./entry.s ./link.ld)
+ (deps
+  ./compile
+  ./scan_line.c
+  ../shared/shared.c
+  ../shared/shared.h
+  ./entry.s
+  ./link.ld)
  (action
   (run %{deps} -o %{target})))
