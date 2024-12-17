@@ -1,0 +1,10 @@
+[package]
+name = "hello-world-rust"
+version = "0.1.0"
+edition = "2021"
+authors = ["Blake Loring"]
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+
+[dependencies]
