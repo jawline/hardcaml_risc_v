@@ -7,15 +7,7 @@ open! Bits
 
 let debug = true
 
-let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
-  let all_inputs =
-    (* We add the header and then the packet length before the packet *)
-    let packet = String.to_list packet in
-    let packet_size = List.length packet in
-    let packet_len_msb = packet_size land 0xFF00 in
-    let packet_len_lsb = packet_size land 0x00FF in
-    [ Char.to_int 'Q'; packet_len_msb; packet_len_lsb ] @ List.map ~f:Char.to_int packet
-  in
+let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packets =
   let module Config = struct
     (* This should trigger a switch every other cycle. *)
     let config =
@@ -61,12 +53,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         ; data_out : 'a [@bits 8]
         ; last : 'a
         ; parity_error : 'a
+        ; tx_idle : 'a
         }
       [@@deriving hardcaml]
     end
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
-      let { Uart_tx.O.uart_tx; _ } =
+      let { Uart_tx.O.uart_tx; idle = tx_idle; _ } =
         Uart_tx.hierarchical
           ~instance:"tx"
           scope
@@ -93,10 +86,14 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       ; data_out = out.data.data
       ; last = out.data.last
       ; parity_error
+      ; tx_idle
       }
     ;;
   end
   in
+  let module Tb = Hardcaml_step_testbench.Functional.Cyclesim.Make (Machine.I) (Machine.O)
+  in
+  let open Tb.Let_syntax in
   let create_sim () =
     let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
     Sim.create
@@ -106,41 +103,84 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   in
   let sim = create_sim () in
   let waveform, sim = Waveform.create sim in
-  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  let outputs : _ Machine.O.t = Cyclesim.outputs sim in
-  (* The fifo needs a clear cycle to initialize *)
-  inputs.clear := vdd;
-  Cyclesim.cycle sim;
-  inputs.clear := gnd;
-  let all_outputs = ref [] in
-  List.iter
-    ~f:(fun input ->
-      inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
-      Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
-      let rec loop_until_finished acc n =
-        if n = 0
-        then List.rev acc
-        else (
-          Cyclesim.cycle sim;
-          let acc =
-            if Bits.to_bool !(outputs.data_out_valid)
-            then Bits.to_int !(outputs.data_out) :: acc
-            else acc
-          in
-          loop_until_finished acc (n - 1))
+  let rec send_inputs = function
+    | [] -> return ()
+    | packet :: xs ->
+      let input_bytes =
+        (* We add the header and then the packet length before the packet *)
+        let packet = String.to_list packet in
+        let packet_size = List.length packet in
+        let packet_len_msb = packet_size land 0xFF00 in
+        let packet_len_lsb = packet_size land 0x00FF in
+        [ Char.to_int 'Q'; packet_len_msb; packet_len_lsb ]
+        @ List.map ~f:Char.to_int packet
       in
-      (* TODO: Don't just arbitrarily pad, instead wait for a tlast *)
-      let outputs = loop_until_finished [] 100 in
-      all_outputs := !all_outputs @ outputs)
-    all_inputs;
-  let output_packet = List.map ~f:Char.of_int_exn !all_outputs |> String.of_char_list in
-  print_s [%message "" ~input_packet:packet ~output_packet];
-  if debug then Waveform.Serialize.marshall waveform name;
-  if not (String.( = ) output_packet packet)
-  then raise_s [%message "output packet did not match input"];
-  print_s [%message "PASS"]
+      let rec consume_bytes = function
+        | [] -> return ()
+        | x :: xs ->
+          let%bind () =
+            Tb.cycle
+              { Tb.input_zero with data_in_valid = vdd; data_in = Bits.of_int ~width:8 x }
+            >>| ignore
+          in
+
+          let rec wait_until_idle () = 
+            let%bind result = Tb.cycle Tb.input_zero   in
+            if Bits.to_bool result.after_edge.tx_idle then return () else wait_until_idle () in
+          let%bind () = wait_until_idle () in
+          consume_bytes xs 
+
+      in
+      let%bind () = consume_bytes input_bytes in
+      send_inputs xs
+  in
+  let receive_packet () =
+    let output_bytes = ref [] in
+    let cycles = ref 0 in
+    let rec loop () =
+      let%bind output = Tb.cycle Tb.input_hold in
+      incr cycles;
+      let output = output.before_edge in
+      if Bits.to_bool output.data_out_valid
+      then output_bytes := Bits.to_int output.data_out :: !output_bytes;
+      if Bits.to_bool output.data_out_valid && Bits.to_bool output.last then return (List.rev !output_bytes |> List.map ~f:(Char.of_int_exn) |> String.of_char_list ) else loop ()
+    in
+    let%bind result = loop () in
+    print_s [%message "Received packet in" ~cycles:(!cycles : int)];
+    Tb.return result
+  in
+  let receive_packets ~n =
+    let rec inner ~n =
+      if n = 0
+      then return []
+      else (
+        let%bind next = receive_packet () in
+        print_s [%message "Next packet" (next : string)];
+        let%bind succ = inner ~n:(n - 1) in
+        return ( next :: succ))
+    in
+     inner ~n 
+  in
+    
+
+  let testbench _i =
+    let%bind () = Tb.cycle { Tb.input_zero with clear = vdd } >>| ignore in
+    let%bind result = Tb.spawn (fun _ ->
+receive_packets ~n:(List.length packets)) in
+
+    let%bind () = send_inputs packets in
+    let%bind result = Tb.wait_for result in
+    if debug then Waveform.Serialize.marshall waveform name;
+
+
+    if not (List.equal   String.equal result packets) then raise_s [%message "BUG: Inputs and outputs diverge" (packets : string list) (result : string list) ];
+
+    print_s [%message "PASSED" ];
+
+    return () 
+    
+  in
+  Option.value_exn (Tb.run_with_timeout ~timeout:5000 ~simulator:sim ~testbench ())
 ;;
 
 let%expect_test "test" =
@@ -150,11 +190,16 @@ let%expect_test "test" =
     ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
-    ~packet:"Hello world";
+    ~packets:[ "Hello world"; "Goodbye world"; "Yet another packet!!!!!!" ];
   [%expect
     {|
-    ((input_packet "Hello world") (output_packet "Hello world"))
-    PASS
+    ("Received packet in" (cycles 575))
+    ("Next packet" (next "Hello world"))
+    ("Received packet in" (cycles 656))
+    ("Next packet" (next "Goodbye world"))
+    ("Received packet in" (cycles 1107))
+    ("Next packet" (next "Yet another packet!!!!!!"))
+    PASSED
     |}];
   test
     ~name:"/tmp/test_serial_to_packet_parity_hello_world"
@@ -162,11 +207,16 @@ let%expect_test "test" =
     ~baud_rate:50
     ~include_parity_bit:true
     ~stop_bits:1
-    ~packet:"Hello world";
+    ~packets:[ "Hello world"; "Goodbye world"; "Yet another packet!!!!!!" ];
   [%expect
     {|
-    ((input_packet "Hello world") (output_packet "Hello world"))
-    PASS
+    ("Received packet in" (cycles 631))
+    ("Next packet" (next "Hello world"))
+    ("Received packet in" (cycles 720))
+    ("Next packet" (next "Goodbye world"))
+    ("Received packet in" (cycles 1215))
+    ("Next packet" (next "Yet another packet!!!!!!"))
+    PASSED
     |}];
   test
     ~name:"/tmp/test_serial_to_packet_no_parity_a"
@@ -174,10 +224,16 @@ let%expect_test "test" =
     ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
-    ~packet:"A";
-  [%expect {|
-    ((input_packet A) (output_packet A))
-    PASS
+    ~packets:[ "Hello world"; "Goodbye world"; "Yet another packet!!!!!!" ];
+  [%expect
+    {|
+    ("Received packet in" (cycles 575))
+    ("Next packet" (next "Hello world"))
+    ("Received packet in" (cycles 656))
+    ("Next packet" (next "Goodbye world"))
+    ("Received packet in" (cycles 1107))
+    ("Next packet" (next "Yet another packet!!!!!!"))
+    PASSED
     |}];
   test
     ~name:"/tmp/test_serial_to_packet_parity_a"
@@ -185,9 +241,15 @@ let%expect_test "test" =
     ~baud_rate:50
     ~include_parity_bit:true
     ~stop_bits:1
-    ~packet:"A";
-  [%expect {|
-    ((input_packet A) (output_packet A))
-    PASS
+    ~packets:[ "Hello world"; "Goodbye world"; "Yet another packet!!!!!!" ];
+  [%expect
+    {|
+    ("Received packet in" (cycles 631))
+    ("Next packet" (next "Hello world"))
+    ("Received packet in" (cycles 720))
+    ("Next packet" (next "Goodbye world"))
+    ("Received packet in" (cycles 1215))
+    ("Next packet" (next "Yet another packet!!!!!!"))
+    PASSED
     |}]
 ;;
