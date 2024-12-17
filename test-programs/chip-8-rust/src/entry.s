@@ -1,6 +1,14 @@
 .section .init
 .global main
 
+system_call:
+  addi x5, x10, 0
+  addi x6, x11, 0
+  addi x7, x12, 0
+  ecall
+  addi x10, x5, 0
+  ret
+
 init:
     addi x1, zero, 0
     addi x2, zero, 0
@@ -33,7 +41,7 @@ init:
     addi x29, zero, 0
     addi x30, zero, 0
     addi x31, zero, 0
-    lui sp, 15 
+    la sp, _stack
     jal ra, main
 loop:
     j loop

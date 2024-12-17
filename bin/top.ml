@@ -123,8 +123,15 @@ module Program = struct
          print_s [%message "Loading" (program_filename : string)];
          let program = In_channel.read_all program_filename in
          print_s [%message "Loaded" (String.length program : int)];
-         let formatted_packet = dma_packet ~address:0 program in
-         do_write formatted_packet;
+         let chunk_sz = 512 in
+         String.to_list program
+         |> List.chunks_of ~length:chunk_sz
+         |> List.iteri ~f:(fun index chunk ->
+           print_s [%message "Sending chunk"];
+           let address = index * chunk_sz in
+           let program = String.of_char_list chunk in
+           let formatted_packet = dma_packet ~address program in
+           do_write formatted_packet);
          printf "Sending clear signal via DMA\n%!";
          do_write clear_packet;
          printf "Waiting\n%!";

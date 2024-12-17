@@ -148,6 +148,7 @@ struct
     in
     (* When not fetched we will prefetch the next data byte of the body. *)
     let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
+    let%hw_var data_valid = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data =
       Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec_no_clear
     in
@@ -164,6 +165,7 @@ struct
       then current_state.set_next X_body
       else current_state.set_next X_margin_start
     in
+    let clear_fetched = proc [ fetched <-- gnd ] in
     let start =
       let enter_state =
         (if margin_y_start = 0
@@ -179,7 +181,7 @@ struct
         ; y_px_ctr <--. 0
         ; next_address <-- i.start_address
         ; row_start_address <-- i.start_address
-        ; fetched <-- gnd
+        ; clear_fetched
         ; enter_state
         ]
     in
@@ -227,7 +229,7 @@ struct
         [ enter_x_line
         ; incr y_px_ctr
         ; next_address <-- row_start_address.value
-        ; fetched <-- gnd
+        ; clear_fetched
         ; when_ (y_px_ctr.value ==:. scaling_factor_y - 1) [ move_on_to_next_y_row ]
         ]
     in
@@ -247,7 +249,7 @@ struct
             ; when_
                 (which_bit ==: ones (width which_bit))
                 [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 4)
-                ; fetched <-- gnd
+                ; clear_fetched
                 ]
             ; when_
                 (reg_x.value ==:. input_width - 1)
@@ -288,13 +290,15 @@ struct
       [ when_ i.next [ proceed ]
       ; when_ i.start [ start ]
       ; when_ (request_read &: i.memory_request.ready) [ fetched <-- vdd ]
-      ; when_ i.memory_response.valid [ data <-- i.memory_response.value.read_data ]
+      ; when_
+          i.memory_response.valid
+          [ data_valid <-- vdd; data <-- i.memory_response.value.read_data ]
       ];
-    let body_bit = (log_shift ~f:srl ~by:which_bit data.value).:(0) in
+    let body_bit =
+      mux_init ~f:(fun i -> bit ~pos:i data.value) which_bit (width data.value)
+    in
     { O.valid =
-        ~:(current_state.is X_body)
-        |: (* Two cycles of delay between fetching and the data being available *)
-        (fetched.value &: reg reg_spec fetched.value)
+        ~:(current_state.is X_body) |: (current_state.is X_body &: data_valid.value)
     ; pixel = mux2 (current_state.is X_body) body_bit gnd
     ; memory_request =
         { Memory.Read_bus.Tx.valid = request_read

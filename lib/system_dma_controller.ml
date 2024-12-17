@@ -82,7 +82,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       =
       Serial_buffer.hierarchical
         ~instance:"serial_buffer"
-        ~capacity:8192
+        ~capacity:2048
         scope
         { Serial_buffer.I.clock
         ; clear

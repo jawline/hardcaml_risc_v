@@ -270,7 +270,8 @@ let%expect_test "Hello world" =
   test ~print_frames:false ~cycles:5000 ~data:program sim;
   finalize_sim sim;
   [%expect.unreachable]
-[@@expect.uncaught_exn {|
+[@@expect.uncaught_exn
+  {|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
@@ -301,7 +302,8 @@ let%expect_test "Game of life" =
   test ~print_frames:true ~cycles:500_000 ~data:program sim;
   finalize_sim sim;
   [%expect.unreachable]
-[@@expect.uncaught_exn {|
+[@@expect.uncaught_exn
+  {|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)

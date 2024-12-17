@@ -276,12 +276,12 @@ impl Instruction {
     /// The masked random instruction generates a random value between 0 and 255, masks it with an
     /// immediate (& imm) and then places it in a specified register.
     fn masked_random(
-        registers: &mut Registers,
+        _registers: &mut Registers,
         _memory: &mut Memory,
         data: u16,
         _op_tables: &OpTables,
     ) {
-        let (register, mask) = Self::register_and_immediate_from_data(data);
+        let (_register, _mask) = Self::register_and_immediate_from_data(data);
         panic!("RNG");
         //let rval = 0;
         //registers.v[register].0 = rval & mask;
