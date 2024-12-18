@@ -1,4 +1,4 @@
-extern "C" {
+unsafe extern "C" {
     pub fn system_call(code: u32, msg: *const u8, len: u32) -> bool;
 }
 

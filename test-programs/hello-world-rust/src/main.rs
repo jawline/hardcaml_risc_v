@@ -16,5 +16,6 @@ fn panic(_info: &PanicInfo) -> ! {
 #[no_mangle]
 extern "C" fn main() -> () {
     send_dma_l("HELLO WORLD");
+    send_dma_l("AND NOW GOODBYE");
     loop {}
 }

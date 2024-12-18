@@ -1,5 +1,5 @@
 use crate::cpu::Cpu;
-use crate::memory::{Framebuffer, Memory};
+use crate::memory::{Framebuffer, Memory, RawMemory};
 
 /// The CHIP-8 ran at roughly ~500Hz and clocks tick at 60Hhz, so we should tick the clocks
 /// roughly 8 times per step
@@ -12,32 +12,23 @@ pub struct Machine {
 }
 
 impl Machine {
-    /// Create a new machine with the specific data loaded at the start address (0x200)
-    pub fn of_bytes(framebuffer: Framebuffer, data: &[u8]) -> Self {
-        Self {
-            cpu: Cpu::new(),
-            memory: Memory::of_bytes(framebuffer, &data, 0x200),
-            clocks_since_delay: 0,
-        }
-    }
-
     /// Create a new machine with empty memory
     #[allow(dead_code)]
-    pub fn new(framebuffer: Framebuffer) -> Self {
+    pub fn new(memory: RawMemory, framebuffer: Framebuffer) -> Self {
         Self {
             cpu: Cpu::new(),
-            memory: Memory::new(framebuffer),
+            memory: Memory::new(memory, framebuffer),
             clocks_since_delay: 0,
         }
     }
 
     /// Set the machine key to the given state and clear the wait_for_key register if necessary
-    pub fn set_key(&mut self, key: u8, state: bool) {
+    pub fn _set_key(&mut self, key: u8, state: bool) {
         let current = self.cpu.registers.keys[key as usize];
 
         if state && !current {
             if let Some(register) = self.cpu.registers.wait_for_key {
-                self.cpu.registers.v[register].0 = key;
+                self.cpu.registers.v[register] = key;
                 self.cpu.registers.wait_for_key = None;
             }
         }
@@ -46,8 +37,8 @@ impl Machine {
     }
 
     /// Return true if the device should currently be playing sound
-    pub fn sound(&self) -> bool {
-        self.cpu.registers.sound.0 > 0
+    pub fn _sound(&self) -> bool {
+        self.cpu.registers.sound > 0
     }
 
     /// Step the machine, this steps the CPU and decrements the delay and sound timers when
@@ -62,12 +53,12 @@ impl Machine {
         self.clocks_since_delay += 1;
 
         if self.clocks_since_delay >= CLOCKS_PER_DELAY {
-            if self.cpu.registers.sound.0 > 0 {
-                self.cpu.registers.sound.0 -= 1;
+            if self.cpu.registers.sound > 0 {
+                self.cpu.registers.sound -= 1;
             }
 
-            if self.cpu.registers.delay.0 > 0 {
-                self.cpu.registers.delay.0 -= 1;
+            if self.cpu.registers.delay > 0 {
+                self.cpu.registers.delay -= 1;
             }
         }
     }

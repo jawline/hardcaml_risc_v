@@ -2,6 +2,13 @@
 rustflags = [
     "-C", "link-arg=-Tld/memory.ld",
     "-C", "opt-level=3",                
+  "-Crelocation-model=static",
+  "-C", "link-args=-n",
+  "-C", "link-args=-N",
+  "-C", "link-args=--no-dynamic-linker",
+  "-C", "link-args=-no-pie",
+  "-C", "link-args=-build-id=none",
+  "-C", "link-args=--no-eh-frame-hdr",
 ]
 
 [build]

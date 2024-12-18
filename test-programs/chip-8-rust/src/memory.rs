@@ -1,7 +1,5 @@
-use core::cmp::min;
-use core::num::Wrapping;
-
 pub type Framebuffer = *mut [u8; SCREEN_SIZE];
+pub type RawMemory = *mut [u8; MEMORY_SIZE];
 
 /// The CHIP-8 VM has 4kb of user accessible memory
 pub const MEMORY_SIZE: usize = 1024 * 8;
@@ -22,50 +20,44 @@ pub const SPRITE_MEM: [u8; 5 * 16] = [
 
 /// The memory structure contains the user accessible data and the current frame buffer.
 pub struct Memory {
-    data: [Wrapping<u8>; MEMORY_SIZE],
+    memory: RawMemory,
     pub frame_buffer: Framebuffer,
 }
 
 impl Memory {
     /// Create a new completely clear memory
-    pub fn new(frame_buffer: Framebuffer) -> Self {
+    pub fn new(memory: RawMemory, frame_buffer: Framebuffer) -> Self {
         Self {
-            data: [Wrapping(0); MEMORY_SIZE],
+            memory,
             frame_buffer,
         }
     }
 
-    /// Create a new 4kb memory region with the supplied data set at the given offset. Used to load
-    /// programs at 0x200 (the default starting location)
-    pub fn of_bytes(frame_buffer: Framebuffer, data: &[u8], offset: usize) -> Self {
-        let mut new_memory = Self::new(frame_buffer);
-        for i in 0..min(data.len(), MEMORY_SIZE) {
-            new_memory.data[offset + i] = Wrapping(data[i]);
-        }
-        new_memory
-    }
-
     /// Get a u8 from memory. If the address is > 0x4000 then it references the SPRITE_MEM
     /// containing text
-    pub fn get(&self, idx: usize) -> Wrapping<u8> {
-        if idx < 0x4000 {
-            self.data[idx]
-        } else {
-            Wrapping(SPRITE_MEM[idx - 0x4000])
+    pub fn get(&self, idx: usize) -> u8 {
+        unsafe {
+            if idx < 0x4000 {
+                (*self.memory)[idx]
+            } else {
+                SPRITE_MEM[idx - 0x4000]
+            }
         }
     }
 
     /// Set a u8 in memory
-    pub fn set(&mut self, idx: usize, val: Wrapping<u8>) {
-        self.data[idx] = val;
+    pub fn set(&mut self, idx: usize, val: u8) {
+        unsafe {
+            (*self.memory)[idx] = val;
+        }
     }
 
     /// Return a u16 in system order from memory, performing necessary endianness conversion
-    pub fn get16(&self, idx: usize) -> Wrapping<u16> {
-        let first_part = self.get(idx).0;
-        let second_part = self.get(idx + 1).0;
+    pub fn get16(&self, idx: usize) -> u16 {
+        let first_part = self.get(idx);
+        let second_part = self.get(idx + 1);
         let combined = first_part as u16 | (second_part as u16) << 8;
-        Wrapping(u16::from_be(combined))
+        u16::from_be(combined)
     }
 
     /// Clear the entire framebuffer
@@ -82,7 +74,7 @@ impl Memory {
 
         for yoff in 0..n {
             let y = (y + yoff) % SCREEN_HEIGHT;
-            let sprite = self.get(i + yoff).0;
+            let sprite = self.get(i + yoff);
 
             for xoff in 0..8 {
                 let x = (x + xoff) % SCREEN_WIDTH;

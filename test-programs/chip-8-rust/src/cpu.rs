@@ -1,5 +1,5 @@
 use crate::memory::Memory;
-use core::num::Wrapping;
+use crate::util::send_dma_l;
 
 /// Size of an instruction (CHIP-8 uses fixed width opcodes)
 pub const INSTRUCTION_SIZE: u16 = 0x2;
@@ -25,22 +25,22 @@ pub struct Registers {
     /// The CHIP architecture has 16 8-bit general purpose registers.
     /// Register v[f] also doubles as the carry flag, collision flag, or borrow flag dependent on
     /// the operation.
-    pub v: [Wrapping<u8>; 16],
+    pub v: [u8; 16],
     /// The program counter
-    pub pc: Wrapping<u16>,
+    pub pc: u16,
     /// The address register
-    pub i: Wrapping<u16>,
+    pub i: u16,
 
     /// The stack is only used for return
-    pub stack: [Wrapping<u8>; 256],
+    pub stack: [u8; 256],
     pub stack_idx: usize,
 
     /// The delay timer counts down to zero at 60hz
-    pub delay: Wrapping<u8>,
+    pub delay: u8,
 
     /// The sound timer emits a sound if it is not zero.
     /// This timer counts down to zero at 60hz and then stops.
-    pub sound: Wrapping<u8>,
+    pub sound: u8,
 
     /// True if a given key is currently pressed
     pub keys: [bool; NUM_KEYS],
@@ -59,15 +59,15 @@ pub struct OpTables {
 impl Registers {
     /// Increment the PC by a given amount
     pub fn inc_pc(&mut self, val: u16) {
-        self.pc += Wrapping(val);
+        self.pc += val
     }
 
     /// Push a u16 to the stack in big-endian format
     pub fn stack_push16(&mut self, value: u16) {
-        let lower_part = Wrapping((value & 0x00FF) as u8);
-        let upper_part = Wrapping(((value & 0xFF00) >> 8) as u8);
-        self.stack[self.stack_idx] = upper_part;
-        self.stack[self.stack_idx + 1] = lower_part;
+        let lower_part = value & 0x00FF;
+        let upper_part = (value & 0xFF00) >> 8;
+        self.stack[self.stack_idx] = upper_part as u8;
+        self.stack[self.stack_idx + 1] = lower_part as u8;
         self.stack_idx += 2;
     }
 
@@ -78,7 +78,7 @@ impl Registers {
         let upper_part = self.stack[self.stack_idx];
         let lower_part = self.stack[self.stack_idx + 1];
 
-        ((upper_part.0 as u16) << 8) | (lower_part.0 as u16)
+        ((upper_part as u16) << 8) | (lower_part as u16)
     }
 }
 
@@ -106,7 +106,7 @@ impl Instruction {
             }
             0xEE => {
                 let new_pc = registers.stack_pop16();
-                registers.pc = Wrapping(new_pc);
+                registers.pc = new_pc;
             }
             _ => panic!("machine code routes are unsupported {:x}", data),
         }
@@ -114,16 +114,16 @@ impl Instruction {
 
     /// Goto changes the PC pointer to the fixed location
     fn goto(registers: &mut Registers, _memory: &mut Memory, data: u16, _op_tables: &OpTables) {
-        registers.pc = Wrapping(data);
+        registers.pc = data;
     }
 
     /// Call pushes a return address and then changes I to the given location
     fn call(registers: &mut Registers, _memory: &mut Memory, data: u16, _op_tables: &OpTables) {
         // First save the current PC + 2
-        registers.stack_push16(registers.pc.0 + INSTRUCTION_SIZE);
+        registers.stack_push16(registers.pc + INSTRUCTION_SIZE);
 
         // Jump to the immediate
-        registers.pc = Wrapping(data);
+        registers.pc = data;
     }
 
     /// Extract the register from the opcode when the instruction has the form _R__
@@ -166,7 +166,7 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register, data) = Self::register_and_immediate_from_data(data);
-        registers.inc_pc(if registers.v[register as usize] == Wrapping(data) {
+        registers.inc_pc(if registers.v[register as usize] == data {
             4
         } else {
             2
@@ -182,7 +182,7 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register, data) = Self::register_and_immediate_from_data(data);
-        registers.inc_pc(if registers.v[register as usize] != Wrapping(data) {
+        registers.inc_pc(if registers.v[register as usize] != data {
             4
         } else {
             2
@@ -213,7 +213,7 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register, data) = Self::register_and_immediate_from_data(data);
-        registers.v[register] = Wrapping(data);
+        registers.v[register] = data;
         registers.inc_pc(2);
     }
 
@@ -225,7 +225,7 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register, data) = Self::register_and_immediate_from_data(data);
-        registers.v[register] = registers.v[register] + Wrapping(data);
+        registers.v[register] = registers.v[register] + data;
         registers.inc_pc(2);
     }
 
@@ -259,7 +259,7 @@ impl Instruction {
 
     /// Set the I register to an immediate value
     fn set_i(registers: &mut Registers, _memory: &mut Memory, data: u16, _op_tables: &OpTables) {
-        registers.i = Wrapping(data);
+        registers.i = data;
         registers.inc_pc(2);
     }
 
@@ -270,7 +270,7 @@ impl Instruction {
         data: u16,
         _op_tables: &OpTables,
     ) {
-        registers.pc = Wrapping(registers.v[0].0 as u16) + Wrapping(data);
+        registers.pc = registers.v[0] as u16 + data;
     }
 
     /// The masked random instruction generates a random value between 0 and 255, masks it with an
@@ -300,12 +300,12 @@ impl Instruction {
     ) {
         let (register1, register2) = Self::two_registers_from_data(data);
         let d = data & NIBBLE_DATA_MASK;
-        registers.v[0xF] = Wrapping(memory.draw_sprite(
-            registers.v[register1].0 as usize,
-            registers.v[register2].0 as usize,
+        registers.v[0xF] = memory.draw_sprite(
+            registers.v[register1] as usize,
+            registers.v[register2] as usize,
             d as usize,
-            registers.i.0 as usize,
-        ));
+            registers.i as usize,
+        );
         registers.inc_pc(2);
     }
 
@@ -316,7 +316,7 @@ impl Instruction {
     fn key_op(registers: &mut Registers, _memory: &mut Memory, data: u16, _op_tables: &OpTables) {
         let (register1, _register2) = Self::two_registers_from_data(data);
         let rval = registers.v[register1];
-        let pressed = registers.keys[rval.0 as usize];
+        let pressed = registers.keys[rval as usize];
         let code = data & 0x00FF;
 
         match code {
@@ -402,9 +402,9 @@ impl Instruction {
         let result = registers.v[register1] + registers.v[register2];
 
         registers.v[0xF] = if result < registers.v[register1] {
-            Wrapping(1)
+            1
         } else {
-            Wrapping(0)
+            0
         };
 
         registers.v[register1] = result;
@@ -422,9 +422,9 @@ impl Instruction {
         let result = registers.v[register1] - registers.v[register2];
 
         registers.v[0xF] = if result > registers.v[register1] {
-            Wrapping(1)
+            1
         } else {
-            Wrapping(0)
+            0
         };
 
         registers.v[register1] = result;
@@ -439,8 +439,8 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register1, _register2) = Self::two_registers_from_data(data);
-        registers.v[0xF].0 = registers.v[register1].0 & 0x1;
-        registers.v[register1].0 >>= 1;
+        registers.v[0xF] = registers.v[register1] & 0x1;
+        registers.v[register1] >>= 1;
         registers.inc_pc(2);
     }
 
@@ -451,8 +451,8 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register1, _register2) = Self::two_registers_from_data(data);
-        registers.v[0xF].0 = registers.v[register1].0 & (0x1 << 7);
-        registers.v[register1].0 <<= 1;
+        registers.v[0xF] = registers.v[register1] & (0x1 << 7);
+        registers.v[register1] <<= 1;
         registers.inc_pc(2);
     }
 
@@ -466,9 +466,9 @@ impl Instruction {
         let result = registers.v[register2] - registers.v[register1];
 
         registers.v[0xF] = if result > registers.v[register2] {
-            Wrapping(1)
+            1
         } else {
-            Wrapping(0)
+            0
         };
 
         registers.v[register1] = result;
@@ -531,7 +531,7 @@ impl Instruction {
 
     fn add_vx_i(registers: &mut Registers, _memory: &mut Memory, data: u16, _op_tables: &OpTables) {
         let (register1, _register2) = Self::two_registers_from_data(data);
-        registers.i += Wrapping(registers.v[register1].0 as u16);
+        registers.i += registers.v[register1] as u16;
         registers.inc_pc(2);
     }
 
@@ -542,7 +542,7 @@ impl Instruction {
         _op_tables: &OpTables,
     ) {
         let (register1, _register2) = Self::two_registers_from_data(data);
-        registers.i.0 = 0x4000 + ((registers.v[register1].0 & 0x0F) as u16 * 5);
+        registers.i = 0x4000 + ((registers.v[register1] & 0x0F) as u16 * 5);
         registers.inc_pc(2);
     }
 
@@ -551,25 +551,25 @@ impl Instruction {
         let mut tmp = registers.v[register1];
 
         // Least significant digit
-        memory.set((registers.i + Wrapping(2)).0 as usize, tmp % Wrapping(10));
-        tmp /= Wrapping(10);
+        memory.set((registers.i + 2) as usize, tmp % 10);
+        tmp /= 10;
 
         // Middle digit
-        memory.set((registers.i + Wrapping(1)).0 as usize, tmp % Wrapping(10));
-        tmp /= Wrapping(10);
+        memory.set((registers.i + 1) as usize, tmp % 10);
+        tmp /= 10;
 
         // Most significant digit
-        memory.set(registers.i.0 as usize, tmp % Wrapping(10));
+        memory.set(registers.i as usize, tmp % 10);
 
-        registers.i += Wrapping(3);
+        registers.i += 3;
         registers.inc_pc(2);
     }
 
     fn reg_dump(registers: &mut Registers, memory: &mut Memory, data: u16, _op_tables: &OpTables) {
         let (register1, _) = Self::two_registers_from_data(data);
         for i in 0..(register1 as usize + 1) {
-            memory.set(registers.i.0 as usize, registers.v[i]);
-            registers.i += Wrapping(1);
+            memory.set(registers.i as usize, registers.v[i]);
+            registers.i += 1;
         }
         registers.inc_pc(2);
     }
@@ -577,8 +577,8 @@ impl Instruction {
     fn reg_load(registers: &mut Registers, memory: &mut Memory, data: u16, _op_tables: &OpTables) {
         let (register1, _) = Self::two_registers_from_data(data);
         for i in 0..(register1 as usize + 1) {
-            registers.v[i] = memory.get(registers.i.0 as usize);
-            registers.i += Wrapping(1);
+            registers.v[i] = memory.get(registers.i as usize);
+            registers.i += 1;
         }
         registers.inc_pc(2);
     }
@@ -763,28 +763,31 @@ impl Cpu {
     /// Create a fresh CPU instance with 0 / false set for all registers and PC set to 0x200 (the
     /// typical ROM start location)
     pub fn new() -> Self {
+        send_dma_l("Initializing op tables");
+        let op_tables = OpTables {
+            main_op_table: Instruction::main_op_table(),
+            math_op_table: Instruction::math_op_table(),
+            load_op_table: Instruction::load_op_table(),
+        };
+        send_dma_l("Initialized op tables");
         Self {
             registers: Registers {
-                pc: Wrapping(0x200),
-                v: [Wrapping(0); 16],
-                i: Wrapping(0),
-                stack: [Wrapping(0); 256],
+                pc: 0x200,
+                v: [0; 16],
+                i: 0,
+                stack: [(0); 256],
                 stack_idx: 0,
-                delay: Wrapping(0),
-                sound: Wrapping(0),
+                delay: 0,
+                sound: 0,
                 keys: [false; NUM_KEYS],
                 wait_for_key: None,
             },
-            op_tables: OpTables {
-                main_op_table: Instruction::main_op_table(),
-                math_op_table: Instruction::math_op_table(),
-                load_op_table: Instruction::load_op_table(),
-            },
+            op_tables,
         }
     }
 
     pub fn step(&mut self, memory: &mut Memory) {
-        let next_opcode = memory.get16(self.registers.pc.0 as usize).0;
+        let next_opcode = memory.get16(self.registers.pc as usize);
         let op_id = ((next_opcode & 0xF000) >> 12) as usize;
         (self.op_tables.main_op_table[op_id].execute)(
             &mut self.registers,

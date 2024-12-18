@@ -1,10 +1,17 @@
 [package]
 name = "chip-8-risc-v"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Blake Loring"]
 
+[profile.dev]
+strip = true
+overflow-checks = false
+
 [profile.release]
-strip = true  # Automatically strip symbols from the binary.
+strip = true
+overflow-checks = false
 
 [dependencies]
+
+
