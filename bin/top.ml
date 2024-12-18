@@ -105,10 +105,11 @@ module Program = struct
 
   let device_file = "/dev/ttyUSB0"
 
-  let do_write data =
-    let ch = Out_channel.create ~binary:true device_file in
+  let do_write ~ch data =
     List.iter ~f:(fun byte -> Out_channel.output_byte ch byte) data;
-    Out_channel.close ch
+    Out_channel.flush ch;
+    let _ = Core_unix.nanosleep 1. in
+    ()
   ;;
 
   let command =
@@ -118,12 +119,14 @@ module Program = struct
        let open Command.Param in
        let%map program_filename = anon ("program_filename" %: string) in
        fun () ->
+         printf "Opening out channel\n";
+         let writer = Out_channel.create ~binary:true device_file in
          printf "Opening in channel\n%!";
          let reader = In_channel.create ~binary:true "/dev/ttyUSB0" in
          print_s [%message "Loading" (program_filename : string)];
          let program = In_channel.read_all program_filename in
          print_s [%message "Loaded" (String.length program : int)];
-         let chunk_sz = 512 in
+         let chunk_sz = 320000 in
          String.to_list program
          |> List.chunks_of ~length:chunk_sz
          |> List.iteri ~f:(fun index chunk ->
@@ -131,9 +134,9 @@ module Program = struct
            let address = index * chunk_sz in
            let program = String.of_char_list chunk in
            let formatted_packet = dma_packet ~address program in
-           do_write formatted_packet);
+           do_write ~ch:writer formatted_packet);
          printf "Sending clear signal via DMA\n%!";
-         do_write clear_packet;
+         do_write ~ch:writer clear_packet;
          printf "Waiting\n%!";
          let rec loop () =
            let header, length, bytes_ = read_packet reader in

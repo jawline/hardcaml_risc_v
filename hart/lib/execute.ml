@@ -194,9 +194,9 @@ struct
     ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd
-        ; new_rd = registers.pc +:. 4
+        ; new_rd = registers.pc +: decoded_instruction.u_immediate
         ; error = gnd
-        ; new_pc = registers.pc +: decoded_instruction.u_immediate
+        ; new_pc = registers.pc +:. 4
         }
     }
   ;;

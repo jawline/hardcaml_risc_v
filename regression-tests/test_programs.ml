@@ -323,7 +323,7 @@ let%expect_test "Game of life" =
   Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 424, characters 18-34
   Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 146, characters 18-81
   Called from Hardcaml_risc_v_regression_tests__Test_programs.create_sim in file "regression-tests/test_programs.ml", lines 122-125, characters 4-84
-  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 303, characters 12-46
+  Called from Hardcaml_risc_v_regression_tests__Test_programs.(fun) in file "regression-tests/test_programs.ml", line 301, characters 12-46
   Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
   |}]
 ;;

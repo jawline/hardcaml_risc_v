@@ -123,13 +123,14 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
               { Tb.input_zero with data_in_valid = vdd; data_in = Bits.of_int ~width:8 x }
             >>| ignore
           in
-
-          let rec wait_until_idle () = 
-            let%bind result = Tb.cycle Tb.input_zero   in
-            if Bits.to_bool result.after_edge.tx_idle then return () else wait_until_idle () in
+          let rec wait_until_idle () =
+            let%bind result = Tb.cycle Tb.input_zero in
+            if Bits.to_bool result.after_edge.tx_idle
+            then return ()
+            else wait_until_idle ()
+          in
           let%bind () = wait_until_idle () in
-          consume_bytes xs 
-
+          consume_bytes xs
       in
       let%bind () = consume_bytes input_bytes in
       send_inputs xs
@@ -143,7 +144,11 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       let output = output.before_edge in
       if Bits.to_bool output.data_out_valid
       then output_bytes := Bits.to_int output.data_out :: !output_bytes;
-      if Bits.to_bool output.data_out_valid && Bits.to_bool output.last then return (List.rev !output_bytes |> List.map ~f:(Char.of_int_exn) |> String.of_char_list ) else loop ()
+      if Bits.to_bool output.data_out_valid && Bits.to_bool output.last
+      then
+        return
+          (List.rev !output_bytes |> List.map ~f:Char.of_int_exn |> String.of_char_list)
+      else loop ()
     in
     let%bind result = loop () in
     print_s [%message "Received packet in" ~cycles:(!cycles : int)];
@@ -157,28 +162,23 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         let%bind next = receive_packet () in
         print_s [%message "Next packet" (next : string)];
         let%bind succ = inner ~n:(n - 1) in
-        return ( next :: succ))
+        return (next :: succ))
     in
-     inner ~n 
+    inner ~n
   in
-    
-
   let testbench _i =
     let%bind () = Tb.cycle { Tb.input_zero with clear = vdd } >>| ignore in
-    let%bind result = Tb.spawn (fun _ ->
-receive_packets ~n:(List.length packets)) in
-
+    let%bind result = Tb.spawn (fun _ -> receive_packets ~n:(List.length packets)) in
     let%bind () = send_inputs packets in
     let%bind result = Tb.wait_for result in
     if debug then Waveform.Serialize.marshall waveform name;
-
-
-    if not (List.equal   String.equal result packets) then raise_s [%message "BUG: Inputs and outputs diverge" (packets : string list) (result : string list) ];
-
-    print_s [%message "PASSED" ];
-
-    return () 
-    
+    if not (List.equal String.equal result packets)
+    then
+      raise_s
+        [%message
+          "BUG: Inputs and outputs diverge" (packets : string list) (result : string list)];
+    print_s [%message "PASSED"];
+    return ()
   in
   Option.value_exn (Tb.run_with_timeout ~timeout:5000 ~simulator:sim ~testbench ())
 ;;
