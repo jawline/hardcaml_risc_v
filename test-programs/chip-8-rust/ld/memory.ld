@@ -12,4 +12,4 @@ SECTIONS {
     . = ALIGN(4);
 }
 
-_stack = 0x4000;
+_stack = 0x7000;

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euvx
+truncate --size 512 "$2"
+cat "$1" >> "$2"
+truncate --size 4096 "$2"

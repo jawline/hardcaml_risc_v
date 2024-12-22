@@ -82,20 +82,24 @@ impl Memory {
                 unsafe {
                     let fb = &mut (*self.frame_buffer);
                     let fb_idx = (y * SCREEN_WIDTH) + x;
+                    let byte_index = fb_idx >> 3;
+                    let bit_index = fb_idx & 0b111;
                     // TODO: Return 1 if any pixel touched is already set. Flip it then also
                     let xor_value = if sprite & (1 << (7 - xoff)) != 0 {
                         1
                     } else {
                         0
                     };
-                    let current_value = fb[fb_idx];
-                    let new_value = current_value ^ xor_value;
 
-                    if current_value == 1 && new_value == 0 {
+                    let current_byte = fb[byte_index];
+                    let current_bit = (current_byte >> bit_index) & 1;
+                    let new_value = current_bit ^ xor_value;
+
+                    if current_bit == 1 && new_value == 0 {
                         vf_reg = 1;
                     }
 
-                    fb[fb_idx] = new_value;
+                    fb[byte_index] = (current_byte & !(1 << bit_index)) | new_value << bit_index;
                 };
             }
         }

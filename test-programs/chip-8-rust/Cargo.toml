@@ -13,5 +13,6 @@ strip = true
 overflow-checks = false
 
 [dependencies]
+itoa = "1.0.14"
 
 

@@ -1,4 +1,5 @@
 use crate::memory::Memory;
+use crate::rand::Rand;
 use crate::util::send_dma_l;
 
 /// Size of an instruction (CHIP-8 uses fixed width opcodes)
@@ -48,6 +49,8 @@ pub struct Registers {
     /// If we are waiting for a key then this is Some of the register to write the key to
     /// otherwise None
     pub wait_for_key: Option<usize>,
+
+    rng: Rand,
 }
 
 pub struct OpTables {
@@ -108,7 +111,23 @@ impl Instruction {
                 let new_pc = registers.stack_pop16();
                 registers.pc = new_pc;
             }
-            _ => panic!("machine code routes are unsupported {:x}", data),
+            0xFC => {
+                // TODO: Implement screen shift left
+                send_dma_l("WARNING: Skip SCL, unsupported");
+                registers.inc_pc(2);
+            }
+            0xFE => {
+                send_dma_l("WARNING: SET RES TO LO");
+                registers.inc_pc(2);
+            }
+            0xFF => {
+                send_dma_l("UNSUPPORTED: HI-RES");
+                panic!("Unsupported");
+            }
+            _ => {
+                send_dma_l("WARNING: SKIP 0NNNN instr");
+                registers.inc_pc(2);
+            }
         }
     }
 
@@ -276,16 +295,15 @@ impl Instruction {
     /// The masked random instruction generates a random value between 0 and 255, masks it with an
     /// immediate (& imm) and then places it in a specified register.
     fn masked_random(
-        _registers: &mut Registers,
+        registers: &mut Registers,
         _memory: &mut Memory,
         data: u16,
         _op_tables: &OpTables,
     ) {
-        let (_register, _mask) = Self::register_and_immediate_from_data(data);
-        panic!("RNG");
-        //let rval = 0;
-        //registers.v[register].0 = rval & mask;
-        //registers.inc_pc(2);
+        let (register, mask) = Self::register_and_immediate_from_data(data);
+        let rval = registers.rng.next() as u8;
+        registers.v[register] = rval & mask;
+        registers.inc_pc(2);
     }
 
     /// Draw a sprite from memory to the framebuffer (which is stored in the Memory structure).
@@ -781,6 +799,7 @@ impl Cpu {
                 sound: 0,
                 keys: [false; NUM_KEYS],
                 wait_for_key: None,
+                rng: Rand::new(),
             },
             op_tables,
         }
