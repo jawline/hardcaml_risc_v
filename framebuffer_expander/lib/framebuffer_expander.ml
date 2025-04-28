@@ -165,7 +165,7 @@ struct
       then current_state.set_next X_body
       else current_state.set_next X_margin_start
     in
-    let clear_fetched = proc [ fetched <-- gnd ] in
+    let clear_fetched = proc [ data_valid <-- gnd; fetched <-- gnd ] in
     let start =
       let enter_state =
         (if margin_y_start = 0

@@ -25,8 +25,15 @@ pub struct Memory {
 }
 
 impl Memory {
+
     /// Create a new completely clear memory
     pub fn new(memory: RawMemory, frame_buffer: Framebuffer) -> Self {
+        unsafe {
+            for i in 0..((SCREEN_WIDTH * SCREEN_HEIGHT) / 8) {
+                (*frame_buffer)[i] = 0;
+            }
+        }
+
         Self {
             memory,
             frame_buffer,

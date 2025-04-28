@@ -39,7 +39,7 @@ fn panic(info: &PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 extern "C" fn main() -> () {
     send_dma_l("Starting up");
-    let program: &[u8; 4096] = include_bytes!("cave_padded.ch8");
+    let program: &[u8; 4096] = include_bytes!("space_invaders_padded.ch8");
     let program = program.as_ptr() as RawMemory;
 
     // Print out the program location in the ROM
@@ -57,7 +57,7 @@ extern "C" fn main() -> () {
         for _i in 0..5000 {
             unsafe {
                 let x = 0x9000 as *mut u8;
-            core::ptr::write_volatile(x, 0);
+                core::ptr::write_volatile(x, 0);
             }
         }
     }
