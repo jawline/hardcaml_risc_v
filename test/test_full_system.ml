@@ -2,7 +2,7 @@ open! Core
 open Hardcaml
 open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
-open Hardcaml_uart_controller
+open Hardcaml_uart
 open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
@@ -964,7 +964,7 @@ module With_manually_programmed_ram = Make (struct
   end)
 
 let uart_config =
-  { Hardcaml_uart_controller.Config.clock_frequency = 200
+  { Hardcaml_uart.Config.clock_frequency = 200
   ; baud_rate = 50
   ; include_parity_bit = true
   ; stop_bits = 1

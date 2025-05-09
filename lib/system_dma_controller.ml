@@ -2,7 +2,7 @@ open! Core
 open Hardcaml
 open Hardcaml_memory_controller
 open Hardcaml_io_controller
-open Hardcaml_uart_controller
+open Hardcaml_uart
 open Signal
 
 module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) = struct

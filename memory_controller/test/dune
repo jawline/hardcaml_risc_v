@@ -6,7 +6,7 @@
   async
   async_unix
   hardcaml_waveterm
-  hardcaml_uart_controller
+  hardcaml_uart
   hardcaml_io_controller)
  (inline_tests)
  (preprocess

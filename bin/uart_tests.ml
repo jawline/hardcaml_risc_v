@@ -1,6 +1,6 @@
 open! Core
 open Hardcaml
-open Hardcaml_uart_controller
+open Hardcaml_uart
 module Report_synth = Hardcaml_xilinx_reports
 
 let design_frequency = 50_000_000

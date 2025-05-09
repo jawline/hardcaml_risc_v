@@ -1,7 +1,7 @@
 open! Core
 open Hardcaml
 open Hardcaml_waveterm
-open Hardcaml_uart_controller
+open Hardcaml_uart
 open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
@@ -49,7 +49,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   let module Config = struct
     (* This should trigger a switch every other cycle. *)
     let config =
-      { Hardcaml_uart_controller.Config.clock_frequency
+      { Hardcaml_uart.Config.clock_frequency
       ; baud_rate
       ; include_parity_bit
       ; stop_bits

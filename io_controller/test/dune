@@ -7,7 +7,7 @@
   async_unix
   hardcaml_step_testbench
   hardcaml_waveterm
-  hardcaml_uart_controller
+  hardcaml_uart
   hardcaml_io_controller)
  (inline_tests)
  (preprocess

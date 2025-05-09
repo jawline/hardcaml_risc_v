@@ -1,0 +1,3 @@
+[submodule "hardcaml_uart"]
+	path = hardcaml_uart
+	url = git@github.com:jawline/hardcaml_uart.git

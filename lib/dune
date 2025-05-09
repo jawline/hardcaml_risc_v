@@ -4,7 +4,7 @@
   hardcaml
   hardcaml_stream
   hardcaml_memory_controller
-  hardcaml_uart_controller
+  hardcaml_uart
   hardcaml_io_controller
   hardcaml_framebuffer_expander
   core
