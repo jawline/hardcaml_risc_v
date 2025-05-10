@@ -14,6 +14,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     (** Rd just points to the rd slot rather than containing the register *)
     ; rd : 'a [@bits 5]
     ; rd_value : 'a [@bits register_width]
+    ; csr : 'a [@bits 12]
     ; i_immediate : 'a [@bits register_width]
     ; j_immediate : 'a [@bits register_width]
     ; s_immediate : 'a [@bits register_width]
@@ -46,6 +47,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let i_immediate = Decoder.i_immediate ~width:register_width instruction in
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
     let funct7 = Decoder.funct7 instruction in
+    let csr = Decoder.csr ~width:12 instruction in
     { opcode = Decoder.opcode instruction
     ; funct3 = Decoder.funct3 instruction
     ; funct7
@@ -53,6 +55,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; rs2
     ; rd = mux2 is_ecall (of_int ~width:5 5) (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
+    ; csr
     ; i_immediate
     ; s_immediate
     ; j_immediate = Decoder.j_immediate ~width:register_width instruction

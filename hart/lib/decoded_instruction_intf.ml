@@ -10,6 +10,7 @@ module M (Registers : Registers_intf.S) = struct
       ; rs2 : 'a [@bits register_width]
       ; rd : 'a [@bits 5]
       ; rd_value : 'a [@bits register_width]
+      ; csr : 'a [@bits 12]
       ; i_immediate : 'a [@bits register_width]
       ; j_immediate : 'a [@bits register_width]
       ; s_immediate : 'a [@bits register_width]
