@@ -1,11 +1,9 @@
 open! Core
 open Hardcaml
-open Hardcaml_memory_controller
 open Signal
 
 module Make
     (Hart_config : Hart_config_intf.S)
-    (Memory : Memory_bus_intf.S)
     (Registers : Registers_intf.S)
     (Decoded_instruction : Decoded_instruction_intf.M(Registers).S) =
 struct
@@ -39,6 +37,7 @@ struct
           let csrrw = instruction.funct3 ==:. Funct3.System.to_int Csrrw in
           let csrrs = instruction.funct3 ==:. Funct3.System.to_int Csrrs in
           let csrrc = instruction.funct3 ==:. Funct3.System.to_int Csrrc in
+          (* TODO: Send a zero / sign extend signal too so the bank can decide how to expand bank signals smaller than the Hart register with. *)
           let register_io = Cs_registers.hierarchical ~clock_frequency scope { Cs_registers.I.clock ; clear ; enable = valid &: (csrrw |: csrrs |: csrrc) ; is_write  = csrrw ; write_value = instruction.rs1 ; address = instruction.csr ; instret  } in
 
     { O.valid = register_io.valid ; value = register_io.value }
