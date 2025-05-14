@@ -44,7 +44,6 @@ let%expect_test "read registers test" =
   print (Csr.O.map ~f:(fun t -> !t) outputs);
   read_register ~address:0xC80 sim;
   print (Csr.O.map ~f:(fun t -> !t) outputs);
-
   print_s [%message "Time"];
   read_register ~address:0xC01 sim;
   print (Csr.O.map ~f:(fun t -> !t) outputs);
@@ -54,8 +53,6 @@ let%expect_test "read registers test" =
   print (Csr.O.map ~f:(fun t -> !t) outputs);
   read_register ~address:0xC81 sim;
   print (Csr.O.map ~f:(fun t -> !t) outputs);
-
-
   print_s [%message "Instret"];
   let inputs : _ Csr.I.t = Cyclesim.inputs sim in
   inputs.instret := Bits.vdd;

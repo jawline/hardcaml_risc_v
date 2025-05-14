@@ -28,7 +28,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   module O = struct
     type 'a t =
-            { valid : 'a 
+      { valid : 'a
       ; value : 'a [@bits Register_width.bits Hart_config.register_width]
       }
     [@@deriving hardcaml ~rtlmangle:"o$"]
