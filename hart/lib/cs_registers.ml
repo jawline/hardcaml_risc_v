@@ -23,15 +23,15 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       ; write_value : 'a [@bits Register_width.bits Hart_config.register_width]
       ; instret : 'a
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"i$"]
   end
 
   module O = struct
     type 'a t =
-      { valid : 'a
+            { valid : 'a 
       ; value : 'a [@bits Register_width.bits Hart_config.register_width]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"o$"]
   end
 
   let create
@@ -48,7 +48,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
         raise_s
           [%message
             "BUG: The clock incrementer does not support non-integer ns per second \
-             values."];
+             values."
+              (clock_frequency : int)
+              (ns_per_second / clock_frequency : int)
+              (ns_per_second % clock_frequency : int)];
       ns_per_second / clock_frequency
     in
     let time =
@@ -118,8 +121,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     in
     let unpriveleged_counters_and_timer_active = sel_top ~width:2 address ==:. 0b11 in
     let unpriveleged_counters_and_timers =
-      Unpriveleged_counters_and_timers.hierarchical
-        scope
+      Unpriveleged_counters_and_timers.create
+        (Scope.sub_scope scope "unpriveleged$")
         { Unpriveleged_counters_and_timers.I.clock
         ; clear
         ; enable = enable &: unpriveleged_counters_and_timer_active
