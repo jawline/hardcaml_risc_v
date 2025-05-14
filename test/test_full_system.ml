@@ -96,8 +96,7 @@ struct
   let%expect_test "and" =
     opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -112,7 +111,7 @@ struct
             "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 55-64, characters 10-39"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 134, characters 4-90
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 97, characters 4-90
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -120,8 +119,7 @@ struct
   let%expect_test "xor" =
     opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -137,7 +135,7 @@ struct
             "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 55-64, characters 10-39"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 195, characters 4-90
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 120, characters 4-90
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -145,8 +143,7 @@ struct
   let%expect_test "or" =
     opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -162,7 +159,7 @@ struct
             "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 55-64, characters 10-39"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 256, characters 4-87
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 144, characters 4-87
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -174,8 +171,7 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -191,7 +187,7 @@ struct
             "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 55-64, characters 10-39"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 317-321, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 168-172, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -203,8 +199,7 @@ struct
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_imm_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -220,7 +215,7 @@ struct
             "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 55-64, characters 10-39"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 382-386, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 196-200, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -287,8 +282,7 @@ struct
       ~f:( + )
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -304,7 +298,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 501-506, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 278-283, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -317,8 +311,7 @@ struct
       ~f:( - )
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -334,7 +327,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 567-572, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 307-312, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -347,8 +340,7 @@ struct
       ~f:( land )
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -364,7 +356,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 633-638, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 336-341, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -377,8 +369,7 @@ struct
       ~f:( lxor )
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -394,7 +385,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 699-704, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 365-370, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -407,8 +398,7 @@ struct
       ~f:( lor )
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -424,7 +414,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 765-770, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 394-399, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -437,8 +427,7 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -454,7 +443,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 831-836, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 423-428, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -467,8 +456,7 @@ struct
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_rs2_range:false;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -484,7 +472,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 897-902, characters 4-28
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 452-457, characters 4-28
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -497,8 +485,7 @@ struct
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -514,7 +501,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 963-968, characters 4-27
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 481-486, characters 4-27
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -527,8 +514,7 @@ struct
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -544,7 +530,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1029-1034, characters 4-27
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 510-515, characters 4-27
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -559,8 +545,7 @@ struct
         Int32.to_int_exn shift_right)
       ~small_rs2_range:true;
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -576,7 +561,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 80, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1095-1102, characters 4-27
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 539-546, characters 4-27
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -631,8 +616,7 @@ struct
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -645,7 +629,7 @@ struct
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1210, characters 4-71
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 617, characters 4-71
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -653,8 +637,7 @@ struct
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -667,7 +650,7 @@ struct
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1271, characters 4-72
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 638, characters 4-72
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -675,8 +658,7 @@ struct
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -689,7 +671,7 @@ struct
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1332, characters 4-71
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 659, characters 4-71
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -697,8 +679,7 @@ struct
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -711,7 +692,7 @@ struct
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 9, characters 72-88"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1393, characters 4-72
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 680, characters 4-72
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -779,8 +760,7 @@ struct
                 (rs1 : int)
                 (registers : int list)]);
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -793,7 +773,7 @@ struct
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
     Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 255, characters 4-44
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1541-1568, characters 4-40
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 734-761, characters 4-40
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
     |}]
   ;;
@@ -852,8 +832,7 @@ struct
                       (registers : int list)]))
             else ()));
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -871,7 +850,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 93, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1629-1678, characters 4-21
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 784-833, characters 4-21
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
 
     Trailing output
@@ -940,8 +919,7 @@ struct
                   (registers : int list)]))
         else ());
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -956,7 +934,7 @@ struct
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 116, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 9, characters 72-88
     Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 255, characters 4-44
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1739-1787, characters 4-16
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 872-920, characters 4-16
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
 
     Trailing output
@@ -1029,8 +1007,7 @@ struct
                       (registers : int list)]))
             else ()));
     [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
+  [@@expect.uncaught_exn {|
     (* CR expect_test_collector: This test expectation appears to contain a backtrace.
        This is strongly discouraged as backtraces are fragile.
        Please change this test to not include a backtrace. *)
@@ -1048,7 +1025,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 60, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 87, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 93, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1848-1900, characters 4-21
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 956-1008, characters 4-21
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 142, characters 10-28
 
     Trailing output
@@ -1064,8 +1041,8 @@ struct
     |}]
   ;;
 
-  let%expect_test "system" =
-    let sim = create_sim "test_op_imm" in
+  let%expect_test "csr" =
+    let sim = create_sim "test_csr" in
     Sequence.range 0 100 |> Sequence.iter ~f:(fun _i -> M.cycle sim);
     test
       ~instructions:
@@ -1078,7 +1055,7 @@ struct
       {|
       ("PC: " 0 REG:
        (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  f3 20 00 c0 00 00 00 00  00 00 00 00 00 00 00 00  |. ..............|"
+      ("00000000  f3 20 00 c0 73 21 10 c0  73 21 20 c0 00 00 00 00  |. ..s!..s! .....|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
