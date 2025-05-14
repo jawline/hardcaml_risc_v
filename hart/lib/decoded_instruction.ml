@@ -60,7 +60,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7
     ; rs1
     ; rs2
-    ; rd = mux2 is_ecall (of_int ~width:5 5) (Decoder.rd instruction)
+    ; rd = mux2 (is_system &: is_ecall) (of_int ~width:5 5) (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; csr
     ; i_immediate
