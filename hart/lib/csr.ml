@@ -40,7 +40,7 @@ struct
         scope
         { Cs_registers.I.clock
         ; clear
-        ; enable = valid &: instruction.is_csr
+        ; enable = valid &: instruction.is_system &: instruction.is_csr
         ; is_write = csrrw
         ; write_value = instruction.rs1
         ; address = instruction.csr

@@ -358,7 +358,7 @@ struct
     let csr =
       Csr.hierarchical
         scope
-        { Csr.I.clock; clear; valid = valid; instruction = decoded_instruction; instret }
+        { Csr.I.clock; clear; valid ; instruction = decoded_instruction; instret }
     in
     let ecall_valid = (valid &: is_ecall) in
     { Opcode_output.valid =
