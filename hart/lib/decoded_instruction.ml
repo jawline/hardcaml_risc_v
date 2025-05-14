@@ -42,12 +42,12 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
     in
     let is_csr =
-      Decoder.funct3 instruction
-      ==:. Funct3.System.to_int Funct3.System.Csrrw
-      |: Decoder.funct3 instruction
-      ==:. Funct3.System.to_int Funct3.System.Csrrs
-      |: Decoder.funct3 instruction
-      ==:. Funct3.System.to_int Funct3.System.Csrrc
+      (Decoder.funct3 instruction
+      ==:. Funct3.System.to_int Funct3.System.Csrrw)
+      |: (Decoder.funct3 instruction
+      ==:. Funct3.System.to_int Funct3.System.Csrrs)
+      |: (Decoder.funct3 instruction
+      ==:. Funct3.System.to_int Funct3.System.Csrrc)
     in
     let rs1 = select_register registers (Decoder.rs1 instruction) in
     let rs2 = select_register registers (Decoder.rs2 instruction) in

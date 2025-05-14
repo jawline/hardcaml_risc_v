@@ -358,7 +358,7 @@ struct
     let csr =
       Csr.hierarchical
         scope
-        { Csr.I.clock; clear; valid; instruction = decoded_instruction; instret }
+        { Csr.I.clock; clear; valid = is_csr ; instruction = decoded_instruction; instret }
     in
     { Opcode_output.valid =
         valid &: is_ecall |: (valid &: is_csr) |: (valid &: (~:is_ecall |: ~:is_csr))
@@ -368,7 +368,7 @@ struct
         Transaction.Of_signal.onehot_select
           [ { With_valid.valid = is_ecall; value = ecall_transaction.value }
           ; { With_valid.valid = csr.valid; value = transaction_of csr.value }
-          ; { valid = valid &: (~:is_ecall |: ~:is_csr)
+          ; { valid = valid &: decoded_instruction.is_system &: (~:is_ecall |: ~:is_csr)
             ; value = unsupported_increment_pc
             }
           ]

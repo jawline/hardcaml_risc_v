@@ -122,6 +122,15 @@ let ecall =
     ~immediate:(Bits.of_int ~width:12 0)
 ;;
 
+let system ~funct3 ~rd ~rs1 t =
+  assemble_i_type
+    ~opcode:System
+    ~funct3:(Bits.of_int ~width:3 (Funct3.System.to_int funct3))
+    ~rs1:(Bits.of_int ~width:5 rs1)
+    ~rd:(Bits.of_int ~width:5 rd)
+    ~immediate:(Bits.of_int ~width:12 t)
+;;
+
 let instructions_to_data instructions =
   Bits.concat_lsb instructions
   |> Bits.split_lsb ~part_width:8
