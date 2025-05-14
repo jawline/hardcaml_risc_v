@@ -24,7 +24,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; store_address : 'a [@bits register_width]
     ; funct7_switch : 'a
     ; funct7_bit_other_than_switch_is_selected : 'a
+    ; is_system : 'a
     ; is_ecall : 'a
+    ; is_csr : 'a
     ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
     ; opcode_signals : 'a Opcodes.Signals.t
     }
@@ -35,12 +37,17 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
   let of_instruction instruction registers _scope =
     let decoded_opcode_or_error = Opcodes.Or_error.decode (Decoder.opcode instruction) in
     let opcode_signals = Opcodes.Signals.of_signal (Decoder.opcode instruction) in
+    let is_system = opcode_signals.system in
     let is_ecall =
-      let system = opcode_signals.system in
-      let ecall =
-        Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
-      in
-      system &: ecall
+      Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
+    in
+    let is_csr =
+      Decoder.funct3 instruction
+      ==:. Funct3.System.to_int Funct3.System.Csrrw
+      |: Decoder.funct3 instruction
+      ==:. Funct3.System.to_int Funct3.System.Csrrs
+      |: Decoder.funct3 instruction
+      ==:. Funct3.System.to_int Funct3.System.Csrrc
     in
     let rs1 = select_register registers (Decoder.rs1 instruction) in
     let rs2 = select_register registers (Decoder.rs2 instruction) in
@@ -65,7 +72,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; store_address = rs1 +: s_immediate
     ; funct7_switch = funct7.:(5)
     ; funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0
+    ; is_system
     ; is_ecall
+    ; is_csr
     ; decoded_opcode_or_error
     ; opcode_signals
     }

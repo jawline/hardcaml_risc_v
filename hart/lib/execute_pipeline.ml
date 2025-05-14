@@ -31,6 +31,7 @@ struct
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
       ; ecall_transaction : 'a Transaction.With_valid.t
+      ; instret : 'a
       ; write_bus : 'a Memory.Write_bus.Rx.t list
            [@rtlprefix "write$"] [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
@@ -88,6 +89,7 @@ struct
         ; valid = decode.valid
         ; registers = decode.registers
         ; instruction = decode.instruction
+        ; instret = i.instret
         ; ecall_transaction = i.ecall_transaction
         ; error = decode.error
         ; read_bus = List.nth_exn i.read_bus 0

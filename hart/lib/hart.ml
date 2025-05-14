@@ -75,6 +75,7 @@ struct
               restarting
               (Registers.For_writeback.Of_signal.of_int 0)
               executor_registers
+        ; instret = executor_finished
         ; ecall_transaction = i.ecall_transaction
         ; read_bus = i.read_bus
         ; read_response = i.read_response

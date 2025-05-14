@@ -20,7 +20,9 @@ module M (Registers : Registers_intf.S) = struct
       ; store_address : 'a [@bits register_width]
       ; funct7_switch : 'a
       ; funct7_bit_other_than_switch_is_selected : 'a
+      ; is_system : 'a
       ; is_ecall : 'a
+      ; is_csr : 'a
       ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
       ; opcode_signals : 'a Opcodes.Signals.t
       }

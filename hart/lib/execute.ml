@@ -10,6 +10,7 @@ module Make
     (Decoded_instruction : Decoded_instruction_intf.M(Registers).S)
     (Transaction : Transaction_intf.S) =
 struct
+  module Csr = Csr.Make (Hart_config) (Registers) (Decoded_instruction)
   module Op = Op.Make (Hart_config)
   module Branch = Branch.Make (Hart_config)
   module Load = Load.Make (Hart_config) (Memory)
@@ -41,6 +42,7 @@ struct
       ; write_response : 'a Memory.Write_response.With_valid.t
            [@rtlprefix "write_response$"]
       ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
+      ; instret : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -331,9 +333,10 @@ struct
       ebreak. For ecall, the behaviour is delegated back to the user design
       via the is_ecall and ecall_transaction signals. *)
   let system_instruction
-    ~clock:_
-    ~clear:_
+    ~clock
+    ~clear
     ~valid
+    ~instret
     ~(registers : _ Registers.t)
     ~(ecall_transaction : _ Transaction.With_valid.t)
     (decoded_instruction : _ Decoded_instruction.t)
@@ -347,15 +350,28 @@ struct
       ; new_pc = registers.pc +:. 4
       }
     in
-    let%hw is_ecall = decoded_instruction.is_ecall in
-    { Opcode_output.valid = valid &: mux2 is_ecall ecall_transaction.valid vdd
+    let transaction_of t =
+      { Transaction.set_rd = vdd; new_rd = t; error = gnd; new_pc = registers.pc +:. 4 }
+    in
+    let%hw is_ecall = decoded_instruction.is_system &: decoded_instruction.is_ecall in
+    let%hw is_csr = decoded_instruction.is_system &: decoded_instruction.is_csr in
+    let csr =
+      Csr.hierarchical
+        scope
+        { Csr.I.clock; clear; valid; instruction = decoded_instruction; instret }
+    in
+    { Opcode_output.valid =
+        valid &: is_ecall |: (valid &: is_csr) |: (valid &: (~:is_ecall |: ~:is_csr))
     ; write_bus = None
     ; read_bus = None
     ; transaction =
-        Transaction.Of_signal.mux2
-          is_ecall
-          ecall_transaction.value
-          unsupported_increment_pc
+        Transaction.Of_signal.onehot_select
+          [ { With_valid.valid = is_ecall; value = ecall_transaction.value }
+          ; { With_valid.valid = csr.valid; value = transaction_of csr.value }
+          ; { valid = valid &: (~:is_ecall |: ~:is_csr)
+            ; value = unsupported_increment_pc
+            }
+          ]
     }
   ;;
 
@@ -374,6 +390,7 @@ struct
     ~clock
     ~clear
     ~valid
+    ~instret
     ~registers
     ~decoded_instruction
     ~ecall_transaction
@@ -443,6 +460,7 @@ struct
            ~valid
            ~registers
            ~ecall_transaction
+           ~instret
            decoded_instruction
            scope)
     ]
@@ -481,6 +499,7 @@ struct
         ~clock:i.clock
         ~clear:i.clear
         ~valid:i.valid
+        ~instret:i.instret
         ~decoded_instruction:i.instruction
         ~registers:(Registers.For_writeback.to_registers i.registers)
         ~read_bus:i.read_bus

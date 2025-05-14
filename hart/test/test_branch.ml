@@ -6,6 +6,7 @@ open Bits
 module Hart_config = struct
   let register_width = Register_width.B32
   let num_registers = 32
+  let design_frequency = 50_000_000_000
 end
 
 module Branch = Branch.Make (Hart_config)

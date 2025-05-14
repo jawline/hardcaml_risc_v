@@ -44,11 +44,7 @@ let test
   let module Config = struct
     (* This should trigger a switch every other cycle. *)
     let config =
-      { Hardcaml_uart.Config.clock_frequency
-      ; baud_rate
-      ; include_parity_bit
-      ; stop_bits
-      }
+      { Hardcaml_uart.Config.clock_frequency; baud_rate; include_parity_bit; stop_bits }
     ;;
   end
   in
