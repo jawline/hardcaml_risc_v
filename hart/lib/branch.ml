@@ -18,7 +18,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   module O = struct
     type 'a t =
-      { new_pc : 'a [@bits register_width] 
+      { new_pc : 'a [@bits register_width]
       ; error : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]

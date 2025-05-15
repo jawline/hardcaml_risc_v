@@ -24,9 +24,9 @@ module Make (Hart_config : Hart_config_intf.S) (Bank_config : Bank_config) = str
       (** Enable should be pulsed rather than held high. Each pulse indicates a unique read / write. The caller should expect a response, but it may take many cycles. *)
       ; is_write : 'a
       ; write_value : 'a [@bits Register_width.bits Hart_config.register_width]
-      ; address : 'a [@bits Bank_config.address_bits] [@rtlname "i_address"]
+      ; address : 'a [@bits Bank_config.address_bits] 
       }
-    [@@deriving hardcaml ~rtlmangle:"i$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -34,7 +34,7 @@ module Make (Hart_config : Hart_config_intf.S) (Bank_config : Bank_config) = str
       { valid : 'a
       ; value : 'a [@bits Register_width.bits Hart_config.register_width]
       }
-    [@@deriving hardcaml ~rtlmangle:"o$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create _scope { I.clock = _; clear = _; enable; is_write; address; write_value } =

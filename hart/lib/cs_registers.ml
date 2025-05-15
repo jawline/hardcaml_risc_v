@@ -23,7 +23,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       ; write_value : 'a [@bits Register_width.bits Hart_config.register_width]
       ; instret : 'a
       }
-    [@@deriving hardcaml ~rtlmangle:"i$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -31,7 +31,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       { valid : 'a
       ; value : 'a [@bits Register_width.bits Hart_config.register_width]
       }
-    [@@deriving hardcaml ~rtlmangle:"o$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create

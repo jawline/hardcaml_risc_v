@@ -16,7 +16,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; new_pc : 'a [@bits register_width]
       ; error : 'a
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
 
     let generic_error =
       let open Signal in

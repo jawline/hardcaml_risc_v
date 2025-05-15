@@ -29,31 +29,27 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
+      ; registers : 'a Registers.For_writeback.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; instret : 'a
-      ; write_bus : 'a Memory.Write_bus.Rx.t list
-           [@rtlprefix "write$"] [@length required_write_channels]
+      ; write_bus : 'a Memory.Write_bus.Rx.t list [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
-           [@rtlprefix "write_response$"] [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Rx.t list
-           [@rtlprefix "read$"] [@length required_read_channels]
+           [@length required_write_channels]
+      ; read_bus : 'a Memory.Read_bus.Rx.t list [@length required_read_channels]
       ; read_response : 'a Memory.Read_response.With_valid.t list
-           [@rtlprefix "read_response$"] [@length required_read_channels]
+           [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { valid : 'a [@rtlname "output_valid"]
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
+      { valid : 'a
+      ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
       ; error : 'a
-      ; write_bus : 'a Memory.Write_bus.Tx.t list
-           [@rtlprefix "write$"] [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Tx.t list
-           [@rtlprefix "read$"] [@length required_read_channels]
+      ; write_bus : 'a Memory.Write_bus.Tx.t list [@length required_write_channels]
+      ; read_bus : 'a Memory.Read_bus.Tx.t list [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

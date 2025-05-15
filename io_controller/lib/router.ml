@@ -19,7 +19,7 @@ struct
       ; in_ : 'a P.Contents_stream.Tx.t
       ; outs : 'a P.Contents_stream.Rx.t list [@length Config.num_tags]
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -27,7 +27,7 @@ struct
       { in_ : 'a P.Contents_stream.Rx.t
       ; outs : 'a P.Contents_stream.Tx.t list [@length Config.num_tags]
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module State = struct
@@ -43,7 +43,7 @@ struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
-    let which_tag =
+    let%hw_var which_tag =
       Variable.reg ~width:(Signal.num_bits_to_represent (Config.num_tags - 1)) reg_spec
     in
     let selected_out_ready =
@@ -92,7 +92,7 @@ struct
         List.init
           ~f:(fun index ->
             P.Contents_stream.Tx.Of_signal.mux2
-              (which_tag.value -- "which_tag" ==:. index &: state.is Routing)
+              (which_tag.value ==:. index &: state.is Routing)
               in_
               (P.Contents_stream.Tx.Of_signal.of_int 0))
           Config.num_tags

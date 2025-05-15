@@ -26,7 +26,7 @@ module Make (Config : Memory_to_packet8_intf.Config) (Memory : Memory_bus_intf.S
         { length : 'a [@bits 16]
         ; address : 'a [@bits Memory.data_bus_width]
         }
-      [@@deriving hardcaml]
+      [@@deriving hardcaml ~rtlmangle:"$"]
     end
 
     include T

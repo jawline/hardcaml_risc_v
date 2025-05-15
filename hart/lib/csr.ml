@@ -15,19 +15,19 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; valid : 'a [@rtlname "i_valid"]
+      ; valid : 'a 
       ; instruction : 'a Decoded_instruction.t
       ; instret : 'a
       }
-    [@@deriving hardcaml ~rtlmangle:"i$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { valid : 'a [@rtlname "o_valid"]
+      { valid : 'a 
       ; value : 'a [@bits register_width]
       }
-    [@@deriving hardcaml ~rtlmangle:"o$"]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create scope ({ clock; clear; valid; instruction; instret } : _ I.t) =
