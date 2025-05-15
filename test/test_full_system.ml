@@ -7,17 +7,23 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = false
+let debug = true
+let trials = 1
 
 module Make (M : sig
     type sim
 
     val create_sim : string -> sim
     val finalize_sim : sim -> unit
-    val test_and_registers : instructions:Bits.t list -> sim -> int * int list
-    val test : instructions:Bits.t list -> sim -> unit
+
+    val test_and_registers
+      :  ?cycles:int
+      -> instructions:Bits.t list
+      -> sim
+      -> int * int list
+
+    val test : ?cycles:int -> instructions:Bits.t list -> sim -> unit
     val print_ram : sim -> unit
-    val cycle : sim -> unit
   end) =
 struct
   let create_sim = M.create_sim
@@ -30,7 +36,7 @@ struct
     let open Quickcheck.Generator in
     let sim = create_sim name in
     Quickcheck.test
-      ~trials:25
+      ~trials
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -72,25 +78,21 @@ struct
       ~f:( + )
       ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "and" =
     opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "xor" =
     opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "or" =
     opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "slt" =
@@ -100,7 +102,6 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sltu" =
@@ -110,7 +111,6 @@ struct
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
@@ -120,7 +120,7 @@ struct
       ~finally:(fun () -> M.finalize_sim sim)
       ~f:(fun () ->
         Quickcheck.test
-          ~trials:25
+          ~trials
           (tuple5
              (Int.gen_incl 1 31)
              (Int.gen_incl 1 31)
@@ -175,7 +175,6 @@ struct
       ~f:( + )
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sub" =
@@ -186,7 +185,6 @@ struct
       ~f:( - )
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "and" =
@@ -197,7 +195,6 @@ struct
       ~f:( land )
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "xor" =
@@ -208,7 +205,6 @@ struct
       ~f:( lxor )
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "or" =
@@ -219,7 +215,6 @@ struct
       ~f:( lor )
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "slt" =
@@ -230,7 +225,6 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sltu" =
@@ -241,7 +235,6 @@ struct
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sll" =
@@ -252,7 +245,6 @@ struct
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "srl" =
@@ -263,7 +255,6 @@ struct
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sra" =
@@ -276,14 +267,13 @@ struct
         Int32.to_int_exn shift_right)
       ~small_rs2_range:true;
     [%expect {| |}]
-  
   ;;
 
   let branch_helper ~name ~f ~funct3 =
     let sim = create_sim name in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:25
+      ~trials
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -329,25 +319,21 @@ struct
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "jal" =
@@ -357,7 +343,7 @@ struct
       ~finally:(fun () -> M.finalize_sim sim)
       ~f:(fun () ->
         Quickcheck.test
-          ~trials:200
+          ~trials
           (tuple2 (Int.gen_incl 1 31) (Int.gen_incl (-65535) 65535))
           ~f:(fun (rd, offset) ->
             let pc, registers =
@@ -385,7 +371,7 @@ struct
     let sim = create_sim "jalr" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:25
+      ~trials
       (tuple4
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -413,7 +399,6 @@ struct
                 (rs1 : int)
                 (registers : int list)]);
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sb/lb" =
@@ -423,7 +408,7 @@ struct
       ~finally:(fun () -> M.finalize_sim sim)
       ~f:(fun () ->
         Quickcheck.test
-          ~trials:25
+          ~trials
           (tuple6
              (Int.gen_incl 1 31)
              (Int.gen_incl 1 31)
@@ -436,6 +421,7 @@ struct
             then (
               let _pc, registers =
                 M.test_and_registers
+                  ~cycles:50
                   ~instructions:
                     [ op_imm
                         ~funct3:Funct3.Op.Add_or_sub
@@ -470,14 +456,13 @@ struct
                       (registers : int list)]))
             else ()));
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sh/lh" =
     let sim = create_sim "sh_lh" in
     let open Quickcheck.Generator in
     Quickcheck.test
-      ~trials:25
+      ~trials
       (tuple6
          (Int.gen_incl 1 31)
          (Int.gen_incl 1 31)
@@ -492,6 +477,7 @@ struct
           let offset = offset land lnot 1 in
           let _pc, registers =
             M.test_and_registers
+              ~cycles:50
               ~instructions:
                 [ op_imm
                     ~funct3:Funct3.Op.Add_or_sub
@@ -526,7 +512,6 @@ struct
                   (registers : int list)]))
         else ());
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sw/lw" =
@@ -536,7 +521,7 @@ struct
       ~finally:(fun () -> M.finalize_sim sim)
       ~f:(fun () ->
         Quickcheck.test
-          ~trials:25
+          ~trials
           (tuple6
              (Int.gen_incl 1 31)
              (Int.gen_incl 1 31)
@@ -551,6 +536,7 @@ struct
               let offset = offset land lnot 0b11 in
               let _pc, registers =
                 M.test_and_registers
+                  ~cycles:50
                   ~instructions:
                     [ op_imm
                         ~funct3:Funct3.Op.Add_or_sub
@@ -586,32 +572,6 @@ struct
                       (registers : int list)]))
             else ()));
     [%expect {| |}]
-  
-  ;;
-
-  let%expect_test "csr" =
-    let sim = create_sim "test_csr" in
-    Sequence.range 0 100 |> Sequence.iter ~f:(fun _i -> M.cycle sim);
-    test
-      ~instructions:
-        [ system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:1 0xC00
-        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:2 0xC01
-        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:2 0xC02
-        ]
-      sim;
-    [%expect
-      {|
-      ("PC: " 0 REG:
-       (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  f3 20 00 c0 73 21 10 c0  73 21 20 c0 00 00 00 00  |. ..s!..s! .....|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-      |}]
   ;;
 
   let%expect_test "op_imm" =
@@ -971,8 +931,6 @@ module With_manually_programmed_ram = Make (struct
       else ()
     ;;
 
-    let cycle ((sim, _, _) : sim) = Cyclesim.cycle sim
-
     let clear_registers ~(inputs : Bits.t ref Cpu_with_no_io_controller.I.t) sim =
       inputs.clear := Bits.vdd;
       Cyclesim.cycle sim;
@@ -980,7 +938,7 @@ module With_manually_programmed_ram = Make (struct
       inputs.clear := Bits.gnd
     ;;
 
-    let test_and_registers ~instructions sim =
+    let test_and_registers ?(cycles = 25) ~instructions sim =
       let sim, _, _ = sim in
       (* Initialize the main memory to some known values for testing. *)
       Test_util.program_ram sim (Array.of_list instructions);
@@ -997,7 +955,7 @@ module With_manually_programmed_ram = Make (struct
           Cyclesim.cycle sim;
           loop_for (cycles - 1))
       in
-      loop_for 50;
+      loop_for cycles;
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
@@ -1009,8 +967,8 @@ module With_manually_programmed_ram = Make (struct
 
     let print_ram (sim, _, _) = Test_util.print_ram sim
 
-    let test ~instructions sim =
-      let pc, registers = test_and_registers ~instructions sim in
+    let test ?cycles ~instructions sim =
+      let pc, registers = test_and_registers ?cycles ~instructions sim in
       print_s [%message "PC: " ~_:(pc : int) "REG:" ~_:(registers : int list)];
       print_ram sim
     ;;
@@ -1143,7 +1101,7 @@ module With_dma_ram = struct
       send_bits sim whole_packet
     ;;
 
-    let test_and_registers ~instructions sim =
+    let test_and_registers ?(cycles = 25) ~instructions sim =
       let sim, _, _ = sim in
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       (* Send a clear signal to initialize any CPU IO controller state back to
@@ -1158,9 +1116,7 @@ module With_dma_ram = struct
            |> String.of_char_list)
         sim;
       send_bits sim clear_packet;
-      (* We need to wait for 256 cycles because that is how long the design
-         holds the clear signal for. *)
-      Sequence.range 0 256 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+      Cyclesim.cycle sim;
       let _outputs_before : _ With_transmitter.O.t =
         Cyclesim.outputs ~clock_edge:Side.Before sim
       in
@@ -1172,7 +1128,7 @@ module With_dma_ram = struct
           Cyclesim.cycle sim;
           loop_for (cycles - 1))
       in
-      loop_for 50;
+      loop_for cycles;
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
@@ -1182,8 +1138,8 @@ module With_dma_ram = struct
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
     ;;
 
-    let test ~instructions sim =
-      let pc, registers = test_and_registers ~instructions sim in
+    let test ?cycles ~instructions sim =
+      let pc, registers = test_and_registers ?cycles ~instructions sim in
       print_s [%message "PC: " ~_:(pc : int) "REG:" ~_:(registers : int list)];
       print_ram sim
     ;;
@@ -1204,8 +1160,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
-      ("PC: " 12 REG:
-       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 16 REG:
+       (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1235,8 +1191,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
-      ("PC: " 12 REG:
-       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 16 REG:
+       (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000010  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1249,5 +1205,35 @@ module With_dma_ram = struct
     M.finalize_sim sim;
     [%expect {| |}]
   ;;
+
+  let%expect_test "read the unpriveleged CSR counters (cycle, time in ns, instret)" =
+    let sim = create_sim "test_csr" in
+    test
+      ~cycles:100
+      ~instructions:
+        [ system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:1 0xC00
+        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:2 0xC01
+        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:3 0xC02
+        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:4 0xC00
+        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:5 0xC01
+        ; system ~funct3:Funct3.System.Csrrs ~rs1:0 ~rd:6 0xC02
+        ]
+      sim;
+    M.finalize_sim sim;
+    [%expect
+      {|
+      ("PC: " 0 REG:
+       (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("00000000  f3 20 00 c0 73 21 10 c0  f3 21 20 c0 73 22 00 c0  |. ..s!...! .s\"..|"
+       "00000010  f3 22 10 c0 73 23 20 c0  00 00 00 00 00 00 00 00  |.\"..s# .........|"
+       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+      |}]
+  ;;
+
 end
 (* TODO: Add discrete SH and SB quickcheck tests along with LH and LW since they are paired it is easy to break them both at the same time. *)

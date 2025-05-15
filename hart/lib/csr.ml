@@ -31,7 +31,6 @@ struct
   end
 
   let create scope ({ clock; clear; valid; instruction; instret } : _ I.t) =
-    (* TODO: Tests *)
     (* TODO: Send a zero / sign extend signal too so the bank can decide how to expand bank signals smaller than the Hart register with. *)
     let csrrw = instruction.funct3 ==:. Funct3.System.to_int Csrrw in
     let register_io =

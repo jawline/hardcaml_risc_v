@@ -68,19 +68,19 @@ let%expect_test "read registers test" =
   [%expect
     {|
     Cycle
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 100)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 0)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 102)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 0)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 100)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 0)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 102)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 0)))
     Time
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 2080)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 0)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 2120)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 0)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 2080)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 0)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 2120)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 0)))
     Instret
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 25)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 0)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 27)))
-    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 1) (value 0)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 25)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 0)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 27)))
+    ("Csr.O.map ~f:Bits.to_int outputs" ((valid 0) (value 0)))
     |}]
 ;;

@@ -342,36 +342,24 @@ struct
     (decoded_instruction : _ Decoded_instruction.t)
     scope
     =
-    (* TODO: Support hardware registers *)
-    let unsupported_increment_pc =
-      { Transaction.set_rd = vdd
-      ; new_rd = one 32
-      ; error = vdd
-      ; new_pc = registers.pc +:. 4
-      }
-    in
     let transaction_of t =
       { Transaction.set_rd = vdd; new_rd = t; error = gnd; new_pc = registers.pc +:. 4 }
     in
     let%hw is_ecall = decoded_instruction.is_system &: decoded_instruction.is_ecall in
-    let%hw is_csr = decoded_instruction.is_system &: decoded_instruction.is_csr in
     let csr =
       Csr.hierarchical
         scope
-        { Csr.I.clock; clear; valid ; instruction = decoded_instruction; instret }
+        { Csr.I.clock; clear; valid; instruction = decoded_instruction; instret }
     in
-    let ecall_valid = (valid &: is_ecall) in
-    { Opcode_output.valid =
-         valid
+    let ecall_valid = valid &: is_ecall in
+    let csr_valid = csr.valid in 
+    { Opcode_output.valid = ecall_valid |: csr_valid 
     ; write_bus = None
     ; read_bus = None
     ; transaction =
         Transaction.Of_signal.onehot_select
-          [ { With_valid.valid = ecall_valid; value = ecall_transaction.value }
+          [ { With_valid.valid = valid &: is_ecall; value = ecall_transaction.value }
           ; { With_valid.valid = csr.valid; value = transaction_of csr.value }
-          ; { valid = valid &: decoded_instruction.is_system &: (~:is_ecall |: ~:is_csr)
-            ; value = unsupported_increment_pc
-            }
           ]
     }
   ;;

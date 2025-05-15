@@ -16,7 +16,7 @@ struct
       ; instruction : 'a [@bits 32]
       ; error : 'a
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
@@ -26,7 +26,7 @@ struct
       ; instruction : 'a Decoded_instruction.t
       ; error : 'a [@rtlname "output_error"]
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create scope (i : _ I.t) =

@@ -34,20 +34,17 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
-  let of_instruction instruction registers _scope =
+  let of_instruction instruction registers scope =
     let decoded_opcode_or_error = Opcodes.Or_error.decode (Decoder.opcode instruction) in
     let opcode_signals = Opcodes.Signals.of_signal (Decoder.opcode instruction) in
+    let%hw funct3 = Decoder.funct3 instruction in
     let is_system = opcode_signals.system in
-    let is_ecall =
-      Decoder.funct3 instruction ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak
+    let%hw is_ecall =
+      funct3 ==:. (Funct3.System.to_int Funct3.System.Ecall_or_ebreak)
     in
-    let is_csr =
-      (Decoder.funct3 instruction
-      ==:. Funct3.System.to_int Funct3.System.Csrrw)
-      |: (Decoder.funct3 instruction
-      ==:. Funct3.System.to_int Funct3.System.Csrrs)
-      |: (Decoder.funct3 instruction
-      ==:. Funct3.System.to_int Funct3.System.Csrrc)
+    let%hw is_csr =
+      let f t = funct3 ==:. (Funct3.System.to_int t) in
+      f Funct3.System.Csrrw |: f Funct3.System.Csrrs |: f Funct3.System.Csrrc
     in
     let rs1 = select_register registers (Decoder.rs1 instruction) in
     let rs2 = select_register registers (Decoder.rs2 instruction) in
@@ -56,7 +53,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let funct7 = Decoder.funct7 instruction in
     let csr = Decoder.csr ~width:12 instruction in
     { opcode = Decoder.opcode instruction
-    ; funct3 = Decoder.funct3 instruction
+    ; funct3  
     ; funct7
     ; rs1
     ; rs2
