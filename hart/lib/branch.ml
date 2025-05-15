@@ -13,15 +13,15 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       ; funct3 : 'a [@bits 3]
       ; b_immediate : 'a [@bits register_width]
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { new_pc : 'a [@bits register_width] [@rtlname "new_rd"]
+      { new_pc : 'a [@bits register_width] 
       ; error : 'a
       }
-    [@@deriving hardcaml]
+    [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; b_immediate } : _ I.t) =

@@ -26,11 +26,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; funct3 : 'a [@bits 3]
       ; destination : 'a [@bits register_width]
       ; value : 'a [@bits register_width]
-      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
-      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; write_bus : 'a Memory.Write_bus.Rx.t
+      ; read_bus : 'a Memory.Read_bus.Rx.t
       ; write_response : 'a Memory.Write_response.With_valid.t
-           [@rtlprefix "write_response$"]
-      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -39,8 +38,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     type 'a t =
       { error : 'a
       ; finished : 'a
-      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
-      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
+      ; write_bus : 'a Memory.Write_bus.Tx.t
+      ; read_bus : 'a Memory.Read_bus.Tx.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

@@ -18,18 +18,18 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; enable : 'a
       ; funct3 : 'a [@bits 3]
       ; address : 'a [@bits register_width]
-      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
-      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
+      ; read_bus : 'a Memory.Read_bus.Rx.t
+      ; read_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { new_rd : 'a [@bits register_width] [@rtlname "new_rd"]
+      { new_rd : 'a [@bits register_width]
       ; error : 'a
       ; finished : 'a
-      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
+      ; read_bus : 'a Memory.Read_bus.Tx.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

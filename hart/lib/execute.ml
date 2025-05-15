@@ -33,15 +33,14 @@ struct
       { clock : 'a
       ; clear : 'a
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_registers$"]
+      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; error : 'a
-      ; write_bus : 'a Memory.Write_bus.Rx.t [@rtlprefix "write$"]
-      ; read_bus : 'a Memory.Read_bus.Rx.t [@rtlprefix "read$"]
+      ; write_bus : 'a Memory.Write_bus.Rx.t
+      ; read_bus : 'a Memory.Read_bus.Rx.t
       ; write_response : 'a Memory.Write_response.With_valid.t
-           [@rtlprefix "write_response$"]
-      ; read_response : 'a Memory.Read_response.With_valid.t [@rtlprefix "read_response$"]
+      ; read_response : 'a Memory.Read_response.With_valid.t
       ; instret : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -49,14 +48,14 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a [@rtlname "output_valid"]
-      ; registers : 'a Registers.For_writeback.t [@rtlprefix "output_registers$"]
-      ; instruction : 'a Decoded_instruction.t [@rtlprefix "output_instruction$"]
-      ; transaction : 'a Transaction.t [@rtlprefix "output_transaction$"]
-      ; error : 'a [@rtlname "output_error"]
+      { valid : 'a
+      ; registers : 'a Registers.For_writeback.t
+      ; instruction : 'a Decoded_instruction.t
+      ; transaction : 'a Transaction.t
+      ; error : 'a
       ; is_ecall : 'a
-      ; write_bus : 'a Memory.Write_bus.Tx.t [@rtlprefix "write$"]
-      ; read_bus : 'a Memory.Read_bus.Tx.t [@rtlprefix "read$"]
+      ; write_bus : 'a Memory.Write_bus.Tx.t
+      ; read_bus : 'a Memory.Read_bus.Tx.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -352,8 +351,8 @@ struct
         { Csr.I.clock; clear; valid; instruction = decoded_instruction; instret }
     in
     let ecall_valid = valid &: is_ecall in
-    let csr_valid = csr.valid in 
-    { Opcode_output.valid = ecall_valid |: csr_valid 
+    let csr_valid = csr.valid in
+    { Opcode_output.valid = ecall_valid |: csr_valid
     ; write_bus = None
     ; read_bus = None
     ; transaction =
