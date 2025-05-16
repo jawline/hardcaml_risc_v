@@ -15,7 +15,7 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; valid : 'a 
+      ; valid : 'a
       ; instruction : 'a Decoded_instruction.t
       ; instret : 'a
       }
@@ -24,7 +24,7 @@ struct
 
   module O = struct
     type 'a t =
-      { valid : 'a 
+      { valid : 'a [@rtlprefix "output_"]
       ; value : 'a [@bits register_width]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
