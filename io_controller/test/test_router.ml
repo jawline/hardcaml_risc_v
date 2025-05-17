@@ -12,9 +12,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_len_parts =
-      Bits.of_int ~width:16 (List.length packet)
+      of_unsigned_int ~width:16 (List.length packet)
       |> split_msb ~part_width:8
-      |> List.map ~f:Bits.to_int
+      |> List.map ~f:of_unsigned_int
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ List.map ~f:Char.to_int packet
   in
@@ -145,8 +145,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     then ()
     else (
       Cyclesim.cycle sim;
-      if Bits.to_bool !(outputs.pulse_1) then print_s [%message "Pulse 1 pulsed"];
-      if Bits.to_bool !(outputs.pulse_2) then print_s [%message "Pulse 2 pulsed"];
+      if to_bool !(outputs.pulse_1) then print_s [%message "Pulse 1 pulsed"];
+      if to_bool !(outputs.pulse_2) then print_s [%message "Pulse 2 pulsed"];
       loop_for (n - 1))
   in
   List.iter

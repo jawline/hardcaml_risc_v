@@ -116,7 +116,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     ignore (current_state.current -- "current_state" : Signal.t);
     let aligned_address =
       (* Mask the read address to a 4-byte alignment. *)
-      destination &: ~:(of_int ~width:register_width 0b11)
+      destination &: ~:(of_unsigned_int ~width:register_width 0b11)
     in
     let unaligned_bits =
       Util.switch

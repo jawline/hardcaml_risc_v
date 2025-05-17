@@ -44,9 +44,9 @@ struct
     let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
     let ch_rx = List.nth_exn outputs.write_response ch in
     Cyclesim.cycle sim;
-    if Bits.to_bool !(ch_rx.valid)
+    if to_bool !(ch_rx.valid)
     then (
-      let error = Bits.to_bool !(ch_rx.value.error) in
+      let error = to_bool !(ch_rx.value.error) in
       assert_error_bit ~assertion error;
       ())
     else wait_for_write_ack ~assertion ~ch sim
@@ -57,25 +57,25 @@ struct
     Cyclesim.cycle sim;
     let inputs : _ Memory_controller.I.t = Cyclesim.inputs sim in
     let ch_tx = List.nth_exn inputs.write_to_controller ch in
-    ch_tx.valid := Bits.vdd;
-    ch_tx.data.address := Bits.of_int ~width:32 address;
-    ch_tx.data.write_data := Bits.of_int ~width:32 value;
+    ch_tx.valid := vdd;
+    ch_tx.data.address := of_unsigned_int ~width:32 address;
+    ch_tx.data.write_data := of_unsigned_in ~width:32 value;
     let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
     let ch_rx = List.nth_exn outputs.write_to_controller ch in
     Cyclesim.cycle sim;
-    if Bits.to_bool !(ch_rx.ready)
+    if to_bool !(ch_rx.ready)
     then (
       List.iteri
         ~f:(fun i rx ->
           if i <> ch
           then (
-            if Bits.to_bool !(rx.ready)
+            if to_bool !(rx.ready)
             then
               print_s [%message "BUG: We only expect one channel to have a ready signal."];
             ())
           else ())
         outputs.write_to_controller;
-      ch_tx.valid := Bits.gnd;
+      ch_tx.valid := gnd;
       wait_for_write_ack ~assertion ~ch sim)
     else write ~assertion ~address ~value ~ch sim
   ;;
@@ -88,19 +88,19 @@ struct
     let ch_rx_ack = List.nth_exn outputs.read_to_controller ch in
     let ch_tx = List.nth_exn inputs.read_to_controller ch in
     let rec wait_for_ready () =
-      ch_tx.valid := Bits.vdd;
-      ch_tx.data.address := Bits.of_int ~width:32 address;
+      ch_tx.valid := vdd;
+      ch_tx.data.address := of_unsigned_int ~width:32 address;
       Cyclesim.cycle sim;
-      if Bits.to_bool !(ch_rx_ack.ready) then () else wait_for_ready ()
+      if to_bool !(ch_rx_ack.ready) then () else wait_for_ready ()
     in
     let rec wait_for_data () =
       Cyclesim.cycle sim;
-      if Bits.to_bool !(ch_rx.valid)
+      if to_bool !(ch_rx.valid)
       then (
-        ch_tx.valid := Bits.gnd;
-        let error = Bits.to_bool !(ch_rx.value.error) in
+        ch_tx.valid := gnd;
+        let error = to_bool !(ch_rx.value.error) in
         assert_error_bit ~assertion error;
-        Bits.to_int !(ch_rx.value.read_data))
+        to_int !(ch_rx.value.read_data))
       else wait_for_data ()
     in
     wait_for_ready ();

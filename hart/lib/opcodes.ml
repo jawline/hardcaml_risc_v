@@ -69,7 +69,7 @@ module Or_error = struct
       ~f:(fun t ->
         mux2
           (matches signal t)
-          (of_int ~width:bits_to_repr (encode (Opcode t)))
+          (of_unsigned_int ~width:bits_to_repr (encode (Opcode t)))
           (zero bits_to_repr))
       T.all
     |> List.fold ~init:(zero bits_to_repr) ~f:( |: )

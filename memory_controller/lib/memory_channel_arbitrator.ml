@@ -47,7 +47,7 @@ struct
       List.mapi
         ~f:(fun (ch : int) (t : Signal.t S.Tx.t) : Signal.t With_valid.t ->
           { With_valid.valid = t.valid
-          ; value = of_int ~width:(num_bits_to_represent (M.num_channels - 1)) ch
+          ; value = of_int_trunc ~width:(num_bits_to_represent (M.num_channels - 1)) ch
           })
         ch_to_controller
     in
@@ -62,7 +62,7 @@ struct
       List.mapi
         ~f:(fun (ch : int) (t : Signal.t S.Tx.t) : Signal.t With_valid.t ->
           { With_valid.valid = t.valid
-          ; value = of_int ~width:(num_bits_to_represent (M.num_channels - 1)) ch
+          ; value = of_int_trunc ~width:(num_bits_to_represent (M.num_channels - 1)) ch
           })
         ch_to_controller
     in
