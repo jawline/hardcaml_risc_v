@@ -8,11 +8,7 @@ open! Bits
 let debug = true
 
 let test ~name ~load_memory ~dma_address ~dma_length =
-  let module Packet =
-    Packet.Make (struct
-      let data_bus_width = 8
-    end)
-  in
+
   let module Memory_controller =
     Memory_controller.Make (struct
       let capacity_in_bytes = 256
@@ -28,6 +24,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
         let header = Some 'Q'
       end)
       (Memory_controller.Memory_bus)
+      (Axi8)
   in
   let module Machine = struct
     open Memory_controller.Memory_bus
@@ -67,7 +64,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
           { Memory_to_packet8.I.clock
           ; clear
           ; enable = { valid = enable; value = { address; length } }
-          ; output_packet = { ready = Signal.vdd }
+          ; output_packet = { tready = Signal.vdd }
           ; memory = List.nth_exn controller.read_to_controller 0
           ; memory_response = List.nth_exn controller.read_response 0
           }
@@ -91,22 +88,22 @@ let test ~name ~load_memory ~dma_address ~dma_length =
   let outputs : _ Machine.O.t = Cyclesim.outputs sim in
   let data = ref "" in
   let store_outputs () =
-    if Bits.to_bool !(outputs.output_packet.valid)
+    if to_bool !(outputs.output_packet.tvalid)
     then
       data
       := String.concat
-           [ !data; Bits.to_char !(outputs.output_packet.data.data) |> Char.to_string ]
+           [ !data; to_char !(outputs.output_packet.tdata) |> Char.to_string ]
     else ()
   in
   let issue_read ~address ~length =
-    inputs.enable := Bits.vdd;
-    inputs.address := Bits.of_int ~width:32 address;
-    inputs.length := Bits.of_int ~width:16 length;
+    inputs.enable := vdd;
+    inputs.address := of_unsigned_int ~width:32 address;
+    inputs.length := of_unsigned_int ~width:16 length;
     Cyclesim.cycle sim;
     store_outputs ();
-    inputs.enable := Bits.gnd;
+    inputs.enable := gnd;
     let count = ref 0 in
-    while !count <> 100 && not (Bits.to_bool !(outputs.output_packet.data.last)) do
+    while !count <> 100 && not (to_bool !(outputs.output_packet.tlast)) do
       Cyclesim.cycle sim;
       store_outputs ();
       incr count
@@ -114,11 +111,11 @@ let test ~name ~load_memory ~dma_address ~dma_length =
     print_s [%message "" ~_:(!data : String.Hexdump.t)];
     printf "Cycles: %i\n" !count
   in
-  inputs.clear := Bits.vdd;
+  inputs.clear := vdd;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
-  inputs.clear := Bits.gnd;
+  inputs.clear := gnd;
   issue_read ~address:dma_address ~length:dma_length;
   if debug then Waveform.Serialize.marshall waveform name
 ;;

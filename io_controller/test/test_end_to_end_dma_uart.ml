@@ -2,6 +2,7 @@ open! Core
 open Hardcaml
 open Hardcaml_waveterm
 open Hardcaml_uart
+open Hardcaml_io_framework
 open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
@@ -32,12 +33,12 @@ let test
     (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_len_parts =
-      Bits.of_int ~width:16 (List.length packet + 4)
+      of_unsigned_int ~width:16 (List.length packet + 4)
       |> split_msb ~part_width:8
-      |> List.map ~f:Bits.to_int
+      |> List.map ~f:to_int_trunc
     in
     let address =
-      Bits.of_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:Bits.to_int
+      of_unsigned_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:to_int_trunc
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
   in
@@ -48,21 +49,15 @@ let test
     ;;
   end
   in
-  let module Packet =
-    Packet.Make (struct
-      let data_bus_width = 8
-    end)
-  in
-  let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Packet) in
+  let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Axi8) in
   let module Uart_tx = Uart_tx.Make (Config) in
   let module Uart_rx = Uart_rx.Make (Config) in
   let module Serial_to_packet =
     Serial_to_packet.Make
       (struct
         let header = 'Q'
-        let serial_input_width = 8
       end)
-      (Packet)
+      (Axi8)
   in
   let module Memory_to_packet8 =
     Memory_to_packet8.Make
@@ -70,6 +65,7 @@ let test
         let header = Some 'Q'
       end)
       (Memory_controller.Memory_bus)
+      (Axi8)
   in
   let module Machine = struct
     open Signal
@@ -119,7 +115,7 @@ let test
           scope
           { Uart_rx.I.clock; clear; uart_rx = uart_tx }
       in
-      let { Serial_to_packet.O.out; ready = _ } =
+      let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
           ~instance:"serial_to_packet"
           scope
@@ -127,7 +123,7 @@ let test
           ; clear
           ; in_valid = data_out_valid
           ; in_data = data_out
-          ; out = { ready = vdd }
+          ; dn = { tready = vdd }
           }
       in
       let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
@@ -138,7 +134,7 @@ let test
           scope
           { Dma.I.clock
           ; clear
-          ; in_ = out
+          ; in_ = dn
           ; out = Write_bus.Rx.Of_always.value dma_to_memory_controller
           ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
@@ -159,7 +155,7 @@ let test
           ; memory = Read_bus.Rx.Of_always.value dma_out_to_memory_controller
           ; memory_response =
               Read_response.With_valid.Of_always.value memory_controller_to_dma_out
-          ; output_packet = { ready = uart_tx_ready }
+          ; output_packet = { tready = uart_tx_ready }
           }
       in
       let dma_out_uart_tx =
@@ -168,11 +164,11 @@ let test
           scope
           { Uart_tx.I.clock
           ; clear
-          ; data_in_valid = dma_out.output_packet.valid
-          ; data_in = dma_out.output_packet.data.data
+          ; data_in_valid = dma_out.output_packet.tvalid
+          ; data_in = dma_out.output_packet.tdata
           }
       in
-      uart_tx_ready <== dma_out_uart_tx.idle;
+      Signal.(uart_tx_ready <-- dma_out_uart_tx.idle);
       let dma_out_uart_rx =
         Uart_rx.hierarchical
           ~instance:"tx_rx"
@@ -238,7 +234,7 @@ let test
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
+      inputs.data_in := of_unsigned_int ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := gnd;
       loop_for 50)
@@ -250,17 +246,17 @@ let test
     Test_util.print_ram sim;
     printf "Doing a DMA read:\n");
   let issue_read ~address ~length =
-    inputs.dma_out_enable := Bits.vdd;
-    inputs.dma_out_address := Bits.of_int ~width:32 address;
-    inputs.dma_out_length := Bits.of_int ~width:16 length;
+    inputs.dma_out_enable := vdd;
+    inputs.dma_out_address := of_unsigned_int ~width:32 address;
+    inputs.dma_out_length := of_unsigned_int ~width:16 length;
     Cyclesim.cycle sim;
-    inputs.dma_out_enable := Bits.gnd;
+    inputs.dma_out_enable := gnd;
     let data = ref "" in
     let store_outputs () =
-      if Bits.to_bool !(outputs.out_valid)
+      if to_bool !(outputs.out_valid)
       then
         data
-        := String.concat [ !data; Bits.to_char !(outputs.out_data) |> Char.to_string ]
+        := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
       else ()
     in
     let count = ref 0 in

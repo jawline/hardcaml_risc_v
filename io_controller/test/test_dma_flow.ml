@@ -2,6 +2,7 @@ open! Core
 open Hardcaml
 open Hardcaml_waveterm
 open Hardcaml_uart
+open Hardcaml_io_framework
 open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
@@ -24,7 +25,7 @@ let print_ram sim =
   in
   let as_str =
     Array.to_list ram
-    |> List.map ~f:(fun t -> Bits.split_lsb ~part_width:8 t |> List.map ~f:Bits.to_char)
+    |> List.map ~f:(fun t -> split_lsb ~part_width:8 t |> List.map ~f:to_char)
     |> List.concat
     |> String.of_char_list
   in
@@ -37,12 +38,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_len_parts =
-      Bits.of_int ~width:16 (List.length packet + 4)
+      of_unsigned_int ~width:16 (List.length packet + 4)
       |> split_msb ~part_width:8
-      |> List.map ~f:Bits.to_int
+      |> List.map ~f:to_int_trunc
     in
     let address =
-      Bits.of_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:Bits.to_int
+      of_unsigned_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:to_int_trunc
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
   in
@@ -53,12 +54,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     ;;
   end
   in
-  let module Packet =
-    Packet.Make (struct
-      let data_bus_width = 8
-    end)
-  in
-  let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Packet) in
+  let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Axi8) in
   let module Uart_tx = Uart_tx.Make (Config) in
   let module Uart_rx = Uart_rx.Make (Config) in
   let module Serial_buffer =
@@ -70,9 +66,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     Serial_to_packet.Make
       (struct
         let header = 'Q'
-        let serial_input_width = 8
       end)
-      (Packet)
+      (Axi8)
   in
   let module Machine = struct
     open Signal
@@ -132,7 +127,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           }
       in
       let dma_ready = wire 1 in
-      let { Serial_to_packet.O.out; ready = serial_to_packet_ready' } =
+      let { Serial_to_packet.O.dn; up_ready = serial_to_packet_ready' } =
         Serial_to_packet.hierarchical
           ~instance:"serial_to_packet"
           scope
@@ -140,10 +135,10 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           ; clear
           ; in_valid = serial_to_buffer_valid
           ; in_data = serial_to_buffer_data
-          ; out = { ready = vdd }
+          ; dn = { tready = vdd }
           }
       in
-      serial_to_packet_ready <== serial_to_packet_ready';
+      Signal.(serial_to_packet_ready <-- serial_to_packet_ready');
       let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
       let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
@@ -152,12 +147,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
           scope
           { Dma.I.clock
           ; clear
-          ; in_ = out
+          ; in_ = dn
           ; out = Write_bus.Rx.Of_always.value dma_to_memory_controller
           ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
       in
-      dma_ready <== dma.in_.ready;
+      Signal.(dma_ready <-- dma.in_.tready);
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
@@ -213,9 +208,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
+      inputs.data_in := of_unsigned_int ~width:8 input;
       Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
+      inputs.data_in_valid := gnd;
       loop_for 44)
     all_inputs;
   loop_for 1000;
