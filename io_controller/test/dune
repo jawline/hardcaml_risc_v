@@ -5,6 +5,7 @@
   core
   async
   async_unix
+  hardcaml_test_harness
   hardcaml_step_testbench
   hardcaml_waveterm
   hardcaml_uart

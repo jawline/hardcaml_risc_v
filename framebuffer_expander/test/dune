@@ -5,6 +5,7 @@
   core
   async
   async_unix
+  hardcaml_test_harness
   hardcaml_waveterm
   hardcaml_memory_controller
   hardcaml_framebuffer_expander)

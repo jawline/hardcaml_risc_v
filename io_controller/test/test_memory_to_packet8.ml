@@ -1,13 +1,13 @@
 open! Core
 open Hardcaml
-open Hardcaml_waveterm
+open Hardcaml_test_harness
 open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
 
 let debug = true
 
-let test ~name ~load_memory ~dma_address ~dma_length =
+let test ~load_memory ~dma_address ~dma_length =
   let module Memory_controller =
     Memory_controller.Make (struct
       let capacity_in_bytes = 256
@@ -73,54 +73,44 @@ let test ~name ~load_memory ~dma_address ~dma_length =
     ;;
   end
   in
-  let create_sim () =
-    let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
-    Sim.create
-      ~config:Cyclesim.Config.trace_all
-      (Machine.create
-         (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
-  in
-  let sim = create_sim () in
-  Test_util.write_packet_to_memory ~packet:load_memory sim;
-  let waveform, sim = Waveform.create sim in
-  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  let outputs : _ Machine.O.t = Cyclesim.outputs sim in
-  let data = ref "" in
-  let store_outputs () =
-    if to_bool !(outputs.output_packet.tvalid)
-    then
-      data
-      := String.concat [ !data; to_char !(outputs.output_packet.tdata) |> Char.to_string ]
-    else ()
-  in
-  let issue_read ~address ~length =
-    inputs.enable := vdd;
-    inputs.address := of_unsigned_int ~width:32 address;
-    inputs.length := of_unsigned_int ~width:16 length;
-    Cyclesim.cycle sim;
-    store_outputs ();
-    inputs.enable := gnd;
-    let count = ref 0 in
-    while !count <> 100 && not (to_bool !(outputs.output_packet.tlast)) do
+  let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
+  Harness.run ~create:Machine.create ~trace:`All_named (fun ~inputs ~outputs sim ->
+    Test_util.write_packet_to_memory ~packet:load_memory sim;
+    let data = ref "" in
+    let store_outputs () =
+      if to_bool !(outputs.output_packet.tvalid)
+      then
+        data
+        := String.concat
+             [ !data; to_char !(outputs.output_packet.tdata) |> Char.to_string ]
+      else ()
+    in
+    let issue_read ~address ~length =
+      inputs.enable := vdd;
+      inputs.address := of_unsigned_int ~width:32 address;
+      inputs.length := of_unsigned_int ~width:16 length;
       Cyclesim.cycle sim;
       store_outputs ();
-      incr count
-    done;
-    print_s [%message "" ~_:(!data : String.Hexdump.t)];
-    printf "Cycles: %i\n" !count
-  in
-  inputs.clear := vdd;
-  Cyclesim.cycle sim;
-  Cyclesim.cycle sim;
-  Cyclesim.cycle sim;
-  inputs.clear := gnd;
-  issue_read ~address:dma_address ~length:dma_length;
-  if debug then Waveform.Serialize.marshall waveform name
+      inputs.enable := gnd;
+      let count = ref 0 in
+      while !count <> 100 && not (to_bool !(outputs.output_packet.tlast)) do
+        Cyclesim.cycle sim;
+        store_outputs ();
+        incr count
+      done;
+      print_s [%message "" ~_:(!data : String.Hexdump.t)];
+      printf "Cycles: %i\n" !count
+    in
+    inputs.clear := vdd;
+    Cyclesim.cycle sim;
+    Cyclesim.cycle sim;
+    Cyclesim.cycle sim;
+    inputs.clear := gnd;
+    issue_read ~address:dma_address ~length:dma_length)
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_memory_to_packet8_1"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:3
     ~dma_length:9;
@@ -130,7 +120,6 @@ let%expect_test "test" =
     Cycles: 20
     |}];
   test
-    ~name:"/tmp/test_memory_to_packet8_2"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:0
     ~dma_length:(String.length "The quick brown fox jumps over the lazy dog");
@@ -142,7 +131,6 @@ let%expect_test "test" =
     Cycles: 78
     |}];
   test
-    ~name:"/tmp/test_memory_to_packet8_3"
     ~load_memory:"The quick brown fox jumps over the lazy dog"
     ~dma_address:8
     ~dma_length:1;

@@ -1,6 +1,6 @@
 open! Core
 open Hardcaml
-open Hardcaml_waveterm
+open Hardcaml_test_harness
 open Hardcaml_uart
 open Hardcaml_io_framework
 open Hardcaml_io_controller
@@ -32,8 +32,7 @@ let print_ram sim =
   print_s [%message "" ~_:(as_str : String.Hexdump.t)]
 ;;
 
-let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet
-  =
+let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~packet =
   let all_inputs =
     (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
@@ -185,44 +184,34 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
     ;;
   end
   in
-  let create_sim () =
-    let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
-    Sim.create
-      ~config:Cyclesim.Config.trace_all
-      (Machine.create
-         (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
-  in
-  let sim = create_sim () in
-  let waveform, sim = Waveform.create sim in
-  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  (* The fifo needs a clear cycle to initialize *)
-  inputs.clear := vdd;
-  Cyclesim.cycle sim;
-  inputs.clear := gnd;
-  Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-  let rec loop_for n =
-    if n = 0
-    then ()
-    else (
-      Cyclesim.cycle sim;
-      loop_for (n - 1))
-  in
-  List.iter
-    ~f:(fun input ->
-      inputs.data_in_valid := vdd;
-      inputs.data_in := of_unsigned_int ~width:8 input;
-      Cyclesim.cycle sim;
-      inputs.data_in_valid := gnd;
-      loop_for 44)
-    all_inputs;
-  loop_for 1000;
-  if debug then Waveform.Serialize.marshall waveform name;
-  print_ram sim
+  let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
+  Harness.run ~trace:`All_named ~create:Machine.create (fun ~inputs ~outputs:_ sim ->
+    (* The fifo needs a clear cycle to initialize *)
+    inputs.clear := vdd;
+    Cyclesim.cycle sim;
+    inputs.clear := gnd;
+    Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+    let rec loop_for n =
+      if n = 0
+      then ()
+      else (
+        Cyclesim.cycle sim;
+        loop_for (n - 1))
+    in
+    List.iter
+      ~f:(fun input ->
+        inputs.data_in_valid := vdd;
+        inputs.data_in := of_unsigned_int ~width:8 input;
+        Cyclesim.cycle sim;
+        inputs.data_in_valid := gnd;
+        loop_for 44)
+      all_inputs;
+    loop_for 1000;
+    print_ram sim)
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_dma_hio"
     ~clock_frequency:200
     ~baud_rate:50
     ~include_parity_bit:false
@@ -241,7 +230,6 @@ let%expect_test "test" =
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
     |}];
   test
-    ~name:"/tmp/test_dma_hello_world"
     ~clock_frequency:200
     ~baud_rate:50
     ~include_parity_bit:false

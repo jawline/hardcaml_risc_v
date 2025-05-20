@@ -1,6 +1,6 @@
 open! Core
 open Hardcaml
-open Hardcaml_waveterm
+open Hardcaml_test_harness
 open Hardcaml_uart
 open Hardcaml_io_framework
 open Hardcaml_io_controller
@@ -21,7 +21,6 @@ open Memory_controller.Memory_bus
 
 let test
       ~verbose
-      ~name
       ~clock_frequency
       ~baud_rate
       ~include_parity_bit
@@ -210,80 +209,69 @@ let test
     ;;
   end
   in
-  let create_sim () =
-    let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
-    Sim.create
-      ~config:Cyclesim.Config.trace_all
-      (Machine.create
-         (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
-  in
-  let sim = create_sim () in
-  let waveform, sim = Waveform.create sim in
-  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  let outputs : _ Machine.O.t = Cyclesim.outputs sim in
-  (* The fifo needs a clear cycle to initialize *)
-  inputs.clear := vdd;
-  Cyclesim.cycle sim;
-  inputs.clear := gnd;
-  Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-  let rec loop_for n =
-    if n = 0
-    then ()
-    else (
-      Cyclesim.cycle sim;
-      loop_for (n - 1))
-  in
-  List.iter
-    ~f:(fun input ->
-      inputs.data_in_valid := vdd;
-      inputs.data_in := of_unsigned_int ~width:8 input;
-      Cyclesim.cycle sim;
-      inputs.data_in_valid := gnd;
-      loop_for 50)
-    all_inputs;
-  loop_for 100;
-  if verbose
-  then (
-    printf "Printing ram (not DMA response):\n";
-    Test_util.print_ram sim;
-    printf "Doing a DMA read:\n");
-  let issue_read ~address ~length =
-    inputs.dma_out_enable := vdd;
-    inputs.dma_out_address := of_unsigned_int ~width:32 address;
-    inputs.dma_out_length := of_unsigned_int ~width:16 length;
+  let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
+  Harness.run ~create:Machine.create ~trace:`All_named (fun ~inputs ~outputs sim ->
+    (* The fifo needs a clear cycle to initialize *)
+    inputs.clear := vdd;
     Cyclesim.cycle sim;
-    inputs.dma_out_enable := gnd;
-    let data = ref "" in
-    let store_outputs () =
-      if to_bool !(outputs.out_valid)
-      then data := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
-      else ()
+    inputs.clear := gnd;
+    Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+    let rec loop_for n =
+      if n = 0
+      then ()
+      else (
+        Cyclesim.cycle sim;
+        loop_for (n - 1))
     in
-    let count = ref 0 in
-    while !count <> 1500 do
-      Cyclesim.cycle sim;
-      store_outputs ();
-      incr count
-    done;
-    let data = !data in
-    let without_length = String.subo ~pos:3 ~len:(String.length data - 3) data in
-    (* TODO: assert without length is the length of the two words. *)
-    if String.(without_length <> packet)
-    then raise_s [%message "BUG: Packet differs" ~received:without_length ~packet];
+    List.iter
+      ~f:(fun input ->
+        inputs.data_in_valid := vdd;
+        inputs.data_in := of_unsigned_int ~width:8 input;
+        Cyclesim.cycle sim;
+        inputs.data_in_valid := gnd;
+        loop_for 50)
+      all_inputs;
+    loop_for 100;
     if verbose
     then (
-      print_s [%message "" ~_:(data : String.Hexdump.t)];
-      printf "%i\n" !count)
-    else ()
-  in
-  Core.protect
-    ~f:(fun () -> issue_read ~address ~length:(String.length packet))
-    ~finally:(fun () -> if debug then Waveform.Serialize.marshall waveform name)
+      printf "Printing ram (not DMA response):\n";
+      Test_util.print_ram sim;
+      printf "Doing a DMA read:\n");
+    let issue_read ~address ~length =
+      inputs.dma_out_enable := vdd;
+      inputs.dma_out_address := of_unsigned_int ~width:32 address;
+      inputs.dma_out_length := of_unsigned_int ~width:16 length;
+      Cyclesim.cycle sim;
+      inputs.dma_out_enable := gnd;
+      let data = ref "" in
+      let store_outputs () =
+        if to_bool !(outputs.out_valid)
+        then
+          data := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
+        else ()
+      in
+      let count = ref 0 in
+      while !count <> 1500 do
+        Cyclesim.cycle sim;
+        store_outputs ();
+        incr count
+      done;
+      let data = !data in
+      let without_length = String.subo ~pos:3 ~len:(String.length data - 3) data in
+      (* TODO: assert without length is the length of the two words. *)
+      if String.(without_length <> packet)
+      then raise_s [%message "BUG: Packet differs" ~received:without_length ~packet];
+      if verbose
+      then (
+        print_s [%message "" ~_:(data : String.Hexdump.t)];
+        printf "%i\n" !count)
+      else ()
+    in
+    issue_read ~address ~length:(String.length packet))
 ;;
 
 let%expect_test "test" =
   test
-    ~name:"/tmp/test_e2e_dma_hio"
     ~clock_frequency:200
     ~baud_rate:50
     ~include_parity_bit:false
@@ -307,7 +295,6 @@ let%expect_test "test" =
     1500
     |}];
   test
-    ~name:"/tmp/test_e2e_dma_hello_world"
     ~clock_frequency:200
     ~baud_rate:50
     ~include_parity_bit:false
@@ -335,7 +322,6 @@ let%expect_test "test" =
 let%expect_test "fuzz" =
   Quickcheck.test ~trials:50 String.gen_nonempty ~f:(fun test_str ->
     test
-      ~name:"/tmp/test_qcheck"
       ~clock_frequency:200
       ~baud_rate:50
       ~include_parity_bit:false
