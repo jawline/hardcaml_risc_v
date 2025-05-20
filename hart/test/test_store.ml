@@ -1,7 +1,7 @@
 open! Core
 open Hardcaml
+open Hardcaml_test_harness
 module Test_util = Util
-open Hardcaml_waveterm
 open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
@@ -108,12 +108,13 @@ module Test_machine = struct
   ;;
 end
 
-let create_sim () =
-  let module Sim = Cyclesim.With_interface (Test_machine.I) (Test_machine.O) in
-  Sim.create
-    ~config:Cyclesim.Config.trace_all
-    (Test_machine.create
-       (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
+module Harness = Cyclesim_harness.Make (Test_machine.I) (Test_machine.O)
+
+let create_sim f =
+  Harness.run
+    ~trace:`All_named
+    ~create:Test_machine.create
+    (fun ~inputs:_ ~outputs:_ sim -> f sim)
 ;;
 
 let test ~destination ~value ~funct3 sim =
@@ -144,12 +145,15 @@ let test ~destination ~value ~funct3 sim =
 ;;
 
 let%expect_test "store" =
-  let sim = create_sim () in
-  let waveform, sim = Waveform.create sim in
-  (* Aligned store, we expect these to succeed. *)
-  test ~destination:0 ~value:0xDEADBEEF ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
-  [%expect
-    {|
+  create_sim (fun sim ->
+    (* Aligned store, we expect these to succeed. *)
+    test
+      ~destination:0
+      ~value:0xDEADBEEF
+      ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
+      sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -157,10 +161,10 @@ let%expect_test "store" =
         (value ((error 0) (read_data 00000000000000000000000000000000)))))))
     deadbeef ffffffff ffffffff ffffffff
     |}];
-  (* Unaligned store, we expect no change *)
-  test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
-  [%expect
-    {|
+    (* Unaligned store, we expect no change *)
+    test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
+    [%expect
+      {|
     (outputs
      ((error 1) (finished 1)
       (read_response
@@ -168,10 +172,10 @@ let%expect_test "store" =
         (value ((error 0) (read_data 00000000000000000000000000000000)))))))
     ffffffff ffffffff ffffffff ffffffff
     |}];
-  (* Aligned store half, we expect these to succeed. *)
-  test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-  [%expect
-    {|
+    (* Aligned store half, we expect these to succeed. *)
+    test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -179,9 +183,9 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     ffffabab ffffffff ffffffff ffffffff
     |}];
-  test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-  [%expect
-    {|
+    test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -189,10 +193,10 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     edabffff ffffffff ffffffff ffffffff
     |}];
-  (* Test unaligned Sh, we expect these to fail *)
-  test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-  [%expect
-    {|
+    (* Test unaligned Sh, we expect these to fail *)
+    test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
     (outputs
      ((error 1) (finished 1)
       (read_response
@@ -200,9 +204,9 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     ffffffff ffffffff ffffffff ffffffff
     |}];
-  test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-  [%expect
-    {|
+    test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
     (outputs
      ((error 1) (finished 1)
       (read_response
@@ -210,10 +214,10 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     ffffffff ffffffff ffffffff ffffffff
     |}];
-  (* Test SB, these cannot be unaligned. *)
-  test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-  [%expect
-    {|
+    (* Test SB, these cannot be unaligned. *)
+    test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -221,9 +225,9 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     ffffffaa ffffffff ffffffff ffffffff
     |}];
-  test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-  [%expect
-    {|
+    test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -231,9 +235,9 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     ffffaaff ffffffff ffffffff ffffffff
     |}];
-  test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-  [%expect
-    {|
+    test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -241,9 +245,9 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     ffaaffff ffffffff ffffffff ffffffff
     |}];
-  test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-  [%expect
-    {|
+    test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
     (outputs
      ((error 0) (finished 0)
       (read_response
@@ -251,6 +255,5 @@ let%expect_test "store" =
         (value ((error 0) (read_data 11111111111111111111111111111111)))))))
     aaffffff ffffffff ffffffff ffffffff
     |}];
-  if debug then Waveform.Serialize.marshall waveform "/tmp/test_store";
-  [%expect {| |}]
+    [%expect {| |}])
 ;;

@@ -56,7 +56,8 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
         scope
         { Word_buffer.I.clock
         ; clear = clear |: clear_buffers.value
-        ; in_valid = in_.tvalid &: state.is Transferring
+        ; in_valid =
+            in_.tvalid &: (state.is Transferring |: state.is Reading_memory_address)
         ; in_data = in_.tdata
         ; out_ready =
             state.is Reading_memory_address |: (state.is Transferring &: out.ready)
@@ -88,9 +89,11 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     { O.in_ = { tready = word_buffer.ready |: state.is Ignoring_illegal_address }
     ; out =
         { valid =
-            word_buffer.out_valid
+            state.is Transferring
+            &: word_buffer.out_valid
             |: (state.is Transfer_final_beat &: word_buffer.interim_data_buffered)
-        ; data = { address = current_address.value; write_data = word_buffer.out_data }
+        ; data =
+            { address = current_address.value; write_data = bswap word_buffer.out_data }
         }
     }
   ;;
