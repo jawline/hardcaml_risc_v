@@ -34,10 +34,10 @@ struct
       ; instret : 'a
       ; write_bus : 'a Memory.Write_bus.Rx.t list [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
-           [@length required_write_channels]
+            [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Rx.t list [@length required_read_channels]
       ; read_response : 'a Memory.Read_response.With_valid.t list
-           [@length required_read_channels]
+            [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

@@ -93,19 +93,19 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   ;;
 
   let create
-    (scope : Scope.t)
-    ({ I.clock
-     ; clear
-     ; enable
-     ; funct3
-     ; destination
-     ; value
-     ; write_bus
-     ; read_bus
-     ; write_response
-     ; read_response
-     } :
-      _ I.t)
+        (scope : Scope.t)
+        ({ I.clock
+         ; clear
+         ; enable
+         ; funct3
+         ; destination
+         ; value
+         ; write_bus
+         ; read_bus
+         ; write_response
+         ; read_response
+         } :
+          _ I.t)
     =
     (* TODO: There is an awful lot of overlap with load. Particularly
        re alignment. Share the logic. *)

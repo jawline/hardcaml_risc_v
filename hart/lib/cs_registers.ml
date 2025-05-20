@@ -35,9 +35,9 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   end
 
   let create
-    ~clock_frequency
-    scope
-    { I.clock; clear; instret; enable; is_write; address; write_value }
+        ~clock_frequency
+        scope
+        { I.clock; clear; instret; enable; is_write; address; write_value }
     =
     let spec = Reg_spec.create ~clock ~clear () in
     let cycle = reg_fb spec ~width:64 ~f:(fun t -> t +:. 1) in

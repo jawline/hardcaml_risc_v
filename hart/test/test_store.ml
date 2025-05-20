@@ -51,8 +51,8 @@ module Test_machine = struct
   end
 
   let create
-    (scope : Scope.t)
-    ({ I.clock; clear; enable; funct3; destination; value } : _ I.t)
+        (scope : Scope.t)
+        ({ I.clock; clear; enable; funct3; destination; value } : _ I.t)
     =
     let read_bus = Read_bus.Rx.Of_always.wire zero in
     let read_response = Read_response.With_valid.Of_always.wire zero in
@@ -126,9 +126,9 @@ let test ~destination ~value ~funct3 sim =
      in
      let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
      inputs.enable := Bits.vdd;
-     inputs.destination := of_int ~width:32 destination;
-     inputs.value := of_int ~width:32 value;
-     inputs.funct3 := of_int ~width:3 funct3;
+     inputs.destination := of_unsigned_int ~width:32 destination;
+     inputs.value := of_unsigned_int ~width:32 value;
+     inputs.funct3 := of_unsigned_int ~width:3 funct3;
      let rec loop_until_finished max =
        if max = 0 then raise_s [%message "BUG: Timed out"];
        Cyclesim.cycle sim;

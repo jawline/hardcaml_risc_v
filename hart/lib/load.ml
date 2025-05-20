@@ -45,8 +45,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   let unaligned_bits = 2
 
   let create
-    (scope : Scope.t)
-    ({ I.clock; clear; enable; funct3; address; read_bus; read_response } : _ I.t)
+        (scope : Scope.t)
+        ({ I.clock; clear; enable; funct3; address; read_bus; read_response } : _ I.t)
     =
     (* TODO: We currently disallow loads that are not aligned on a {load width}
        boundary. We could support this by loading a second word and muxing the

@@ -21,17 +21,17 @@ let print (outputs : _ Branch.O.t) =
   print_s
     [%message
       ""
-        ~pc:(!(outputs.new_pc) |> to_int : int)
+        ~pc:(!(outputs.new_pc) |> to_unsigned_int : int)
         ~error:(!(outputs.error) |> to_bool : bool)]
 ;;
 
 let test ~pc ~lhs ~rhs ~funct3 ~b_immediate sim =
   let inputs : _ Branch.I.t = Cyclesim.inputs sim in
-  inputs.pc := of_int ~width:32 pc;
-  inputs.lhs := of_int ~width:32 lhs;
-  inputs.rhs := of_int ~width:32 rhs;
-  inputs.funct3 := of_int ~width:3 funct3;
-  inputs.b_immediate := of_int ~width:32 b_immediate;
+  inputs.pc := of_unsigned_int ~width:32 pc;
+  inputs.lhs := of_unsigned_int ~width:32 lhs;
+  inputs.rhs := of_unsigned_int ~width:32 rhs;
+  inputs.funct3 := of_unsigned_int ~width:3 funct3;
+  inputs.b_immediate := of_unsigned_int ~width:32 b_immediate;
   Cyclesim.cycle sim
 ;;
 

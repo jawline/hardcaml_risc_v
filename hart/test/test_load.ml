@@ -103,8 +103,8 @@ let test ~address ~funct3 sim =
   in
   let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
   inputs.enable := Bits.vdd;
-  inputs.address := of_int ~width:32 address;
-  inputs.funct3 := of_int ~width:3 funct3;
+  inputs.address := of_unsigned_int ~width:32 address;
+  inputs.funct3 := of_unsigned_int ~width:3 funct3;
   let rec loop_until_finished max =
     if max = 0 then raise_s [%message "BUG: Timed out"];
     Cyclesim.cycle sim;
@@ -117,7 +117,9 @@ let test ~address ~funct3 sim =
 let%expect_test "lw" =
   let sim = create_sim () in
   (* Initialize the main memory to some known values for testing. *)
-  Test_util.program_ram sim (Array.init ~f:(fun i -> Bits.of_int ~width:32 (i + 1)) 32);
+  Test_util.program_ram
+    sim
+    (Array.init ~f:(fun i -> Bits.of_unsigned_int ~width:32 (i + 1)) 32);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
   (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
@@ -173,7 +175,10 @@ let%expect_test "lh" =
     (Array.init
        ~f:(fun i ->
          let i = i * 2 in
-         Bits.concat_lsb [ Bits.of_int ~width:16 (i + 1); Bits.of_int ~width:16 (i + 2) ])
+         Bits.concat_lsb
+           [ Bits.of_unsigned_int ~width:16 (i + 1)
+           ; Bits.of_unsigned_int ~width:16 (i + 2)
+           ])
        32);
   let waveform, sim = Waveform.create sim in
   (* Aligned loads, we expect these to succeed. *)
@@ -211,10 +216,10 @@ let%expect_test "lb" =
        ~f:(fun i ->
          let i = i * 4 in
          Bits.concat_lsb
-           [ Bits.of_int ~width:8 (i + 1)
-           ; Bits.of_int ~width:8 (i + 2)
-           ; Bits.of_int ~width:8 (i + 3)
-           ; Bits.of_int ~width:8 (i + 4)
+           [ Bits.of_unsigned_int ~width:8 (i + 1)
+           ; Bits.of_unsigned_int ~width:8 (i + 2)
+           ; Bits.of_unsigned_int ~width:8 (i + 3)
+           ; Bits.of_unsigned_int ~width:8 (i + 4)
            ])
        32);
   let waveform, sim = Waveform.create sim in

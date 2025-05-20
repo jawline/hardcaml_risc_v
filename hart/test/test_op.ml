@@ -20,14 +20,16 @@ let print (outputs : _ Op.O.t) =
   let open Bits in
   print_s
     [%message
-      "" ~rd:(!(outputs.rd) |> to_int : int) ~error:(!(outputs.error) |> to_bool : bool)]
+      ""
+        ~rd:(!(outputs.rd) |> to_int_trunc : int)
+        ~error:(!(outputs.error) |> to_bool : bool)]
 ;;
 
 let test ~lhs ~rhs ~funct3 ~funct7 sim =
   let inputs : _ Op.I.t = Cyclesim.inputs sim in
-  inputs.lhs := of_int ~width:32 lhs;
-  inputs.rhs := of_int ~width:32 rhs;
-  inputs.funct3 := of_int ~width:3 funct3;
+  inputs.lhs := of_unsigned_int ~width:32 lhs;
+  inputs.rhs := of_unsigned_int ~width:32 rhs;
+  inputs.funct3 := of_unsigned_int ~width:3 funct3;
   inputs.funct7_switch := of_bool funct7;
   Cyclesim.cycle sim
 ;;

@@ -11,7 +11,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7 : 'a [@bits 7]
     ; rs1 : 'a [@bits register_width]
     ; rs2 : 'a [@bits register_width]
-    (** Rd just points to the rd slot rather than containing the register *)
+      (** Rd just points to the rd slot rather than containing the register *)
     ; rd : 'a [@bits 5]
     ; rd_value : 'a [@bits register_width]
     ; csr : 'a [@bits 12]
@@ -55,7 +55,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7
     ; rs1
     ; rs2
-    ; rd = mux2 (is_system &: is_ecall) (of_unsigned_int ~width:5 5) (Decoder.rd instruction)
+    ; rd =
+        mux2 (is_system &: is_ecall) (of_unsigned_int ~width:5 5) (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; csr
     ; i_immediate

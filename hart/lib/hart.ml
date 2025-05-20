@@ -27,15 +27,15 @@ struct
       { clock : 'a
       ; clear : 'a
       ; ecall_transaction : 'a Transaction.With_valid.t
-          (* When is_ecall is high the opcode will be considered finished when
+        (* When is_ecall is high the opcode will be considered finished when
              ecall_transaction is finished. If a user wants custom behaviour on ecall
              they should hold ecall finished low, do the work, then raise finished. *)
       ; write_bus : 'a Memory.Write_bus.Rx.t list [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
-           [@length required_write_channels]
+            [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Rx.t list [@length required_read_channels]
       ; read_response : 'a Memory.Read_response.With_valid.t list
-           [@length required_read_channels]
+            [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
   end
@@ -45,7 +45,7 @@ struct
       { registers : 'a Registers.t
       ; error : 'a
       ; is_ecall : 'a
-      (** Set high when the hart is in an ecall and is delagating behaviour to
+        (** Set high when the hart is in an ecall and is delagating behaviour to
           the user design. *)
       ; write_bus : 'a Memory.Write_bus.Tx.t list [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Tx.t list [@length required_read_channels]
@@ -79,8 +79,8 @@ struct
         ; write_response = i.write_response
         }
     in
-    executor_finished <== (executor.valid &: ~:(executor.error));
-    Registers.For_writeback.Of_signal.(executor_registers <== executor.registers);
+    executor_finished <-- (executor.valid &: ~:(executor.error));
+    Registers.For_writeback.Of_signal.(executor_registers <-- executor.registers);
     { O.registers =
         Registers.For_writeback.Of_signal.reg
           ~enable:(executor.valid &: ~:(executor.error))

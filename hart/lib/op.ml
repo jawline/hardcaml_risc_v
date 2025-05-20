@@ -25,9 +25,9 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   end
 
   let create
-    ~enable_subtract
-    _scope
-    ({ I.funct3; funct7_switch; funct7_error; lhs; rhs } : _ I.t)
+        ~enable_subtract
+        _scope
+        ({ I.funct3; funct7_switch; funct7_error; lhs; rhs } : _ I.t)
     =
     let rd, error =
       Util.switch2

@@ -12,6 +12,6 @@ let print_ram sim =
     |> Option.value_exn
     |> Cyclesim.Memory.read_all
   in
-  Array.iter ~f:(fun v -> printf "%02x " (Bits.to_int v)) ram;
+  Array.iter ~f:(fun v -> printf "%02x " (Bits.to_int_trunc v)) ram;
   printf "\n"
 ;;

@@ -61,17 +61,17 @@ struct
   end
 
   let op_imm_instructions
-    ~valid
-    ~(registers : _ Registers.t)
-    scope
-    ({ funct3
-     ; rs1
-     ; i_immediate
-     ; funct7_switch
-     ; funct7_bit_other_than_switch_is_selected
-     ; _
-     } :
-      _ Decoded_instruction.t)
+        ~valid
+        ~(registers : _ Registers.t)
+        scope
+        ({ funct3
+         ; rs1
+         ; i_immediate
+         ; funct7_switch
+         ; funct7_bit_other_than_switch_is_selected
+         ; _
+         } :
+          _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical (* There is no SUBI since a signed addi is sufficient. *)
@@ -94,11 +94,11 @@ struct
   ;;
 
   let op_instructions
-    ~valid
-    ~(registers : _ Registers.t)
-    scope
-    ({ funct3; rs1; rs2; funct7_switch; funct7_bit_other_than_switch_is_selected; _ } :
-      _ Decoded_instruction.t)
+        ~valid
+        ~(registers : _ Registers.t)
+        scope
+        ({ funct3; rs1; rs2; funct7_switch; funct7_bit_other_than_switch_is_selected; _ } :
+          _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd; error } =
       Op.hierarchical
@@ -123,10 +123,10 @@ struct
   (** JAL (jump and link) adds the signed J-immediate value to the current PC
       after storing the current PC + 4 in the destination register. *)
   let jal_instruction
-    ~valid
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+        ~valid
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
+        scope
     =
     let%hw new_pc = registers.pc +: decoded_instruction.j_immediate in
     { Opcode_output.valid
@@ -145,10 +145,10 @@ struct
       (the start of the next instruction).  Regiser 0 can be used to discard the
       result. *)
   let jalr_instruction
-    ~valid
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+        ~valid
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
+        scope
     =
     let new_pc =
       let%hw jalr_rs1 = decoded_instruction.rs1 in
@@ -166,9 +166,9 @@ struct
   (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
       value from the msb with zeros for the lower 12. *)
   let lui_instruction
-    ~valid
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
+        ~valid
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
     =
     { Opcode_output.valid
     ; read_bus = None
@@ -186,9 +186,9 @@ struct
       current the program counter and places it in RD. This can be used to compute
       addresses for JALR instructions. *)
   let auipc_instruction
-    ~valid
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
+        ~valid
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
     =
     { Opcode_output.valid
     ; read_bus = None
@@ -206,10 +206,10 @@ struct
       either adds a b immediate to the PC or skips to the next instruction
       based on the result. *)
   let branch_instruction
-    ~valid
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+        ~valid
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
+        scope
     =
     let { Branch.O.new_pc; error } =
       Branch.hierarchical
@@ -231,9 +231,9 @@ struct
   ;;
 
   let fence
-    ~valid
-    ~(registers : _ Registers.t)
-    (_decoded_instruction : _ Decoded_instruction.t)
+        ~valid
+        ~(registers : _ Registers.t)
+        (_decoded_instruction : _ Decoded_instruction.t)
     =
     (* TODO: Currently all memory transactions are atomic so I'm not sure if I
      * need to implement this. Figure it out. *)
@@ -251,14 +251,14 @@ struct
 
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
-    ~clock
-    ~clear
-    ~valid
-    ~read_bus
-    ~read_response
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+        ~clock
+        ~clear
+        ~valid
+        ~read_bus
+        ~read_response
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
+        scope
     =
     let { Load.O.finished; new_rd; error; read_bus } =
       Load.hierarchical
@@ -286,16 +286,16 @@ struct
 
   (** The store table loads a value from [rs1] and writes it to address rd *)
   let store_instruction
-    ~clock
-    ~clear
-    ~valid
-    ~read_bus
-    ~read_response
-    ~write_bus
-    ~write_response
-    ~(registers : _ Registers.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+        ~clock
+        ~clear
+        ~valid
+        ~read_bus
+        ~read_response
+        ~write_bus
+        ~write_response
+        ~(registers : _ Registers.t)
+        (decoded_instruction : _ Decoded_instruction.t)
+        scope
     =
     let { Store.O.finished; error; read_bus; write_bus } =
       Store.hierarchical
@@ -332,14 +332,14 @@ struct
       ebreak. For ecall, the behaviour is delegated back to the user design
       via the is_ecall and ecall_transaction signals. *)
   let system_instruction
-    ~clock
-    ~clear
-    ~valid
-    ~instret
-    ~(registers : _ Registers.t)
-    ~(ecall_transaction : _ Transaction.With_valid.t)
-    (decoded_instruction : _ Decoded_instruction.t)
-    scope
+        ~clock
+        ~clear
+        ~valid
+        ~instret
+        ~(registers : _ Registers.t)
+        ~(ecall_transaction : _ Transaction.With_valid.t)
+        (decoded_instruction : _ Decoded_instruction.t)
+        scope
     =
     let transaction_of t =
       { Transaction.set_rd = vdd; new_rd = t; error = gnd; new_pc = registers.pc +:. 4 }
@@ -375,18 +375,18 @@ struct
   end
 
   let instruction_table
-    ~clock
-    ~clear
-    ~valid
-    ~instret
-    ~registers
-    ~decoded_instruction
-    ~ecall_transaction
-    ~read_bus
-    ~read_response
-    ~write_bus
-    ~write_response
-    scope
+        ~clock
+        ~clear
+        ~valid
+        ~instret
+        ~registers
+        ~decoded_instruction
+        ~ecall_transaction
+        ~read_bus
+        ~read_response
+        ~write_bus
+        ~write_response
+        scope
     =
     [ Table_entry.create
         ~opcode:Opcodes.Op
@@ -452,7 +452,8 @@ struct
            decoded_instruction
            scope)
     ]
-    |> (* We sort the instruction table entries by the order they should appear
+    |>
+    (* We sort the instruction table entries by the order they should appear
           in the result mux. *)
     List.sort ~compare:(fun t1 t2 -> Opcodes.compare t1.opcode t2.opcode)
   ;;
