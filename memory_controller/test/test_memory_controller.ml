@@ -59,7 +59,7 @@ struct
     let ch_tx = List.nth_exn inputs.write_to_controller ch in
     ch_tx.valid := vdd;
     ch_tx.data.address := of_unsigned_int ~width:32 address;
-    ch_tx.data.write_data := of_unsigned_in ~width:32 value;
+    ch_tx.data.write_data := of_unsigned_int ~width:32 value;
     let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
     let ch_rx = List.nth_exn outputs.write_to_controller ch in
     Cyclesim.cycle sim;
@@ -100,7 +100,7 @@ struct
         ch_tx.valid := gnd;
         let error = to_bool !(ch_rx.value.error) in
         assert_error_bit ~assertion error;
-        to_int !(ch_rx.value.read_data))
+        to_int_trunc !(ch_rx.value.read_data))
       else wait_for_data ()
     in
     wait_for_ready ();
