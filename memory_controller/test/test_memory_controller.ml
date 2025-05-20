@@ -1,6 +1,6 @@
 open! Core
 open Hardcaml
-open Hardcaml_waveterm
+open Hardcaml_test_harness
 open Hardcaml_memory_controller
 open! Bits
 
@@ -16,16 +16,17 @@ struct
       let data_bus_width = 32
     end)
 
-  let create_sim () =
-    let module Sim = Cyclesim.With_interface (Memory_controller.I) (Memory_controller.O)
-    in
-    Sim.create
-      ~config:Cyclesim.Config.trace_all
-      (Memory_controller.create
-         ~priority_mode:Priority_order
-         ~request_delay:1
-         ~read_latency:1
-         (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
+  module Harness = Cyclesim_harness.Make (Memory_controller.I) (Memory_controller.O)
+
+  let create_sim f =
+    Harness.run
+      ~create:
+        (Memory_controller.hierarchical
+           ~instance:"controller"
+           ~priority_mode:Priority_order
+           ~request_delay:1
+           ~read_latency:1)
+      f
   ;;
 
   let assert_error_bit ~assertion error =
@@ -116,56 +117,40 @@ struct
   let debug = true
 
   let%expect_test "read/write" =
-    let sim = create_sim () in
-    let waveform, sim = Waveform.create sim in
-    let random = Splittable_random.of_int 1 in
-    Core.protect
-      ~finally:(fun () ->
-        if debug then Waveform.Serialize.marshall waveform "/tmp/read_write" else ())
-      ~f:(fun _ ->
-        for _i = 0 to 1000 do
-          let next =
-            Splittable_random.int ~lo:Int.min_value ~hi:Int.max_value random
-            land 0xFFFFFFFF
-          in
-          let ch = Splittable_random.int ~lo:0 ~hi:(C.num_channels - 1) random in
-          let address = Splittable_random.int ~lo:0 ~hi:127 random land lnot 0b11 in
-          write ~assertion:`No_error ~address ~value:next ~ch sim;
-          read_and_assert ~assertion:`No_error ~address ~value:next ~ch sim
-        done;
-        ());
+    create_sim (fun ~inputs:_ ~outputs:_ sim ->
+      let random = Splittable_random.of_int 1 in
+      for _i = 0 to 1000 do
+        let next =
+          Splittable_random.int ~lo:Int.min_value ~hi:Int.max_value random land 0xFFFFFFFF
+        in
+        let ch = Splittable_random.int ~lo:0 ~hi:(C.num_channels - 1) random in
+        let address = Splittable_random.int ~lo:0 ~hi:127 random land lnot 0b11 in
+        write ~assertion:`No_error ~address ~value:next ~ch sim;
+        read_and_assert ~assertion:`No_error ~address ~value:next ~ch sim
+      done;
+      ());
     [%expect {| |}]
   ;;
 
   let%expect_test "read unaligned" =
-    let sim = create_sim () in
-    let waveform, sim = Waveform.create sim in
-    Core.protect
-      ~finally:(fun () ->
-        if debug then Waveform.Serialize.marshall waveform "/tmp/read_unaligned" else ())
-      ~f:(fun _ ->
-        let ch = 0 in
-        read_and_assert ~assertion:`Error ~address:1 ~value:0 ~ch sim;
-        read_and_assert ~assertion:`Error ~address:2 ~value:0 ~ch sim;
-        read_and_assert ~assertion:`Error ~address:3 ~value:0 ~ch sim;
-        read_and_assert ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
-        ());
+    create_sim (fun ~inputs:_ ~outputs:_ sim ->
+      let ch = 0 in
+      read_and_assert ~assertion:`Error ~address:1 ~value:0 ~ch sim;
+      read_and_assert ~assertion:`Error ~address:2 ~value:0 ~ch sim;
+      read_and_assert ~assertion:`Error ~address:3 ~value:0 ~ch sim;
+      read_and_assert ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
+      ());
     [%expect {| |}]
   ;;
 
   let%expect_test "write unaligned" =
-    let sim = create_sim () in
-    let waveform, sim = Waveform.create sim in
-    Core.protect
-      ~finally:(fun () ->
-        if debug then Waveform.Serialize.marshall waveform "/tmp/write_unaligned" else ())
-      ~f:(fun _ ->
-        let ch = 0 in
-        write ~assertion:`Error ~address:1 ~value:0 ~ch sim;
-        write ~assertion:`Error ~address:2 ~value:0 ~ch sim;
-        write ~assertion:`Error ~address:3 ~value:0 ~ch sim;
-        write ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
-        ());
+    create_sim (fun ~inputs:_ ~outputs:_ sim ->
+      let ch = 0 in
+      write ~assertion:`Error ~address:1 ~value:0 ~ch sim;
+      write ~assertion:`Error ~address:2 ~value:0 ~ch sim;
+      write ~assertion:`Error ~address:3 ~value:0 ~ch sim;
+      write ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
+      ());
     [%expect {| |}]
   ;;
 end

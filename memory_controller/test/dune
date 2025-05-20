@@ -6,6 +6,7 @@
   async
   async_unix
   hardcaml_waveterm
+  hardcaml_test_harness
   hardcaml_uart
   hardcaml_io_controller)
  (inline_tests)
