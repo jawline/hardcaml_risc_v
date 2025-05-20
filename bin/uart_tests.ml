@@ -74,11 +74,7 @@ module Rtl (I : Interface.S) (O : Interface.S) = struct
     Core_unix.mkdir_p directory;
     let scope = Scope.create ~flatten_design:false () in
     let circuit = M.create_exn ~name:"uart_loopback_top" (create scope) in
-    Rtl.output
-      ~database:(Scope.circuit_database scope)
-      ~output_mode:(In_directory directory)
-      Verilog
-      circuit
+    Rtl.print ~database:(Scope.circuit_database scope) Verilog circuit
   ;;
 end
 
