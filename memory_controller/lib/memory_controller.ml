@@ -44,18 +44,18 @@ struct
       { write_to_controller : 'a Write_bus.Rx.t list [@length M.num_write_channels]
       ; read_to_controller : 'a Read_bus.Rx.t list [@length M.num_read_channels]
       ; write_response : 'a Write_response.With_valid.t list
-           [@length M.num_write_channels]
+            [@length M.num_write_channels]
       ; read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create
-    ~read_latency
-    ~request_delay
-    ~priority_mode
-    scope
-    ({ clock; clear; write_to_controller; read_to_controller } : _ I.t)
+        ~read_latency
+        ~request_delay
+        ~priority_mode
+        scope
+        ({ clock; clear; write_to_controller; read_to_controller } : _ I.t)
     =
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let write_arbitrator =
@@ -98,13 +98,13 @@ struct
   ;;
 
   let hierarchical
-    ~instance
-    ~read_latency
-    ~(* TODO: Rename read_request_delay *)
-     request_delay
-    ~priority_mode
-    (scope : Scope.t)
-    (input : Signal.t I.t)
+        ~instance
+        ~read_latency
+        ~(* TODO: Rename read_request_delay *)
+         request_delay
+        ~priority_mode
+        (scope : Scope.t)
+        (input : Signal.t I.t)
     =
     let module H = Hierarchy.In_scope (I) (O) in
     H.hierarchical

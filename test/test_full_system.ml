@@ -15,14 +15,8 @@ module Make (M : sig
 
     val create_sim : string -> sim
     val finalize_sim : sim -> unit
-
-    val test_and_registers
-      :  ?cycles:int
-      -> instructions:Bits.t list
-      -> sim
-      -> int * int list
-
-    val test : ?cycles:int -> instructions:Bits.t list -> sim -> unit
+    val test_and_registers : ?cycles:int -> instructions:t list -> sim -> int * int list
+    val test : ?cycles:int -> instructions:t list -> sim -> unit
     val print_ram : sim -> unit
   end) =
 struct
@@ -959,7 +953,7 @@ module With_manually_programmed_ram = Make (struct
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
-          Cpu_with_no_io_controller.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
+          Cpu_with_no_io_controller.Registers.map ~f:(fun t -> to_int_trunc !t) outputs
         in
         outputs.pc, outputs.general
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]
@@ -1074,8 +1068,8 @@ module With_dma_ram = struct
 
     let send_bits sim whole_packet =
       (* Send the message through byte by byte. Uart_tx will transmit a
-         * byte once every ~10 cycles (this is dependent on the number of stop
-         * bits and the parity bit. *)
+       * byte once every ~10 cycles (this is dependent on the number of stop
+       * bits and the parity bit. *)
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       let rec loop_for n =
         if n = 0
@@ -1087,9 +1081,9 @@ module With_dma_ram = struct
       List.iter
         ~f:(fun input ->
           inputs.data_in_valid := vdd;
-          inputs.data_in := of_int ~width:8 input;
+          inputs.data_in := of_int_trunc ~width:8 input;
           Cyclesim.cycle sim;
-          inputs.data_in_valid := of_int ~width:1 0;
+          inputs.data_in_valid := of_int_trunc ~width:1 0;
           (* TODO: Tighter loop *)
           loop_for 44)
         whole_packet
@@ -1132,7 +1126,7 @@ module With_dma_ram = struct
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
-          Cpu_with_dma_memory.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
+          Cpu_with_dma_memory.Registers.map ~f:(fun t -> to_int_trunc !t) outputs
         in
         outputs.pc, outputs.general
       | _ -> raise_s [%message "BUG: Unexpected number of harts"]

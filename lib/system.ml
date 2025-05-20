@@ -132,7 +132,7 @@ struct
 
   let assign_non_io_ecall ((hart : _ Hart.O.t), transaction) =
     (* Default the remainders *)
-    Transaction.With_valid.Of_signal.(transaction <== default_transaction hart)
+    Transaction.With_valid.Of_signal.(transaction <-- default_transaction hart)
   ;;
 
   let assign_empty_ecalls harts hart_ecall_transactions =
@@ -144,11 +144,11 @@ struct
   let dma_write_slot = 0
 
   let assign_dma_io_ecall
-    ~clock
-    (harts : _ Hart.O.t list)
-    hart_ecall_transactions
-    { Dma.tx_input; tx_busy; _ }
-    scope
+        ~clock
+        (harts : _ Hart.O.t list)
+        hart_ecall_transactions
+        { Dma.tx_input; tx_busy; _ }
+        scope
     =
     (* For now we only allow Hart0 to do IO. This isn't
        necessary, but it makes it easier to stop them both
@@ -175,13 +175,13 @@ struct
     let not_busy = ~:tx_busy in
     Dma.Tx_input.With_valid.Of_signal.(
       tx_input
-      <== { valid = is_dma_write &: not_busy
+      <-- { valid = is_dma_write &: not_busy
           ; value = { address = delayed_r6; length = delayed_r7 }
           });
     (* Assign the Hart0 transaction. *)
     Transaction.With_valid.Of_signal.(
       List.hd_exn hart_ecall_transactions
-      <== { With_valid.valid = vdd
+      <-- { With_valid.valid = vdd
           ; value =
               { Transaction.set_rd = vdd
               ; new_rd = uresize ~width:register_width (is_dma_write &: not_busy)
@@ -326,28 +326,28 @@ struct
       ~f:(fun video_out ->
         Read_bus.Rx.Of_signal.(
           video_out.memory_request_ack
-          <== List.nth_exn controller.read_to_controller video_out_read_slot);
+          <-- List.nth_exn controller.read_to_controller video_out_read_slot);
         Read_response.With_valid.Of_signal.(
           video_out.memory_response
-          <== List.nth_exn controller.read_response video_out_read_slot))
+          <-- List.nth_exn controller.read_response video_out_read_slot))
       maybe_video_out;
     Option.iter
       ~f:(fun { read_bus; write_bus; read_response; write_response; _ } ->
         Read_bus.Rx.Of_signal.(
-          read_bus <== List.nth_exn controller.read_to_controller dma_read_slot);
+          read_bus <-- List.nth_exn controller.read_to_controller dma_read_slot);
         Read_response.With_valid.Of_signal.(
-          read_response <== List.nth_exn controller.read_response dma_read_slot);
+          read_response <-- List.nth_exn controller.read_response dma_read_slot);
         Write_bus.Rx.Of_signal.(
-          write_bus <== List.nth_exn controller.write_to_controller dma_write_slot);
+          write_bus <-- List.nth_exn controller.write_to_controller dma_write_slot);
         Write_response.With_valid.Of_signal.(
-          write_response <== List.nth_exn controller.write_response dma_write_slot))
+          write_response <-- List.nth_exn controller.write_response dma_write_slot))
       maybe_dma_controller;
     List.iter2_exn
-      ~f:(List.iter2_exn ~f:Read_bus.Tx.Of_signal.( <== ))
+      ~f:(List.iter2_exn ~f:Read_bus.Tx.Of_signal.( <-- ))
       read_bus_per_hart
       (List.map ~f:Hart.O.read_bus harts);
     List.iter2_exn
-      ~f:(List.iter2_exn ~f:Write_bus.Tx.Of_signal.( <== ))
+      ~f:(List.iter2_exn ~f:Write_bus.Tx.Of_signal.( <-- ))
       write_bus_per_hart
       (List.map ~f:Hart.O.write_bus harts);
     { O.registers = List.map ~f:(fun o -> o.registers) harts

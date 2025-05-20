@@ -50,7 +50,7 @@ module Machine = struct
         { Framebuffer_expander.I.clock
         ; clear
         ; start = start_frame
-        ; start_address = of_int ~width:32 0
+        ; start_address = zero 32
         ; next = next_pixel
         ; memory_request = request_ack
         ; memory_response = response
@@ -69,8 +69,8 @@ module Machine = struct
         ; write_to_controller = [ Write_bus.Tx.Of_signal.of_int 0 ]
         }
     in
-    Read_bus.Rx.Of_signal.(request_ack <== List.hd_exn controller.read_to_controller);
-    Read_response.With_valid.Of_signal.(response <== List.hd_exn controller.read_response);
+    Read_bus.Rx.Of_signal.(request_ack <-- List.hd_exn controller.read_to_controller);
+    Read_response.With_valid.Of_signal.(response <-- List.hd_exn controller.read_response);
     { O.pixel = frame.pixel }
   ;;
 end

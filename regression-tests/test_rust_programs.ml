@@ -142,18 +142,18 @@ let print_ram sim =
   let data =
     Cyclesim.Memory.read_all ram
     |> Array.to_list
-    |> Bits.concat_lsb
-    |> Bits.split_lsb ~part_width:8
-    |> List.map ~f:Bits.to_char
+    |> concat_lsb
+    |> split_lsb ~part_width:8
+    |> List.map ~f:to_char
     |> String.of_char_list
   in
   print_s [%message "" ~_:(data : String.Hexdump.t)]
 ;;
 
 let clear_registers ~(inputs : Bits.t ref With_transmitter.I.t) sim =
-  inputs.clear := Bits.one 1;
+  inputs.clear := one 1;
   Cyclesim.cycle sim;
-  inputs.clear := Bits.zero 1
+  inputs.clear := zero 1
 ;;
 
 let send_dma_message ~address ~packet sim =
@@ -172,9 +172,9 @@ let send_dma_message ~address ~packet sim =
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
+      inputs.data_in := of_int_trunc ~width:8 input;
       Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
+      inputs.data_in_valid := of_int_trunc ~width:1 0;
       loop_for 44)
     whole_packet
 ;;
@@ -258,7 +258,7 @@ let test ~print_frames ~cycles ~data sim =
   match outputs.registers with
   | [ outputs ] ->
     let outputs =
-      Cpu_with_dma_memory.Registers.map ~f:(fun t -> Bits.to_int !t) outputs
+      Cpu_with_dma_memory.Registers.map ~f:(fun t -> to_int_trunc !t) outputs
     in
     print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Registers.t)];
     print_ram sim

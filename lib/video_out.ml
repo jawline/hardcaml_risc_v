@@ -60,10 +60,10 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ; next = pre_fetch_pixel
         ; memory_request = i.memory_request
         ; memory_response = i.memory_response
-        ; start_address = of_int ~width:32 Framebuffer_config.framebuffer_address
+        ; start_address = of_unsigned_int ~width:32 Framebuffer_config.framebuffer_address
         }
     in
-    expander_valid <== expander.valid;
+    expander_valid <-- expander.valid;
     (* We can pre-fetch up to two rows at 1024 * 600 *)
     (* TODO: Rather than pre-fetching here it would be a lot more efficient in
        memory to pre-fetch words in the framebuffer expander, but this isn't
@@ -79,7 +79,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ~rd:video_signals.video_active
         ()
     in
-    pixel_buffer_full <== pixel_buffer.full;
+    pixel_buffer_full <-- pixel_buffer.full;
     { O.video_data = { vdata = repeat ~count:24 pixel_buffer.q }
     ; video_signals
     ; memory_request = expander.memory_request

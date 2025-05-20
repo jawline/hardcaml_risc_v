@@ -48,7 +48,7 @@ struct
     type 'a t =
       { read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
       ; write_response : 'a Write_response.With_valid.t list
-           [@length M.num_write_channels]
+            [@length M.num_write_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -65,10 +65,16 @@ struct
   ;;
 
   let create
-    ~read_latency
-    scope
-    ({ clock; clear; which_read_ch; selected_read_ch; which_write_ch; selected_write_ch } :
-      _ I.t)
+        ~read_latency
+        scope
+        ({ clock
+         ; clear
+         ; which_read_ch
+         ; selected_read_ch
+         ; which_write_ch
+         ; selected_write_ch
+         } :
+          _ I.t)
     =
     let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in

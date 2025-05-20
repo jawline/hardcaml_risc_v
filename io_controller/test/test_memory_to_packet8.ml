@@ -8,7 +8,6 @@ open! Bits
 let debug = true
 
 let test ~name ~load_memory ~dma_address ~dma_length =
-
   let module Memory_controller =
     Memory_controller.Make (struct
       let capacity_in_bytes = 256
@@ -91,8 +90,7 @@ let test ~name ~load_memory ~dma_address ~dma_length =
     if to_bool !(outputs.output_packet.tvalid)
     then
       data
-      := String.concat
-           [ !data; to_char !(outputs.output_packet.tdata) |> Char.to_string ]
+      := String.concat [ !data; to_char !(outputs.output_packet.tdata) |> Char.to_string ]
     else ()
   in
   let issue_read ~address ~length =

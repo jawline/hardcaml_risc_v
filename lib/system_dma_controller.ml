@@ -1,6 +1,7 @@
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
+open Hardcaml_io_framework
 open Hardcaml_io_controller
 open Hardcaml_uart
 open Signal
@@ -12,6 +13,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         let header = Some 'D'
       end)
       (Memory)
+      (Axi8)
 
   module Tx_input = Memory_to_packet8.Input
 
@@ -37,12 +39,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       let config = config
     end
     in
-    let module Packet =
-      Packet.Make (struct
-        let data_bus_width = 8
-      end)
-    in
-    let module Dma = Packet_to_memory.Make (Memory) (Packet) in
+    let module Dma = Packet_to_memory.Make (Memory) (Axi8) in
     let module Uart_tx = Uart_tx.Make (Config) in
     let module Uart_rx = Uart_rx.Make (Config) in
     let module Serial_buffer =
@@ -54,18 +51,17 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       Serial_to_packet.Make
         (struct
           let header = 'Q'
-          let serial_input_width = 8
         end)
-        (Packet)
+        (Axi8)
     in
     let module Router =
       Router.Make
         (struct
           let num_tags = 2
         end)
-        (Packet)
+        (Axi8)
     in
-    let module Pulse = Pulse.Make (Packet) in
+    let module Pulse = Pulse.Make (Axi8) in
     let read_bus = Memory.Read_bus.Rx.Of_signal.wires () in
     let write_bus = Memory.Write_bus.Rx.Of_signal.wires () in
     let read_response = Memory.Read_response.With_valid.Of_signal.wires () in
@@ -92,7 +88,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         }
     in
     let router_ready = wire 1 in
-    let { Serial_to_packet.O.out; ready = serial_to_packet_ready' } =
+    let { Serial_to_packet.O.dn; up_ready = serial_to_packet_ready' } =
       Serial_to_packet.hierarchical
         ~instance:"serial_to_packet"
         scope
@@ -100,10 +96,11 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         ; clear
         ; in_valid = serial_buffer_valid
         ; in_data = serial_buffer_data
-        ; out = { ready = router_ready }
+        ; dn = { tready = router_ready }
         }
     in
-    serial_to_packet_ready <== serial_to_packet_ready';
+    let serial_to_packet_valid = dn.tvalid in
+    serial_to_packet_ready <-- serial_to_packet_ready';
     let dma_ready = wire 1 in
     let pulse_ready = wire 1 in
     let router =
@@ -112,30 +109,30 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         scope
         { Router.I.clock
         ; clear
-        ; in_ = out
-        ; outs = [ { ready = dma_ready }; { ready = pulse_ready } ]
+        ; up = dn
+        ; dns = [ { tready = dma_ready }; { tready = pulse_ready } ]
         }
     in
-    router_ready <== router.in_.ready;
+    router_ready <-- router.up.tready;
     let dma =
       Dma.hierarchical
         ~instance:"dma"
         scope
         { Dma.I.clock
         ; clear
-        ; in_ = List.nth_exn router.outs 0
+        ; in_ = List.nth_exn router.dns 0
         ; out = write_bus
         ; out_ack = write_response
         }
     in
-    dma_ready <== dma.in_.ready;
+    dma_ready <-- dma.in_.tready;
     let pulse =
       Pulse.hierarchical
         ~instance:"pulse"
         scope
-        { Pulse.I.clock; clear; in_ = List.nth_exn router.outs 1 }
+        { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
     in
-    pulse_ready <== pulse.in_.ready;
+    pulse_ready <-- pulse.up.tready;
     let tx_enable = Tx_input.With_valid.Of_signal.wires () in
     let uart_tx_ready = wire 1 in
     let dma_out =
@@ -147,7 +144,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         ; enable = tx_enable
         ; memory = read_bus
         ; memory_response = read_response
-        ; output_packet = { ready = uart_tx_ready }
+        ; output_packet = { tready = uart_tx_ready }
         }
     in
     let dma_out_uart_tx =
@@ -156,11 +153,11 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         scope
         { Uart_tx.I.clock
         ; clear
-        ; data_in_valid = dma_out.output_packet.valid
-        ; data_in = dma_out.output_packet.data.data
+        ; data_in_valid = dma_out.output_packet.tvalid
+        ; data_in = dma_out.output_packet.tdata
         }
     in
-    uart_tx_ready <== dma_out_uart_tx.data_in_ready;
+    uart_tx_ready <-- dma_out_uart_tx.data_in_ready;
     Some
       { write_request = dma.out
       ; read_request = dma_out.memory
@@ -173,7 +170,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       ; uart_tx = dma_out_uart_tx.uart_tx
       ; uart_rx_valid
       ; parity_error
-      ; serial_to_packet_valid = out.valid
+      ; serial_to_packet_valid
       ; clear_message = pulse.signal
       }
   ;;

@@ -20,14 +20,14 @@ module Memory_controller = Memory_controller.Make (struct
 open Memory_controller.Memory_bus
 
 let test
-  ~verbose
-  ~name
-  ~clock_frequency
-  ~baud_rate
-  ~include_parity_bit
-  ~stop_bits
-  ~address
-  ~packet
+      ~verbose
+      ~name
+      ~clock_frequency
+      ~baud_rate
+      ~include_parity_bit
+      ~stop_bits
+      ~address
+      ~packet
   =
   let all_inputs =
     (* We add the header and then the packet length before the packet *)
@@ -38,7 +38,9 @@ let test
       |> List.map ~f:to_int_trunc
     in
     let address =
-      of_unsigned_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:to_int_trunc
+      of_unsigned_int ~width:32 address
+      |> split_msb ~part_width:8
+      |> List.map ~f:to_int_trunc
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
   in
@@ -93,15 +95,15 @@ let test
     end
 
     let create
-      (scope : Scope.t)
-      { I.clock
-      ; clear
-      ; data_in_valid
-      ; data_in
-      ; dma_out_enable
-      ; dma_out_address
-      ; dma_out_length
-      }
+          (scope : Scope.t)
+          { I.clock
+          ; clear
+          ; data_in_valid
+          ; data_in
+          ; dma_out_enable
+          ; dma_out_address
+          ; dma_out_length
+          }
       =
       let { Uart_tx.O.uart_tx; _ } =
         Uart_tx.hierarchical
@@ -254,9 +256,7 @@ let test
     let data = ref "" in
     let store_outputs () =
       if to_bool !(outputs.out_valid)
-      then
-        data
-        := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
+      then data := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
       else ()
     in
     let count = ref 0 in

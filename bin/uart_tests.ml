@@ -53,7 +53,7 @@ module Machine = struct
         scope
         { Tx.I.clock; clear; data_in_valid = ~:(buffer.empty); data_in = buffer.q }
     in
-    rdy <== tx.data_in_ready;
+    rdy <-- tx.data_in_ready;
     { O.uart_tx = tx.uart_tx }
   ;;
 

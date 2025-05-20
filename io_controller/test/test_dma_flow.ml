@@ -43,7 +43,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~addre
       |> List.map ~f:to_int_trunc
     in
     let address =
-      of_unsigned_int ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:to_int_trunc
+      of_unsigned_int ~width:32 address
+      |> split_msb ~part_width:8
+      |> List.map ~f:to_int_trunc
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
   in

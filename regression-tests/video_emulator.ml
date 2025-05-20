@@ -30,16 +30,16 @@ let commit_frame t = t.frames <- Array.copy t.current_frame :: t.frames
 
 let cycle t ~(video_data : Bits.t) ~(video_signals : Bits.t Video_signals.Video_signals.t)
   =
-  if Bits.to_bool video_signals.video_active
+  if to_bool video_signals.video_active
   then (
     if t.was_blanking
     then (
       commit_frame t;
       t.was_blanking <- false);
-    let rgb = Bits.to_int video_data in
+    let rgb = to_int_trunc video_data in
     Array.set t.current_frame t.which_px rgb;
     t.which_px <- t.which_px + 1)
-  else if Bits.to_bool video_signals.v_sync
+  else if to_bool video_signals.v_sync
   then (
     t.was_blanking <- true;
     t.which_px <- 0);
