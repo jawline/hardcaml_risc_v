@@ -14,7 +14,7 @@ struct
       ; clear : 'a
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
-      ; read_bus : 'a Memory.Read_bus.Rx.t
+      ; read_bus : 'a Memory.Read_bus.Dest.t
       ; read_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -26,7 +26,7 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a [@bits 32]
       ; error : 'a
-      ; read_bus : 'a Memory.Read_bus.Tx.t
+      ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -51,7 +51,7 @@ struct
       Registers.For_writeback.Of_signal.reg ~enable:i.valid reg_spec_no_clear i.registers
     in
     { O.read_bus =
-        { Memory.Read_bus.Tx.valid = fetching
+        { Memory.Read_bus.Source.valid = fetching
         ; data = { address = mux2 i.valid i.registers.pc registers.pc }
         }
     ; valid = ~:fetching &: awaiting_result &: i.read_response.valid

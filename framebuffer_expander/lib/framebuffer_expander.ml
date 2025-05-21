@@ -34,8 +34,8 @@ struct
       ; clear : 'a
       ; start : 'a
       ; next : 'a
-      ; start_address : 'a [@bits Memory.Read_bus.Tx.port_widths.data.address]
-      ; memory_request : 'a Memory.Read_bus.Rx.t
+      ; start_address : 'a [@bits Memory.Read_bus.Source.port_widths.data.address]
+      ; memory_request : 'a Memory.Read_bus.Dest.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -45,7 +45,7 @@ struct
     type 'a t =
       { valid : 'a
       ; pixel : 'a
-      ; memory_request : 'a Memory.Read_bus.Tx.t
+      ; memory_request : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -301,7 +301,7 @@ struct
         ~:(current_state.is X_body) |: (current_state.is X_body &: data_valid.value)
     ; pixel = mux2 (current_state.is X_body) body_bit gnd
     ; memory_request =
-        { Memory.Read_bus.Tx.valid = request_read
+        { Memory.Read_bus.Source.valid = request_read
         ; data = { address = next_address.value }
         }
     }

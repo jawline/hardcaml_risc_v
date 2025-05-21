@@ -21,7 +21,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; memory_request : 'a Memory.Read_bus.Rx.t
+      ; memory_request : 'a Memory.Read_bus.Dest.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -31,7 +31,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
     type 'a t =
       { video_data : 'a Video_data.t
       ; video_signals : 'a Video_signals.Video_signals.t
-      ; memory_request : 'a Memory.Read_bus.Tx.t
+      ; memory_request : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

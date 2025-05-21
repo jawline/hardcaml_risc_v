@@ -42,7 +42,7 @@ module Machine = struct
   end
 
   let create (scope : Scope.t) { I.clock; clear; start_frame; next_pixel } =
-    let request_ack = Read_bus.Rx.Of_signal.wires () in
+    let request_ack = Read_bus.Dest.Of_signal.wires () in
     let response = Read_response.With_valid.Of_signal.wires () in
     let frame =
       Framebuffer_expander.hierarchical
@@ -66,10 +66,10 @@ module Machine = struct
         { Memory_controller.I.clock
         ; clear
         ; read_to_controller = [ frame.memory_request ]
-        ; write_to_controller = [ Write_bus.Tx.Of_signal.of_int 0 ]
+        ; write_to_controller = [ Write_bus.Source.Of_signal.of_int 0 ]
         }
     in
-    Read_bus.Rx.Of_signal.(request_ack <-- List.hd_exn controller.read_to_controller);
+    Read_bus.Dest.Of_signal.(request_ack <-- List.hd_exn controller.read_to_controller);
     Read_response.With_valid.Of_signal.(response <-- List.hd_exn controller.read_response);
     { O.pixel = frame.pixel }
   ;;

@@ -32,10 +32,10 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; instret : 'a
-      ; write_bus : 'a Memory.Write_bus.Rx.t list [@length required_write_channels]
+      ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
             [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Rx.t list [@length required_read_channels]
+      ; read_bus : 'a Memory.Read_bus.Dest.t list [@length required_read_channels]
       ; read_response : 'a Memory.Read_response.With_valid.t list
             [@length required_read_channels]
       }
@@ -48,8 +48,8 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
       ; error : 'a
-      ; write_bus : 'a Memory.Write_bus.Tx.t list [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Tx.t list [@length required_read_channels]
+      ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
+      ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

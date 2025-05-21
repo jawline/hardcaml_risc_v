@@ -18,12 +18,12 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
   module Tx_input = Memory_to_packet8.Input
 
   type 'a t =
-    { write_request : Signal.t Memory.Write_bus.Tx.t
-    ; read_request : Signal.t Memory.Read_bus.Tx.t
+    { write_request : Signal.t Memory.Write_bus.Source.t
+    ; read_request : Signal.t Memory.Read_bus.Source.t
     ; read_response : Signal.t Memory.Read_response.With_valid.t
     ; write_response : Signal.t Memory.Write_response.With_valid.t
-    ; write_bus : Signal.t Memory.Write_bus.Rx.t
-    ; read_bus : Signal.t Memory.Read_bus.Rx.t
+    ; write_bus : Signal.t Memory.Write_bus.Dest.t
+    ; read_bus : Signal.t Memory.Read_bus.Dest.t
     ; uart_rx_valid : 'a
     ; tx_input : Signal.t Tx_input.With_valid.t
     ; tx_busy : 'a

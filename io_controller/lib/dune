@@ -3,7 +3,6 @@
  (libraries
   hardcaml
   hardcaml_axi
-  hardcaml_stream
   hardcaml_memory_controller
   hardcaml_io_framework
   core)

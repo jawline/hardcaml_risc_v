@@ -22,8 +22,8 @@ struct
     type 'a t =
       { valid : 'a
       ; transaction : 'a Transaction.t
-      ; write_bus : 'a Memory.Write_bus.Tx.t option
-      ; read_bus : 'a Memory.Read_bus.Tx.t option
+      ; write_bus : 'a Memory.Write_bus.Source.t option
+      ; read_bus : 'a Memory.Read_bus.Source.t option
       }
     [@@deriving fields ~getters]
   end
@@ -37,8 +37,8 @@ struct
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; error : 'a
-      ; write_bus : 'a Memory.Write_bus.Rx.t
-      ; read_bus : 'a Memory.Read_bus.Rx.t
+      ; write_bus : 'a Memory.Write_bus.Dest.t
+      ; read_bus : 'a Memory.Read_bus.Dest.t
       ; write_response : 'a Memory.Write_response.With_valid.t
       ; read_response : 'a Memory.Read_response.With_valid.t
       ; instret : 'a
@@ -54,8 +54,8 @@ struct
       ; transaction : 'a Transaction.t
       ; error : 'a
       ; is_ecall : 'a
-      ; write_bus : 'a Memory.Write_bus.Tx.t
-      ; read_bus : 'a Memory.Read_bus.Tx.t
+      ; write_bus : 'a Memory.Write_bus.Source.t
+      ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -459,26 +459,26 @@ struct
   ;;
 
   let combine_read_bus (instruction_table : _ Table_entry.t list) =
-    let combine = Memory.Read_bus.Tx.map2 ~f:( |: ) in
-    let gate (t : _ Memory.Read_bus.Tx.t) =
-      Memory.Read_bus.Tx.Of_signal.mux2 t.valid t (Memory.Read_bus.Tx.Of_signal.of_int 0)
+    let combine = Memory.Read_bus.Source.map2 ~f:( |: ) in
+    let gate (t : _ Memory.Read_bus.Source.t) =
+      Memory.Read_bus.Source.Of_signal.mux2 t.valid t (Memory.Read_bus.Source.Of_signal.of_int 0)
     in
     List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
     |> List.map ~f:gate
-    |> List.fold ~init:(Memory.Read_bus.Tx.Of_signal.of_int 0) ~f:combine
+    |> List.fold ~init:(Memory.Read_bus.Source.Of_signal.of_int 0) ~f:combine
   ;;
 
   let combine_write_bus (instruction_table : _ Table_entry.t list) =
-    let combine = Memory.Write_bus.Tx.map2 ~f:( |: ) in
-    let gate (t : _ Memory.Write_bus.Tx.t) =
-      Memory.Write_bus.Tx.Of_signal.mux2
+    let combine = Memory.Write_bus.Source.map2 ~f:( |: ) in
+    let gate (t : _ Memory.Write_bus.Source.t) =
+      Memory.Write_bus.Source.Of_signal.mux2
         t.valid
         t
-        (Memory.Write_bus.Tx.Of_signal.of_int 0)
+        (Memory.Write_bus.Source.Of_signal.of_int 0)
     in
     List.filter_map ~f:(fun t -> t.output.write_bus) instruction_table
     |> List.map ~f:gate
-    |> List.fold ~init:(Memory.Write_bus.Tx.Of_signal.of_int 0) ~f:combine
+    |> List.fold ~init:(Memory.Write_bus.Source.Of_signal.of_int 0) ~f:combine
   ;;
 
   let create scope (i : _ I.t) =

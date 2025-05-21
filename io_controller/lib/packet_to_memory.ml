@@ -17,7 +17,7 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
       { clock : 'a
       ; clear : 'a
       ; in_ : 'a Axi.Source.t
-      ; out : 'a Memory.Write_bus.Rx.t
+      ; out : 'a Memory.Write_bus.Dest.t
       ; out_ack : 'a Memory.Write_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -26,7 +26,7 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
   module O = struct
     type 'a t =
       { in_ : 'a Axi.Dest.t
-      ; out : 'a Memory.Write_bus.Tx.t
+      ; out : 'a Memory.Write_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

@@ -1,6 +1,6 @@
 open Core
 open Hardcaml
-open Hardcaml_stream
+open Hardcaml_custom_handshake
 open Signal
 
 module Priority_mode = struct
@@ -10,7 +10,7 @@ module Priority_mode = struct
 end
 
 module Make
-    (S : Stream_intf.S)
+    (S : Handshake_intf.S)
     (M : sig
        val num_channels : int
      end) =
@@ -19,7 +19,7 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; ch_to_controller : 'a S.Tx.t list [@length M.num_channels]
+      ; ch_to_controller : 'a S.Source.t list [@length M.num_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -27,8 +27,8 @@ struct
   module O = struct
     type 'a t =
       { which_ch : 'a [@bits num_bits_to_represent (M.num_channels - 1)]
-      ; selected_ch : 'a S.Tx.t
-      ; acks : 'a S.Rx.t list [@length M.num_channels]
+      ; selected_ch : 'a S.Source.t
+      ; acks : 'a S.Dest.t list [@length M.num_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -45,7 +45,7 @@ struct
     in
     let channels =
       List.mapi
-        ~f:(fun (ch : int) (t : Signal.t S.Tx.t) : Signal.t With_valid.t ->
+        ~f:(fun (ch : int) (t : Signal.t S.Source.t) : Signal.t With_valid.t ->
           { With_valid.valid = t.valid
           ; value = of_int_trunc ~width:(num_bits_to_represent (M.num_channels - 1)) ch
           })
@@ -60,7 +60,7 @@ struct
   let priority_order ~clock:_ ~ch_to_controller _scope =
     let channels =
       List.mapi
-        ~f:(fun (ch : int) (t : Signal.t S.Tx.t) : Signal.t With_valid.t ->
+        ~f:(fun (ch : int) (t : Signal.t S.Source.t) : Signal.t With_valid.t ->
           { With_valid.valid = t.valid
           ; value = of_int_trunc ~width:(num_bits_to_represent (M.num_channels - 1)) ch
           })
@@ -82,13 +82,13 @@ struct
     let selected_ch =
       if M.num_channels = 1
       then List.hd_exn ch_to_controller
-      else S.Tx.Of_signal.mux which_ch ch_to_controller
+      else S.Source.Of_signal.mux which_ch ch_to_controller
     in
     { O.which_ch
     ; selected_ch
     ; acks =
         List.mapi
-          ~f:(fun i t -> { S.Rx.ready = which_ch ==:. i &: t.valid })
+          ~f:(fun i t -> { S.Dest.ready = which_ch ==:. i &: t.valid })
           ch_to_controller
     }
   ;;

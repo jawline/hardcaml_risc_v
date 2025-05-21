@@ -1,7 +1,7 @@
 module type S = sig
   type 'a data
 
-  module Tx : sig
+  module Source : sig
     type 'a t =
       { valid : 'a
       ; data : 'a data
@@ -9,7 +9,7 @@ module type S = sig
     [@@deriving hardcaml]
   end
 
-  module Rx : sig
+  module Dest : sig
     type 'a t = { ready : 'a } [@@deriving hardcaml]
   end
 end

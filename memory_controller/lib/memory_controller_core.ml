@@ -37,9 +37,9 @@ struct
       { clock : 'a
       ; clear : 'a
       ; which_read_ch : 'a [@bits num_bits_to_represent M.num_read_channels - 1]
-      ; selected_read_ch : 'a Memory_bus.Read_bus.Tx.t
+      ; selected_read_ch : 'a Memory_bus.Read_bus.Source.t
       ; which_write_ch : 'a [@bits num_bits_to_represent M.num_write_channels - 1]
-      ; selected_write_ch : 'a Memory_bus.Write_bus.Tx.t
+      ; selected_write_ch : 'a Memory_bus.Write_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

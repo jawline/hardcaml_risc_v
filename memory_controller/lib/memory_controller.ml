@@ -33,16 +33,16 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; write_to_controller : 'a Write_bus.Tx.t list [@length M.num_write_channels]
-      ; read_to_controller : 'a Read_bus.Tx.t list [@length M.num_read_channels]
+      ; write_to_controller : 'a Write_bus.Source.t list [@length M.num_write_channels]
+      ; read_to_controller : 'a Read_bus.Source.t list [@length M.num_read_channels]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { write_to_controller : 'a Write_bus.Rx.t list [@length M.num_write_channels]
-      ; read_to_controller : 'a Read_bus.Rx.t list [@length M.num_read_channels]
+      { write_to_controller : 'a Write_bus.Dest.t list [@length M.num_write_channels]
+      ; read_to_controller : 'a Read_bus.Dest.t list [@length M.num_read_channels]
       ; write_response : 'a Write_response.With_valid.t list
             [@length M.num_write_channels]
       ; read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
@@ -84,7 +84,7 @@ struct
         ; which_read_ch =
             pipeline ~n:request_delay reg_spec_no_clear read_arbitrator.which_ch
         ; selected_read_ch =
-            Memory_bus.Read_bus.Tx.Of_signal.pipeline
+            Memory_bus.Read_bus.Source.Of_signal.pipeline
               ~n:request_delay
               reg_spec_no_clear
               read_arbitrator.selected_ch

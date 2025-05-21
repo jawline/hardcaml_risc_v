@@ -40,7 +40,7 @@ struct
       ; clear : 'a
       ; enable : 'a Input.With_valid.t
       ; output_packet : 'a Axi.Dest.t
-      ; memory : 'a Memory.Read_bus.Rx.t
+      ; memory : 'a Memory.Read_bus.Dest.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -51,7 +51,7 @@ struct
       { busy : 'a
       ; done_ : 'a
       ; output_packet : 'a Axi.Source.t [@rtlprefix "output$"]
-      ; memory : 'a Memory.Read_bus.Tx.t [@rtlprefix "memory$"]
+      ; memory : 'a Memory.Read_bus.Source.t [@rtlprefix "memory$"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

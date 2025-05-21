@@ -1,6 +1,6 @@
 open Core
 open Hardcaml
-open Hardcaml_stream
+open Hardcaml_custom_handshake
 
 module Make (M : sig
     val address_width : int
@@ -50,6 +50,6 @@ struct
     address &:. unaligned_bits ==:. 0
   ;;
 
-  module Read_bus = Stream.Make (Read)
-  module Write_bus = Stream.Make (Write)
+  module Read_bus = Handshake.Make (Read)
+  module Write_bus = Handshake.Make (Write)
 end

@@ -18,7 +18,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; enable : 'a
       ; funct3 : 'a [@bits 3]
       ; address : 'a [@bits register_width]
-      ; read_bus : 'a Memory.Read_bus.Rx.t
+      ; read_bus : 'a Memory.Read_bus.Dest.t
       ; read_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -29,7 +29,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       { new_rd : 'a [@bits register_width]
       ; error : 'a
       ; finished : 'a
-      ; read_bus : 'a Memory.Read_bus.Tx.t
+      ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

@@ -1,5 +1,5 @@
 open Hardcaml
-open Hardcaml_stream
+open Hardcaml_custom_handshake
 
 module type S = sig
   module Read : sig
@@ -33,6 +33,6 @@ module type S = sig
   val data_bus_width : int
   val address_is_word_aligned : Signal.t -> Signal.t
 
-  module Read_bus : Stream_intf.S with type 'a data := 'a Read.t
-  module Write_bus : Stream_intf.S with type 'a data := 'a Write.t
+  module Read_bus : Handshake_intf.S with type 'a data := 'a Read.t
+  module Write_bus : Handshake_intf.S with type 'a data := 'a Write.t
 end
