@@ -127,7 +127,7 @@ let test
           ; dn = { tready = vdd }
           }
       in
-      let dma_to_memory_controller = Write_bus.Rx.Of_always.wire zero in
+      let dma_to_memory_controller = Write_bus.Dest.Of_always.wire zero in
       let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
         Dma.hierarchical
@@ -136,11 +136,11 @@ let test
           { Dma.I.clock
           ; clear
           ; in_ = dn
-          ; out = Write_bus.Rx.Of_always.value dma_to_memory_controller
+          ; out = Write_bus.Dest.Of_always.value dma_to_memory_controller
           ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
           }
       in
-      let dma_out_to_memory_controller = Read_bus.Rx.Of_always.wire zero in
+      let dma_out_to_memory_controller = Read_bus.Dest.Of_always.wire zero in
       let memory_controller_to_dma_out = Read_response.With_valid.Of_always.wire zero in
       let uart_tx_ready = wire 1 in
       let dma_out =
@@ -153,7 +153,7 @@ let test
               { valid = dma_out_enable
               ; value = { address = dma_out_address; length = dma_out_length }
               }
-          ; memory = Read_bus.Rx.Of_always.value dma_out_to_memory_controller
+          ; memory = Read_bus.Dest.Of_always.value dma_out_to_memory_controller
           ; memory_response =
               Read_response.With_valid.Of_always.value memory_controller_to_dma_out
           ; output_packet = { tready = uart_tx_ready }
@@ -190,13 +190,13 @@ let test
           }
       in
       compile
-        [ Write_bus.Rx.Of_always.assign
+        [ Write_bus.Dest.Of_always.assign
             dma_to_memory_controller
             (List.nth_exn controller.write_to_controller 0)
         ; Write_response.With_valid.Of_always.assign
             memory_controller_to_dma
             (List.nth_exn controller.write_response 0)
-        ; Read_bus.Rx.Of_always.assign
+        ; Read_bus.Dest.Of_always.assign
             dma_out_to_memory_controller
             (List.nth_exn controller.read_to_controller 0)
         ; Read_response.With_valid.Of_always.assign

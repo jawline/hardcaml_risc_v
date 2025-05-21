@@ -62,8 +62,8 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         (Axi8)
     in
     let module Pulse = Pulse.Make (Axi8) in
-    let read_bus = Memory.Read_bus.Rx.Of_signal.wires () in
-    let write_bus = Memory.Write_bus.Rx.Of_signal.wires () in
+    let read_bus = Memory.Read_bus.Dest.Of_signal.wires () in
+    let write_bus = Memory.Write_bus.Dest.Of_signal.wires () in
     let read_response = Memory.Read_response.With_valid.Of_signal.wires () in
     let write_response = Memory.Write_response.With_valid.Of_signal.wires () in
     let { Uart_rx.O.data_out_valid = uart_rx_valid

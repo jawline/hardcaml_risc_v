@@ -54,9 +54,9 @@ module Test_machine = struct
         (scope : Scope.t)
         ({ I.clock; clear; enable; funct3; destination; value } : _ I.t)
     =
-    let read_bus = Read_bus.Rx.Of_always.wire zero in
+    let read_bus = Read_bus.Dest.Of_always.wire zero in
     let read_response = Read_response.With_valid.Of_always.wire zero in
-    let write_bus = Write_bus.Rx.Of_always.wire zero in
+    let write_bus = Write_bus.Dest.Of_always.wire zero in
     let write_response = Write_response.With_valid.Of_always.wire zero in
     let store =
       Store.hierarchical
@@ -68,9 +68,9 @@ module Test_machine = struct
         ; funct3
         ; destination
         ; value
-        ; read_bus = Read_bus.Rx.Of_always.value read_bus
+        ; read_bus = Read_bus.Dest.Of_always.value read_bus
         ; read_response = Read_response.With_valid.Of_always.value read_response
-        ; write_bus = Write_bus.Rx.Of_always.value write_bus
+        ; write_bus = Write_bus.Dest.Of_always.value write_bus
         ; write_response = Write_response.With_valid.Of_always.value write_response
         }
     in
@@ -88,13 +88,13 @@ module Test_machine = struct
         }
     in
     compile
-      [ Read_bus.Rx.Of_always.assign
+      [ Read_bus.Dest.Of_always.assign
           read_bus
           (List.nth_exn controller.read_to_controller 0)
       ; Read_response.With_valid.Of_always.assign
           read_response
           (List.nth_exn controller.read_response 0)
-      ; Write_bus.Rx.Of_always.assign
+      ; Write_bus.Dest.Of_always.assign
           write_bus
           (List.nth_exn controller.write_to_controller 0)
       ; Write_response.With_valid.Of_always.assign

@@ -206,8 +206,8 @@ struct
   module Video_data = struct
     type 'a t =
       { video_data : 'a Video_out_with_memory.O.t
-      ; memory_request_ack : 'a Memory_controller.Memory_bus.Read_bus.Rx.t
-      ; memory_request : 'a Memory_controller.Memory_bus.Read_bus.Tx.t
+      ; memory_request_ack : 'a Memory_controller.Memory_bus.Read_bus.Dest.t
+      ; memory_request : 'a Memory_controller.Memory_bus.Read_bus.Source.t
       ; memory_response : 'a Memory_controller.Memory_bus.Read_response.With_valid.t
       }
     [@@deriving fields ~getters]
@@ -220,7 +220,7 @@ struct
         ( (module Framebuffer_config : Video_out.Config)
         , (module Video_signals_config : Video_signals.Config) ) ->
       let memory_request_ack =
-        Memory_controller.Memory_bus.Read_bus.Rx.Of_signal.wires ()
+        Memory_controller.Memory_bus.Read_bus.Dest.Of_signal.wires ()
       in
       let memory_response =
         Memory_controller.Memory_bus.Read_response.With_valid.Of_signal.wires ()
@@ -260,7 +260,7 @@ struct
       List.init
         ~f:(fun _which_hart ->
           List.init
-            ~f:(fun _i -> Read_bus.Tx.Of_signal.wires ())
+            ~f:(fun _i -> Read_bus.Source.Of_signal.wires ())
             required_read_channels_per_hart)
         General_config.num_harts
     in
@@ -268,7 +268,7 @@ struct
       List.init
         ~f:(fun _which_hart ->
           List.init
-            ~f:(fun _i -> Write_bus.Tx.Of_signal.wires ())
+            ~f:(fun _i -> Write_bus.Source.Of_signal.wires ())
             required_write_channels_per_hart)
         General_config.num_harts
     in
@@ -324,7 +324,7 @@ struct
     assign_ecalls ~clock:i.clock maybe_dma_controller harts hart_ecall_transactions scope;
     Option.iter
       ~f:(fun video_out ->
-        Read_bus.Rx.Of_signal.(
+        Read_bus.Dest.Of_signal.(
           video_out.memory_request_ack
           <-- List.nth_exn controller.read_to_controller video_out_read_slot);
         Read_response.With_valid.Of_signal.(
@@ -333,21 +333,21 @@ struct
       maybe_video_out;
     Option.iter
       ~f:(fun { read_bus; write_bus; read_response; write_response; _ } ->
-        Read_bus.Rx.Of_signal.(
+        Read_bus.Dest.Of_signal.(
           read_bus <-- List.nth_exn controller.read_to_controller dma_read_slot);
         Read_response.With_valid.Of_signal.(
           read_response <-- List.nth_exn controller.read_response dma_read_slot);
-        Write_bus.Rx.Of_signal.(
+        Write_bus.Dest.Of_signal.(
           write_bus <-- List.nth_exn controller.write_to_controller dma_write_slot);
         Write_response.With_valid.Of_signal.(
           write_response <-- List.nth_exn controller.write_response dma_write_slot))
       maybe_dma_controller;
     List.iter2_exn
-      ~f:(List.iter2_exn ~f:Read_bus.Tx.Of_signal.( <-- ))
+      ~f:(List.iter2_exn ~f:Read_bus.Source.Of_signal.( <-- ))
       read_bus_per_hart
       (List.map ~f:Hart.O.read_bus harts);
     List.iter2_exn
-      ~f:(List.iter2_exn ~f:Write_bus.Tx.Of_signal.( <-- ))
+      ~f:(List.iter2_exn ~f:Write_bus.Source.Of_signal.( <-- ))
       write_bus_per_hart
       (List.map ~f:Hart.O.write_bus harts);
     { O.registers = List.map ~f:(fun o -> o.registers) harts

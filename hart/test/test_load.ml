@@ -48,7 +48,7 @@ module Test_machine = struct
   end
 
   let create (scope : Scope.t) ({ I.clock; clear; enable; funct3; address } : _ I.t) =
-    let read_bus = Read_bus.Rx.Of_always.wire zero in
+    let read_bus = Read_bus.Dest.Of_always.wire zero in
     let read_response = Read_response.With_valid.Of_always.wire zero in
     let load =
       Load.hierarchical
@@ -59,7 +59,7 @@ module Test_machine = struct
         ; enable
         ; funct3
         ; address
-        ; read_bus = Read_bus.Rx.Of_always.value read_bus
+        ; read_bus = Read_bus.Dest.Of_always.value read_bus
         ; read_response = Read_response.With_valid.Of_always.value read_response
         }
     in
@@ -72,12 +72,12 @@ module Test_machine = struct
         scope
         { Memory_controller.I.clock
         ; clear
-        ; write_to_controller = [ Write_bus.Tx.Of_signal.of_int 0 ]
+        ; write_to_controller = [ Write_bus.Source.Of_signal.of_int 0 ]
         ; read_to_controller = [ load.read_bus ]
         }
     in
     compile
-      [ Read_bus.Rx.Of_always.assign
+      [ Read_bus.Dest.Of_always.assign
           read_bus
           (List.nth_exn controller.read_to_controller 0)
       ; Read_response.With_valid.Of_always.assign

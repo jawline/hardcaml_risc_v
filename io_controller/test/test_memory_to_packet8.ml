@@ -42,7 +42,7 @@ let test ~load_memory ~dma_address ~dma_length =
     module O = Memory_to_packet8.O
 
     let create (scope : Scope.t) { I.clock; clear; enable; address; length } =
-      let ch_to_controller = Read_bus.Tx.Of_always.wire Signal.zero in
+      let ch_to_controller = Read_bus.Source.Of_always.wire Signal.zero in
       let controller =
         Memory_controller.hierarchical
           ~instance:"memory_controller"
@@ -52,8 +52,8 @@ let test ~load_memory ~dma_address ~dma_length =
           scope
           { Memory_controller.I.clock
           ; clear
-          ; read_to_controller = [ Read_bus.Tx.Of_always.value ch_to_controller ]
-          ; write_to_controller = [ Write_bus.Tx.Of_signal.of_int 0 ]
+          ; read_to_controller = [ Read_bus.Source.Of_always.value ch_to_controller ]
+          ; write_to_controller = [ Write_bus.Source.Of_signal.of_int 0 ]
           }
       in
       let output =
@@ -68,7 +68,7 @@ let test ~load_memory ~dma_address ~dma_length =
           ; memory_response = List.nth_exn controller.read_response 0
           }
       in
-      Always.compile [ Read_bus.Tx.Of_always.assign ch_to_controller output.memory ];
+      Always.compile [ Read_bus.Source.Of_always.assign ch_to_controller output.memory ];
       output
     ;;
   end
