@@ -116,8 +116,7 @@ let op ~funct7 ~funct3 ~rs1 ~rs2 ~rd =
 let ecall =
   assemble_i_type
     ~opcode:System
-    ~funct3:
-      (of_int_trunc ~width:3 (Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
+    ~funct3:(of_int_trunc ~width:3 (Funct3.System.to_int Funct3.System.Ecall_or_ebreak))
     ~rs1:(of_int_trunc ~width:5 0)
     ~rd:(of_int_trunc ~width:5 0)
     ~immediate:(of_int_trunc ~width:12 0)
@@ -175,9 +174,7 @@ let dma_packet ~address packet =
     |> List.map ~f:to_int_trunc
   in
   let address =
-    of_int_trunc ~width:32 address
-    |> split_msb ~part_width:8
-    |> List.map ~f:to_int_trunc
+    of_int_trunc ~width:32 address |> split_msb ~part_width:8 |> List.map ~f:to_int_trunc
   in
   [ Char.to_int 'Q' ]
   @ packet_len_parts

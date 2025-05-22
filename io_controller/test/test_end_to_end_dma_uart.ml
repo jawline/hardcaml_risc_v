@@ -105,16 +105,10 @@ let test
           }
       =
       let { Uart_tx.O.uart_tx; _ } =
-        Uart_tx.hierarchical
-          ~instance:"tx"
-          scope
-          { Uart_tx.I.clock; clear; data_in_valid; data_in }
+        Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
-        Uart_rx.hierarchical
-          ~instance:"rx"
-          scope
-          { Uart_rx.I.clock; clear; uart_rx = uart_tx }
+        Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx = uart_tx }
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
@@ -161,7 +155,6 @@ let test
       in
       let dma_out_uart_tx =
         Uart_tx.hierarchical
-          ~instance:"tx"
           scope
           { Uart_tx.I.clock
           ; clear
@@ -172,7 +165,6 @@ let test
       Signal.(uart_tx_ready <-- dma_out_uart_tx.idle);
       let dma_out_uart_rx =
         Uart_rx.hierarchical
-          ~instance:"tx_rx"
           scope
           { Uart_rx.I.clock; clear; uart_rx = dma_out_uart_tx.uart_tx }
       in
@@ -284,8 +276,8 @@ let%expect_test "test" =
     ~address:0
     ~packet:"Hio"
     ~verbose:true;
-    (* The additional o is a side effect of the DMA modules inability to not write dw aligned. *)
-    (* TODO: Use byte enables to only write the bytes the packet to memory module has buffered. *)
+  (* The additional o is a side effect of the DMA modules inability to not write dw aligned. *)
+  (* TODO: Use byte enables to only write the bytes the packet to memory module has buffered. *)
   [%expect
     {|
     Printing ram (not DMA response):
@@ -336,6 +328,5 @@ let%expect_test "fuzz" =
       ~address:0
       ~packet:test_str
       ~verbose:false);
-  [%expect
-    {| |}]
+  [%expect {| |}]
 ;;

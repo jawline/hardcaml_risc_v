@@ -34,7 +34,7 @@ module Machine = struct
 
   let create (scope : Scope.t) ({ I.clock; clear; uart_rx } : _ I.t) =
     let open Signal in
-    let rx = Rx.hierarchical ~instance:"rx" scope { Rx.I.clock; clear; uart_rx } in
+    let rx = Rx.hierarchical scope { Rx.I.clock; clear; uart_rx } in
     let rdy = wire 1 in
     let buffer =
       Fifo.create
@@ -49,7 +49,6 @@ module Machine = struct
     in
     let tx =
       Tx.hierarchical
-        ~instance:"tx"
         scope
         { Tx.I.clock; clear; data_in_valid = ~:(buffer.empty); data_in = buffer.q }
     in

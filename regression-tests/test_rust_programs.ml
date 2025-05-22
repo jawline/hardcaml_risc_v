@@ -90,10 +90,7 @@ module With_transmitter = struct
   let create scope { I.clock; clear; data_in_valid; data_in } =
     let open Signal in
     let { Uart_tx.O.uart_tx; _ } =
-      Uart_tx.hierarchical
-        ~instance:"tx"
-        scope
-        { Uart_tx.I.clock; clear; data_in_valid; data_in }
+      Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
       Cpu_with_dma_memory.hierarchical
@@ -103,7 +100,6 @@ module With_transmitter = struct
     in
     let { Uart_rx.O.data_out_valid; data_out; _ } =
       Uart_rx.hierarchical
-        ~instance:"rx"
         scope
         { Uart_rx.I.clock; clear; uart_rx = Option.value_exn cpu_uart_tx }
     in

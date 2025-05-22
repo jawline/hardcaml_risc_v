@@ -461,7 +461,10 @@ struct
   let combine_read_bus (instruction_table : _ Table_entry.t list) =
     let combine = Memory.Read_bus.Source.map2 ~f:( |: ) in
     let gate (t : _ Memory.Read_bus.Source.t) =
-      Memory.Read_bus.Source.Of_signal.mux2 t.valid t (Memory.Read_bus.Source.Of_signal.of_int 0)
+      Memory.Read_bus.Source.Of_signal.mux2
+        t.valid
+        t
+        (Memory.Read_bus.Source.Of_signal.of_int 0)
     in
     List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
     |> List.map ~f:gate

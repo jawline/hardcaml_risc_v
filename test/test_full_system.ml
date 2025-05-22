@@ -1014,10 +1014,7 @@ module With_transmitter = struct
 
   let create scope { I.clock; clear; data_in_valid; data_in } =
     let { Uart_tx.O.uart_tx; _ } =
-      Uart_tx.hierarchical
-        ~instance:"tx"
-        scope
-        { Uart_tx.I.clock; clear; data_in_valid; data_in }
+      Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; _ } =
       Cpu_with_dma_memory.hierarchical

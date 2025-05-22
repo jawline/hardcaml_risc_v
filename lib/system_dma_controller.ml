@@ -71,7 +71,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         ; parity_error
         }
       =
-      Uart_rx.hierarchical ~instance:"rx" scope { Uart_rx.I.clock; clear; uart_rx }
+      Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx }
     in
     let serial_to_packet_ready = wire 1 in
     let { Serial_buffer.O.out_valid = serial_buffer_valid; out_data = serial_buffer_data }
@@ -149,7 +149,6 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     in
     let dma_out_uart_tx =
       Uart_tx.hierarchical
-        ~instance:"tx"
         scope
         { Uart_tx.I.clock
         ; clear
