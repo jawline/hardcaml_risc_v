@@ -111,7 +111,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
           }
         =
         Serial_buffer.hierarchical
-          ~instance:"serial_buffer"
           ~capacity:8192
           scope
           { Serial_buffer.I.clock
@@ -124,7 +123,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       let dma_ready = wire 1 in
       let { Serial_to_packet.O.dn; up_ready = serial_to_packet_ready' } =
         Serial_to_packet.hierarchical
-          ~instance:"serial_to_packet"
           scope
           { Serial_to_packet.I.clock
           ; clear
@@ -150,7 +148,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       Signal.(dma_ready <-- dma.in_.tready);
       let controller =
         Memory_controller.hierarchical
-          ~instance:"memory_controller"
           ~priority_mode:Priority_order
           ~request_delay:1
           ~read_latency:1

@@ -58,7 +58,6 @@ module Machine = struct
     in
     let controller =
       Memory_controller.hierarchical
-        ~instance:"memory_controller"
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:1

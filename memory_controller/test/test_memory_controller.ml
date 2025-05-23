@@ -22,7 +22,6 @@ struct
     Harness.run
       ~create:
         (Memory_controller.hierarchical
-           ~instance:"controller"
            ~priority_mode:Priority_order
            ~request_delay:1
            ~read_latency:1)

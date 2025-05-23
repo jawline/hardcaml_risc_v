@@ -112,7 +112,6 @@ let test
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
-          ~instance:"serial_to_packet"
           scope
           { Serial_to_packet.I.clock
           ; clear
@@ -139,7 +138,6 @@ let test
       let uart_tx_ready = wire 1 in
       let dma_out =
         Memory_to_packet8.hierarchical
-          ~instance:"dma_out"
           scope
           { Memory_to_packet8.I.clock
           ; clear
@@ -170,7 +168,6 @@ let test
       in
       let controller =
         Memory_controller.hierarchical
-          ~instance:"memory_controller"
           ~priority_mode:Priority_order
           ~request_delay:1
           ~read_latency:1

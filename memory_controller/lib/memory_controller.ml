@@ -98,7 +98,6 @@ struct
   ;;
 
   let hierarchical
-        ~instance
         ~read_latency
         ~(* TODO: Rename read_request_delay *)
          request_delay
@@ -110,7 +109,6 @@ struct
     H.hierarchical
       ~scope
       ~name:"memory_controller"
-      ~instance
       (create ~priority_mode ~request_delay ~read_latency)
       input
   ;;

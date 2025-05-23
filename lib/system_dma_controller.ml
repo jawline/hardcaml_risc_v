@@ -77,7 +77,6 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     let { Serial_buffer.O.out_valid = serial_buffer_valid; out_data = serial_buffer_data }
       =
       Serial_buffer.hierarchical
-        ~instance:"serial_buffer"
         ~capacity:2048
         scope
         { Serial_buffer.I.clock
@@ -90,7 +89,6 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     let router_ready = wire 1 in
     let { Serial_to_packet.O.dn; up_ready = serial_to_packet_ready' } =
       Serial_to_packet.hierarchical
-        ~instance:"serial_to_packet"
         scope
         { Serial_to_packet.I.clock
         ; clear
@@ -105,7 +103,6 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     let pulse_ready = wire 1 in
     let router =
       Router.hierarchical
-        ~instance:"io_packet_router"
         scope
         { Router.I.clock
         ; clear
@@ -127,17 +124,13 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     in
     dma_ready <-- dma.in_.tready;
     let pulse =
-      Pulse.hierarchical
-        ~instance:"pulse"
-        scope
-        { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
+      Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
     in
     pulse_ready <-- pulse.up.tready;
     let tx_enable = Tx_input.With_valid.Of_signal.wires () in
     let uart_tx_ready = wire 1 in
     let dma_out =
       Memory_to_packet8.hierarchical
-        ~instance:"dma_out"
         scope
         { Memory_to_packet8.I.clock
         ; clear

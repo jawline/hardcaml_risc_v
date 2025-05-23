@@ -45,7 +45,6 @@ let test ~load_memory ~dma_address ~dma_length =
       let ch_to_controller = Read_bus.Source.Of_always.wire Signal.zero in
       let controller =
         Memory_controller.hierarchical
-          ~instance:"memory_controller"
           ~request_delay:1
           ~read_latency:1
           ~priority_mode:Priority_order
@@ -58,7 +57,6 @@ let test ~load_memory ~dma_address ~dma_length =
       in
       let output =
         Memory_to_packet8.hierarchical
-          ~instance:"packet8"
           scope
           { Memory_to_packet8.I.clock
           ; clear

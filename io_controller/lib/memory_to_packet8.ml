@@ -1,14 +1,3 @@
-(* Write a packet from memory. The framing format is a 2 byte length tag
-   followed by data.
-
-   The module takes an enable signal with a length and address and writes
-   out the length (Little-endian) and then the memory byte by byte to
-   an output stream. When connected to a Uart_tx this should allow us
-   to communicate with the host.
-
-   Currently this module does not prefetch memory while writing, which would
-   be a straightforward improvement.
-*)
 open! Core
 open Hardcaml
 open Hardcaml_axi
@@ -225,8 +214,8 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"dma_memory_to_packet" ~instance create input
+    H.hierarchical ~scope ~name:"dma_memory_to_packet" create input
   ;;
 end

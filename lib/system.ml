@@ -274,8 +274,7 @@ struct
     in
     let controller =
       Memory_controller.hierarchical
-        ~instance:"Memory_controller"
-          (* TODO: We should straddled each of the hart read and write bus signals if in Priority order mode to ensure fairness between harts (assuming each hart correctly priority orders its ports. *)
+      (* TODO: We should straddled each of the hart read and write bus signals if in Priority order mode to ensure fairness between harts (assuming each hart correctly priority orders its ports). *)
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:2
