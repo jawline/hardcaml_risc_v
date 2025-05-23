@@ -74,7 +74,6 @@ struct
     in
     let core =
       Core.hierarchical
-        ~instance:"core"
         ~read_latency
         scope
         { Core.I.clock

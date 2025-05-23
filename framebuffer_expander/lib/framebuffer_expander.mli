@@ -52,6 +52,5 @@ module Make
   val margin_y_start : int
   val margin_x_end : int
   val margin_y_end : int
-
   val hierarchical : Scope.t -> Signal.t I.t -> Signal.t O.t
 end

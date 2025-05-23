@@ -3,12 +3,6 @@ open Hardcaml
 open Hardcaml_custom_handshake
 open Signal
 
-module Priority_mode = struct
-  type t =
-    | Round_robin
-    | Priority_order
-end
-
 module Make
     (S : Handshake_intf.S)
     (M : sig
@@ -93,12 +87,12 @@ struct
     }
   ;;
 
-  let hierarchical ~instance ~priority_mode (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ?instance ~priority_mode (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
     H.hierarchical
+      ?instance
       ~scope
       ~name:"memory_channel_arbitrator"
-      ~instance
       (create ~priority_mode)
       input
   ;;

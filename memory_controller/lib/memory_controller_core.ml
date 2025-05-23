@@ -17,7 +17,6 @@ struct
     if M.data_bus_width % 8 <> 0 then raise_s [%message "BUG: data bus must be in bytes"]
   ;;
 
-  let data_bus_width = M.data_bus_width
   let data_bus_in_bytes = M.data_bus_width / 8
 
   let () =
@@ -147,13 +146,8 @@ struct
     }
   ;;
 
-  let hierarchical ~instance ~read_latency (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~read_latency (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical
-      ~scope
-      ~name:"memory_controller_core"
-      ~instance
-      (create ~read_latency)
-      input
+    H.hierarchical ~scope ~name:"memory_controller_core" (create ~read_latency) input
   ;;
 end
