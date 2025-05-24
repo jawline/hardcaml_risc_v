@@ -73,7 +73,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct3
     ; funct7
     ; rs1
-    ; rs2
+    ; rs2 = mux2 (test_opcode Op_imm) i_immediate rs2
     ; rd =
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)

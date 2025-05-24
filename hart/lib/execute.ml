@@ -32,39 +32,39 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; valid : 'a
+      ; valid : 'a [@rtlname "input_valid"]
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.With_valid.t
-      ; error : 'a
+      ; error : 'a [@rtlname "input_error"]
       ; write_bus : 'a Memory.Write_bus.Dest.t
       ; read_bus : 'a Memory.Read_bus.Dest.t
       ; write_response : 'a Memory.Write_response.With_valid.t
       ; read_response : 'a Memory.Read_response.With_valid.t
       ; instret : 'a
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$input_"]
   end
 
   module O = struct
     type 'a t =
-      { valid : 'a
+      { valid : 'a [@rtlname "output_valid"]
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; error : 'a
+      ; error : 'a [@rtlname "output_error"]
       ; is_ecall : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t
       ; read_bus : 'a Memory.Read_bus.Source.t
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"$output_"]
   end
 
   let op_instructions
         ~valid
         ~(registers : _ Registers.t)
         scope
-        ({ funct3; rs1; rs2; alu_specifics; _ } : _ Decoded_instruction.t)
+        ({ opcode; funct3; rs1; rs2; alu_specifics; _ } : _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd } =
       Op.hierarchical
@@ -77,7 +77,7 @@ struct
         ; rhs = rs2
         }
     in
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: Decoded_opcode.valid opcode ALU
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -94,7 +94,7 @@ struct
         scope
     =
     let%hw new_pc = registers.pc +: decoded_instruction.j_immediate in
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Jal
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -120,7 +120,7 @@ struct
       let%hw jalr_i = decoded_instruction.i_immediate in
       jalr_rs1 +: jalr_i |> drop_lsb
     in
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Jalr
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -135,7 +135,7 @@ struct
         ~(registers : _ Registers.t)
         (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Lui
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -155,7 +155,7 @@ struct
         ~(registers : _ Registers.t)
         (decoded_instruction : _ Decoded_instruction.t)
     =
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Auipc
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -187,7 +187,8 @@ struct
         ; pc = registers.pc
         }
     in
-    { Opcode_output.valid
+    { Opcode_output.valid =
+        valid &: Decoded_opcode.valid decoded_instruction.opcode Branch
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -198,11 +199,9 @@ struct
   let fence
         ~valid
         ~(registers : _ Registers.t)
-        (_decoded_instruction : _ Decoded_instruction.t)
+        (decoded_instruction : _ Decoded_instruction.t)
     =
-    (* TODO: Currently all memory transactions are atomic so I'm not sure if I
-     * need to implement this. Figure it out. *)
-    { Opcode_output.valid
+    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Fence
     ; read_bus = None
     ; write_bus = None
     ; transaction =
