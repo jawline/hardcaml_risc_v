@@ -19,13 +19,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; funct7 : 'a [@bits 7]
     ; argument_1 : 'a [@bits register_width]
     ; argument_2 : 'a [@bits register_width]
-      (** Rd just points to the rd slot rather than containing the register *)
+    ; argument_3 : 'a [@bits register_width]
     ; rd : 'a [@bits 5]
+      (** Rd just points to the rd slot rather than containing the register *)
     ; rd_value : 'a [@bits register_width]
     ; csr : 'a [@bits 12]
-    ; b_immediate : 'a [@bits register_width]
-    ; load_address : 'a [@bits register_width]
-    ; store_address : 'a [@bits register_width]
     ; is_ecall : 'a
     ; is_csr : 'a
     ; alu_specifics : 'a ALU_specifics.t
@@ -96,6 +94,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
             ; value = i_immediate
             }
           ]
+    ; argument_3 = Decoder.b_immediate ~width:register_width instruction
     ; rd =
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)
@@ -103,9 +102,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; csr
-    ; b_immediate = Decoder.b_immediate ~width:register_width instruction
-    ; load_address = rs1 +: i_immediate
-    ; store_address = rs1 +: s_immediate
     ; is_ecall
     ; is_csr
     ; alu_specifics =

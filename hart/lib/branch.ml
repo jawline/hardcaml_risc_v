@@ -11,7 +11,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
       ; funct3 : 'a [@bits 3]
-      ; b_immediate : 'a [@bits register_width]
+      ; branch_offset : 'a [@bits register_width]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -24,8 +24,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; b_immediate } : _ I.t) =
-    let branch_when ~f = mux2 (f lhs rhs) (pc +: b_immediate) (pc +:. 4), gnd in
+  let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; branch_offset } : _ I.t) =
+    let branch_when ~f = mux2 (f lhs rhs) (pc +: branch_offset) (pc +:. 4), gnd in
     let new_pc, error =
       Util.switch2
         (module Funct3.Branch)

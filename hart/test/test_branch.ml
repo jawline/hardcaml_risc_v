@@ -32,7 +32,7 @@ let test ~pc ~lhs ~rhs ~funct3 ~b_immediate sim =
   inputs.lhs := of_unsigned_int ~width:32 lhs;
   inputs.rhs := of_unsigned_int ~width:32 rhs;
   inputs.funct3 := of_unsigned_int ~width:3 funct3;
-  inputs.b_immediate := of_unsigned_int ~width:32 b_immediate;
+  inputs.branch_offset := of_unsigned_int ~width:32 b_immediate;
   Cyclesim.cycle sim
 ;;
 

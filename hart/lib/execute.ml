@@ -184,7 +184,7 @@ struct
         { Branch.I.funct3 = decoded_instruction.funct3
         ; lhs = decoded_instruction.argument_1
         ; rhs = decoded_instruction.argument_2
-        ; b_immediate = decoded_instruction.b_immediate
+        ; branch_offset = decoded_instruction.argument_3
         ; pc = registers.pc
         }
     in
