@@ -26,8 +26,12 @@ let print (outputs : _ Csr.O.t) =
 let read_register ~address sim =
   let inputs : _ Csr.I.t = Cyclesim.inputs sim in
   inputs.valid := vdd;
+  inputs.instruction.opcode.packed
+  := (Decoded_opcode.construct_onehot_bits ~f:(function
+        | Decoded_opcode.System -> vdd
+        | _ -> gnd))
+       .packed;
   inputs.instruction.is_csr := vdd;
-  inputs.instruction.is_system := vdd;
   inputs.instruction.funct3
   := of_unsigned_int ~width:3 (Funct3.System.to_int Funct3.System.Csrrs);
   inputs.instruction.csr := of_unsigned_int ~width:12 address;

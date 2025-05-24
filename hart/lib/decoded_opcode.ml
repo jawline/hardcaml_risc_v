@@ -27,3 +27,7 @@ end
 
 let valid (t : _ Packed.t) opcode = t.packed.:(Variants.to_rank opcode)
 let construct_onehot ~f = { Packed.packed = all |> List.map ~f |> concat_lsb }
+
+let construct_onehot_bits ~(f : t -> Bits.t) =
+  { Packed.packed = all |> List.map ~f |> Bits.concat_lsb }
+;;

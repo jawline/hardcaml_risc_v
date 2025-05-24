@@ -24,3 +24,4 @@ end
 
 val valid : Signal.t Packed.t -> t -> Signal.t
 val construct_onehot : f:(t -> Signal.t) -> Signal.t Packed.t
+val construct_onehot_bits : f:(t -> Bits.t) -> Bits.t Packed.t

@@ -2,6 +2,14 @@ open Hardcaml
 
 module M (Registers : Registers_intf.S) = struct
   module type S = sig
+    module ALU_specifics : sig
+      type 'a t =
+        { subtract_instead_of_add : 'a
+        ; arithmetic_shift : 'a
+        }
+      [@@deriving hardcaml]
+    end
+
     type 'a t =
       { opcode : 'a Decoded_opcode.Packed.t
       ; funct3 : 'a [@bits 3]
@@ -18,10 +26,10 @@ module M (Registers : Registers_intf.S) = struct
       ; b_immediate : 'a [@bits register_width]
       ; load_address : 'a [@bits register_width]
       ; store_address : 'a [@bits register_width]
-      ; funct7_switch : 'a
-      ; funct7_bit_other_than_switch_is_selected : 'a
       ; is_ecall : 'a
       ; is_csr : 'a
+      ; alu_specifics : 'a ALU_specifics.t
+      ; error : 'a
       }
     [@@deriving hardcaml]
 

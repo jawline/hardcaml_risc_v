@@ -60,54 +60,19 @@ struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let op_imm_instructions
-        ~valid
-        ~(registers : _ Registers.t)
-        scope
-        ({ funct3
-         ; rs1
-         ; i_immediate
-         ; funct7_switch
-         ; funct7_bit_other_than_switch_is_selected
-         ; _
-         } :
-          _ Decoded_instruction.t)
-    =
-    let { Op.O.rd = new_rd; error } =
-      Op.hierarchical (* There is no SUBI since a signed addi is sufficient. *)
-        ~enable_subtract:false
-        ~instance:"op_imm"
-        scope
-        { Op.I.funct3
-        ; funct7_switch
-        ; funct7_error = funct7_bit_other_than_switch_is_selected
-        ; lhs = rs1
-        ; rhs = i_immediate
-        }
-    in
-    { Opcode_output.valid
-    ; read_bus = None
-    ; write_bus = None
-    ; transaction =
-        { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
-    }
-  ;;
-
   let op_instructions
         ~valid
         ~(registers : _ Registers.t)
         scope
-        ({ funct3; rs1; rs2; funct7_switch; funct7_bit_other_than_switch_is_selected; _ } :
-          _ Decoded_instruction.t)
+        ({ funct3; rs1; rs2; alu_specifics; _ } : _ Decoded_instruction.t)
     =
-    let { Op.O.rd = new_rd; error } =
+    let { Op.O.rd = new_rd } =
       Op.hierarchical
         ~instance:"op"
-        ~enable_subtract:true
         scope
         { Op.I.funct3
-        ; funct7_switch
-        ; funct7_error = funct7_bit_other_than_switch_is_selected
+        ; subtract_instead_of_add = alu_specifics.subtract_instead_of_add
+        ; arithmetic_shift = alu_specifics.arithmetic_shift
         ; lhs = rs1
         ; rhs = rs2
         }
@@ -116,7 +81,7 @@ struct
     ; read_bus = None
     ; write_bus = None
     ; transaction =
-        { Transaction.set_rd = vdd; new_rd; error; new_pc = registers.pc +:. 4 }
+        { Transaction.set_rd = vdd; new_rd; error = gnd; new_pc = registers.pc +:. 4 }
     }
   ;;
 
@@ -392,35 +357,28 @@ struct
         scope
     =
     [ Table_entry.create
-        ~opcode:Opcodes.Op
+        ~opcode:Decoded_opcode.ALU
         (op_instructions ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.Op_imm
-        (op_imm_instructions ~valid ~registers scope decoded_instruction)
+        ~opcode:Decoded_opcode.Jal
+        (jal_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
-        ~opcode:Opcodes.Jal
-        (jal_instruction
-           ~valid
-           ~registers
-           decoded_instruction
-           (Scope.sub_scope scope "jal"))
-    ; Table_entry.create
-        ~opcode:Opcodes.Jalr
+        ~opcode:Decoded_opcode.Jalr
         (jalr_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
-        ~opcode:Opcodes.Lui
+        ~opcode:Decoded_opcode.Lui
         (lui_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.Auipc
+        ~opcode:Decoded_opcode.Auipc
         (auipc_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.Fence
+        ~opcode:Decoded_opcode.Fence
         (fence ~valid ~registers decoded_instruction)
     ; Table_entry.create
-        ~opcode:Opcodes.Branch
+        ~opcode:Decoded_opcode.Branch
         (branch_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
-        ~opcode:Opcodes.Load
+        ~opcode:Decoded_opcode.Load
         (load_instruction
            ~clock
            ~clear
@@ -431,7 +389,7 @@ struct
            decoded_instruction
            scope)
     ; Table_entry.create
-        ~opcode:Opcodes.Store
+        ~opcode:Decoded_opcode.Store
         (store_instruction
            ~clock
            ~clear
@@ -444,7 +402,7 @@ struct
            decoded_instruction
            scope)
     ; Table_entry.create
-        ~opcode:Opcodes.System
+        ~opcode:Decoded_opcode.System
         (system_instruction
            ~clock
            ~clear
@@ -455,10 +413,6 @@ struct
            decoded_instruction
            scope)
     ]
-    |>
-    (* We sort the instruction table entries by the order they should appear
-          in the result mux. *)
-    List.sort ~compare:(fun t1 t2 -> Opcodes.compare t1.opcode t2.opcode)
   ;;
 
   let combine_read_bus (instruction_table : _ Table_entry.t list) =
@@ -505,20 +459,15 @@ struct
         scope
     in
     let valid =
-      let valids =
-        [ i.instruction.error ]
+      let valid =
+        [ i.valid &: i.instruction.error ]
         @ (List.map ~f:Table_entry.output instruction_table
            |> List.map ~f:Opcode_output.valid)
-        |> List.reduce ( |: )
+        |> List.reduce_exn ~f:( |: )
       in
       reg reg_spec_with_clear valid
     in
     let transaction =
-      let transactions =
-        [ Transaction.generic_error ]
-        @ (List.map ~f:Table_entry.output instruction_table
-           |> List.map ~f:Opcode_output.transaction)
-      in
       let error_with_valid =
         { With_valid.valid = i.instruction.error; value = Transaction.generic_error }
       in

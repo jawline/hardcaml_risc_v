@@ -5,6 +5,14 @@ open Signal
 module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = struct
   let register_width = Register_width.bits Hart_config.register_width
 
+  module ALU_specifics = struct
+    type 'a t =
+      { subtract_instead_of_add : 'a
+      ; arithmetic_shift : 'a
+      }
+    [@@deriving hardcaml ~rtlmangle:"$"]
+  end
+
   type 'a t =
     { opcode : 'a Decoded_opcode.Packed.t
     ; funct3 : 'a [@bits 3]
@@ -22,10 +30,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate : 'a [@bits register_width]
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
-    ; funct7_switch : 'a
-    ; funct7_bit_other_than_switch_is_selected : 'a
     ; is_ecall : 'a
     ; is_csr : 'a
+    ; alu_specifics : 'a ALU_specifics.t
     ; error : 'a
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
@@ -45,12 +52,23 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
     let funct7 = Decoder.funct7 instruction in
     let csr = Decoder.csr ~width:12 instruction in
+    let test_opcode op = Decoder.opcode instruction ==:. Opcodes.to_int_repr op in
+    let is_op = test_opcode Op in
     let decoded_opcode =
       Decoded_opcode.construct_onehot ~f:(function
-        | ALU -> Decoder.opcode instruction
-        | Jal | Jalr | Lui | Auipc | Branch | Load | Store | Fence | System ->
-          assert false)
+        | ALU -> test_opcode Op |: test_opcode Op_imm
+        | Jal -> test_opcode Jal
+        | Jalr -> test_opcode Jalr
+        | Lui -> test_opcode Lui
+        | Auipc -> test_opcode Auipc
+        | Branch -> test_opcode Branch
+        | Load -> test_opcode Load
+        | Store -> test_opcode Store
+        | Fence -> test_opcode Fence
+        | System -> test_opcode System)
     in
+    let funct7_switch = funct7.:(5) in
+    let funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0 in
     { opcode = decoded_opcode
     ; funct3
     ; funct7
@@ -70,11 +88,14 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction
     ; load_address = rs1 +: i_immediate
     ; store_address = rs1 +: s_immediate
-    ; funct7_switch = funct7.:(5)
-    ; funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0
     ; is_ecall
     ; is_csr
-    ; error = assert false
+    ; alu_specifics =
+        { ALU_specifics.subtract_instead_of_add = funct7_switch &: is_op
+        ; arithmetic_shift = funct7_switch
+        }
+    ; error =
+        decoded_opcode.packed ==:. 0 |: (is_op &: funct7_bit_other_than_switch_is_selected)
     }
   ;;
 end

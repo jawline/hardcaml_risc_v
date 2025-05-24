@@ -13,18 +13,11 @@ end
 module Op = Op.Make (Hart_config)
 module Harness = Cyclesim_harness.Make (Op.I) (Op.O)
 
-let create_sim f =
-  Harness.run ~create:(Op.create ~enable_subtract:true) (fun ~inputs:_ ~outputs:_ sim ->
-    f sim)
-;;
+let create_sim f = Harness.run ~create:Op.create (fun ~inputs:_ ~outputs:_ sim -> f sim)
 
 let print (outputs : _ Op.O.t) =
   let open Bits in
-  print_s
-    [%message
-      ""
-        ~rd:(!(outputs.rd) |> to_int_trunc : int)
-        ~error:(!(outputs.error) |> to_bool : bool)]
+  print_s [%message "" ~rd:(!(outputs.rd) |> to_int_trunc : int)]
 ;;
 
 let test ~lhs ~rhs ~funct3 ~funct7 sim =
@@ -32,7 +25,8 @@ let test ~lhs ~rhs ~funct3 ~funct7 sim =
   inputs.lhs := of_unsigned_int ~width:32 lhs;
   inputs.rhs := of_unsigned_int ~width:32 rhs;
   inputs.funct3 := of_unsigned_int ~width:3 funct3;
-  inputs.funct7_switch := of_bool funct7;
+  inputs.subtract_instead_of_add := of_bool funct7;
+  inputs.arithmetic_shift := of_bool funct7;
   Cyclesim.cycle sim
 ;;
 
@@ -51,58 +45,65 @@ let%expect_test "branch tests" =
     simple_test ~funct3:(Funct3.Op.to_int Add_or_sub) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 20) (error false))
-    Funct 7 = 1
-    ((rd 14) (error false))
-    |}];
+      Funct 7 = 0
+      (rd 20)
+      Funct 7 = 1
+      (rd 14)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int Sll) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 136) (error false))
-    Funct 7 = 1
-    ((rd 136) (error false)) |}];
+      Funct 7 = 0
+      (rd 136)
+      Funct 7 = 1
+      (rd 136)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int Slt) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 0) (error false))
-    Funct 7 = 1
-    ((rd 0) (error false)) |}];
+      Funct 7 = 0
+      (rd 0)
+      Funct 7 = 1
+      (rd 0)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int Xor) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 18) (error false))
-    Funct 7 = 1
-    ((rd 18) (error false)) |}];
+      Funct 7 = 0
+      (rd 18)
+      Funct 7 = 1
+      (rd 18)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int Sltu) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 0) (error false))
-    Funct 7 = 1
-    ((rd 0) (error false)) |}];
+      Funct 7 = 0
+      (rd 0)
+      Funct 7 = 1
+      (rd 0)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int Or) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 19) (error false))
-    Funct 7 = 1
-    ((rd 19) (error false)) |}];
+      Funct 7 = 0
+      (rd 19)
+      Funct 7 = 1
+      (rd 19)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int And) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 1) (error false))
-    Funct 7 = 1
-    ((rd 1) (error false)) |}];
+      Funct 7 = 0
+      (rd 1)
+      Funct 7 = 1
+      (rd 1)
+      |}];
     simple_test ~funct3:(Funct3.Op.to_int Srl_or_sra) sim;
     [%expect
       {|
-    Funct 7 = 0
-    ((rd 2) (error false))
-    Funct 7 = 1
-    ((rd 2) (error false)) |}])
+      Funct 7 = 0
+      (rd 2)
+      Funct 7 = 1
+      (rd 2)
+      |}])
 ;;
