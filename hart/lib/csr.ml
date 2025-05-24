@@ -42,7 +42,7 @@ struct
         ; enable =
             valid &: Decoded_opcode.valid instruction.opcode System &: instruction.is_csr
         ; is_write = csrrw
-        ; write_value = instruction.rs1
+        ; write_value = instruction.argument_1
         ; address = instruction.csr
         ; instret
         }

@@ -64,7 +64,8 @@ struct
         ~valid
         ~(registers : _ Registers.t)
         scope
-        ({ opcode; funct3; rs1; rs2; alu_specifics; _ } : _ Decoded_instruction.t)
+        ({ opcode; funct3; argument_1; argument_2; alu_specifics; _ } :
+          _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd } =
       Op.hierarchical
@@ -73,8 +74,8 @@ struct
         { Op.I.funct3
         ; subtract_instead_of_add = alu_specifics.subtract_instead_of_add
         ; arithmetic_shift = alu_specifics.arithmetic_shift
-        ; lhs = rs1
-        ; rhs = rs2
+        ; lhs = argument_1
+        ; rhs = argument_2
         }
     in
     { Opcode_output.valid = valid &: Decoded_opcode.valid opcode ALU
@@ -93,7 +94,7 @@ struct
         (decoded_instruction : _ Decoded_instruction.t)
         scope
     =
-    let%hw new_pc = registers.pc +: decoded_instruction.j_immediate in
+    let%hw new_pc = registers.pc +: decoded_instruction.argument_1 in
     { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Jal
     ; read_bus = None
     ; write_bus = None
@@ -116,8 +117,8 @@ struct
         scope
     =
     let new_pc =
-      let%hw jalr_rs1 = decoded_instruction.rs1 in
-      let%hw jalr_i = decoded_instruction.i_immediate in
+      let%hw jalr_rs1 = decoded_instruction.argument_1 in
+      let%hw jalr_i = decoded_instruction.argument_2 in
       jalr_rs1 +: jalr_i |> drop_lsb
     in
     { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Jalr
@@ -140,7 +141,7 @@ struct
     ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd
-        ; new_rd = decoded_instruction.u_immediate
+        ; new_rd = decoded_instruction.argument_1
         ; error = gnd
         ; new_pc = registers.pc +:. 4
         }
@@ -160,7 +161,7 @@ struct
     ; write_bus = None
     ; transaction =
         { Transaction.set_rd = vdd
-        ; new_rd = registers.pc +: decoded_instruction.u_immediate
+        ; new_rd = registers.pc +: decoded_instruction.argument_1
         ; error = gnd
         ; new_pc = registers.pc +:. 4
         }
@@ -181,8 +182,8 @@ struct
         ~instance:"branch"
         scope
         { Branch.I.funct3 = decoded_instruction.funct3
-        ; lhs = decoded_instruction.rs1
-        ; rhs = decoded_instruction.rs2
+        ; lhs = decoded_instruction.argument_1
+        ; rhs = decoded_instruction.argument_2
         ; b_immediate = decoded_instruction.b_immediate
         ; pc = registers.pc
         }
@@ -235,7 +236,7 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             valid &: Decoded_opcode.valid decoded_instruction.opcode Load
         ; funct3 = decoded_instruction.funct3
-        ; address = decoded_instruction.load_address
+        ; address = decoded_instruction.argument_1
         ; read_bus
         ; read_response
         }
@@ -272,8 +273,8 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             valid &: Decoded_opcode.valid decoded_instruction.opcode Store
         ; funct3 = decoded_instruction.funct3
-        ; destination = decoded_instruction.store_address
-        ; value = decoded_instruction.rs2
+        ; destination = decoded_instruction.argument_1
+        ; value = decoded_instruction.argument_2
         ; read_bus
         ; read_response
         ; write_bus

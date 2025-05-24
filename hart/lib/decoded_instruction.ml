@@ -17,16 +17,12 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     { opcode : 'a Decoded_opcode.Packed.t
     ; funct3 : 'a [@bits 3]
     ; funct7 : 'a [@bits 7]
-    ; rs1 : 'a [@bits register_width]
-    ; rs2 : 'a [@bits register_width]
+    ; argument_1 : 'a [@bits register_width]
+    ; argument_2 : 'a [@bits register_width]
       (** Rd just points to the rd slot rather than containing the register *)
     ; rd : 'a [@bits 5]
     ; rd_value : 'a [@bits register_width]
     ; csr : 'a [@bits 12]
-    ; i_immediate : 'a [@bits register_width]
-    ; j_immediate : 'a [@bits register_width]
-    ; s_immediate : 'a [@bits register_width]
-    ; u_immediate : 'a [@bits register_width]
     ; b_immediate : 'a [@bits register_width]
     ; load_address : 'a [@bits register_width]
     ; store_address : 'a [@bits register_width]
@@ -38,6 +34,13 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
   [@@deriving hardcaml ~rtlmangle:"$"]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
+
+  let onehot_select_with_default ~default args =
+    let all_valids = List.map ~f:(fun (arg : _ With_valid.t) -> arg.valid) args in
+    (* Default if no value is set. *)
+    let default_valid = ~:(List.reduce_exn ~f:( |: ) all_valids) in
+    onehot_select ({ With_valid.valid = default_valid; value = default } :: args)
+  ;;
 
   let of_instruction instruction registers scope =
     let%hw funct3 = Decoder.funct3 instruction in
@@ -69,11 +72,30 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     in
     let funct7_switch = funct7.:(5) in
     let funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0 in
+    let j_immediate = Decoder.j_immediate ~width:register_width instruction in
+    let load_address = rs1 +: i_immediate in
+    let store_address = rs1 +: s_immediate in
+    let u_immediate = Decoder.u_immediate ~width:register_width instruction in
     { opcode = decoded_opcode
     ; funct3
     ; funct7
-    ; rs1
-    ; rs2 = mux2 (test_opcode Op_imm) i_immediate rs2
+    ; argument_1 =
+        onehot_select_with_default
+          ~default:rs1
+          [ { With_valid.valid = test_opcode Jal; value = j_immediate }
+          ; { With_valid.valid = test_opcode Load; value = load_address }
+          ; { With_valid.valid = test_opcode Store; value = store_address }
+          ; { With_valid.valid = test_opcode Lui |: test_opcode Auipc
+            ; value = u_immediate
+            }
+          ]
+    ; argument_2 =
+        onehot_select_with_default
+          ~default:rs2
+          [ { With_valid.valid = test_opcode Op_imm |: test_opcode Jalr
+            ; value = i_immediate
+            }
+          ]
     ; rd =
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)
@@ -81,10 +103,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; csr
-    ; i_immediate
-    ; s_immediate
-    ; j_immediate = Decoder.j_immediate ~width:register_width instruction
-    ; u_immediate = Decoder.u_immediate ~width:register_width instruction
     ; b_immediate = Decoder.b_immediate ~width:register_width instruction
     ; load_address = rs1 +: i_immediate
     ; store_address = rs1 +: s_immediate

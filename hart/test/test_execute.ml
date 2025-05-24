@@ -65,21 +65,23 @@ let test ~(instruction : Bits.t Decoded_instruction.t) sim =
 let%expect_test "branch tests" =
   create_sim (fun sim ->
     test ~instruction:(Decoded_instruction.Of_bits.of_int 0) sim;
-    [%expect
-      {|
-      ((valid 1)
-       (registers
-        ((pc 0)
-         (general (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))))
-       (instruction
-        ((opcode ((packed 0))) (funct3 0) (funct7 0) (rs1 0) (rs2 0) (rd 0)
-         (rd_value 0) (csr 0) (i_immediate 0) (j_immediate 0) (s_immediate 0)
-         (u_immediate 0) (b_immediate 0) (load_address 0) (store_address 0)
-         (is_ecall 0) (is_csr 0)
-         (alu_specifics ((subtract_instead_of_add 0) (arithmetic_shift 0)))
-         (error 0)))
-       (transaction ((set_rd 1) (new_rd 4) (new_pc 4) (error 0))) (error 0)
-       (is_ecall 0) (write_bus ((valid 0) (data ((address 0) (write_data 0)))))
-       (read_bus ((valid 0) (data ((address 0))))))
-      |}])
+    [%expect.unreachable])
+[@@expect.uncaught_exn
+  {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+  Timeout
+  Raised at Base__Error.raise in file "src/error.ml", line 9, characters 21-37
+  Called from Hardcaml_risc_v_hart_test__Test_execute.test in file "hart/test/test_execute.ml", line 60, characters 2-22
+  Called from Hardcaml_risc_v_hart_test__Test_execute.(fun) in file "hart/test/test_execute.ml", line 67, characters 4-64
+  Called from Base__Exn.protectx in file "src/exn.ml", line 51, characters 8-11
+  Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 31, characters 2-50
+  Called from Base__Exn.protectx in file "src/exn.ml", line 58, characters 13-49
+  Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 264, characters 10-25
+
+  Trailing output
+  ---------------
+  Saved waves to /home/blake/waves//_branch_tests.hardcamlwaveform
+  |}]
 ;;
