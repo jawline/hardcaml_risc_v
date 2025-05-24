@@ -269,7 +269,7 @@ struct
         ; enable =
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            valid &: decoded_instruction.opcode_signals.load
+            valid &: Decoded_opcode.valid decoded_instruction.opcode Load
         ; funct3 = decoded_instruction.funct3
         ; address = decoded_instruction.load_address
         ; read_bus
@@ -306,7 +306,7 @@ struct
         ; enable =
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
-            valid &: decoded_instruction.opcode_signals.store
+            valid &: Decoded_opcode.valid decoded_instruction.opcode Store
         ; funct3 = decoded_instruction.funct3
         ; destination = decoded_instruction.store_address
         ; value = decoded_instruction.rs2
@@ -344,7 +344,10 @@ struct
     let transaction_of t =
       { Transaction.set_rd = vdd; new_rd = t; error = gnd; new_pc = registers.pc +:. 4 }
     in
-    let%hw is_ecall = decoded_instruction.is_system &: decoded_instruction.is_ecall in
+    let%hw is_ecall =
+      Decoded_opcode.valid decoded_instruction.opcode System
+      &: decoded_instruction.is_ecall
+    in
     let csr =
       Csr.hierarchical
         scope
@@ -366,7 +369,7 @@ struct
   module Table_entry = struct
     (* This doesn't need to be a whole type *)
     type 'a t =
-      { opcode : Opcodes.t
+      { opcode : Decoded_opcode.t
       ; output : 'a Opcode_output.t
       }
     [@@deriving fields ~getters]
@@ -501,18 +504,14 @@ struct
         ~ecall_transaction:i.ecall_transaction
         scope
     in
-    (* The decoded_opcode_or_error will be zero if the opcode failed to decode
-       otherwise it will be 1 + Opcodes.to_rank t. We use this encoding to
-       minimize the width of the mux while still detecting failures.
-
-       In the error case we set valid high and emit a transaction error. *)
     let valid =
       let valids =
-        [ vdd ]
+        [ i.instruction.error ]
         @ (List.map ~f:Table_entry.output instruction_table
            |> List.map ~f:Opcode_output.valid)
+        |> List.reduce ( |: )
       in
-      reg reg_spec_with_clear (mux i.instruction.decoded_opcode_or_error valids)
+      reg reg_spec_with_clear valid
     in
     let transaction =
       let transactions =
@@ -520,9 +519,18 @@ struct
         @ (List.map ~f:Table_entry.output instruction_table
            |> List.map ~f:Opcode_output.transaction)
       in
-      Transaction.Of_signal.reg
-        reg_spec_with_clear
-        (Transaction.Of_signal.mux i.instruction.decoded_opcode_or_error transactions)
+      let error_with_valid =
+        { With_valid.valid = i.instruction.error; value = Transaction.generic_error }
+      in
+      let opcodes_with_valid =
+        List.map ~f:Table_entry.output instruction_table
+        |> List.map ~f:(fun output ->
+          { With_valid.valid = output.valid; value = output.transaction })
+      in
+      let result =
+        Transaction.Of_signal.onehot_select (error_with_valid :: opcodes_with_valid)
+      in
+      Transaction.Of_signal.reg reg_spec_with_clear result
     in
     { O.valid
     ; registers =
@@ -537,7 +545,10 @@ struct
           i.instruction
     ; transaction
     ; error = reg ~enable:i.valid reg_spec_with_clear i.error |: transaction.error
-    ; is_ecall = i.valid &: i.instruction.is_system &: i.instruction.is_ecall
+    ; is_ecall =
+        i.valid
+        &: Decoded_opcode.valid i.instruction.opcode System
+        &: i.instruction.is_ecall
     ; read_bus = combine_read_bus instruction_table
     ; write_bus = combine_write_bus instruction_table
     }

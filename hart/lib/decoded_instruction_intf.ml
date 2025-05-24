@@ -3,7 +3,7 @@ open Hardcaml
 module M (Registers : Registers_intf.S) = struct
   module type S = sig
     type 'a t =
-      { opcode : 'a [@bits 7]
+      { opcode : 'a Decoded_opcode.Packed.t
       ; funct3 : 'a [@bits 3]
       ; funct7 : 'a [@bits 7]
       ; rs1 : 'a [@bits register_width]
@@ -20,11 +20,8 @@ module M (Registers : Registers_intf.S) = struct
       ; store_address : 'a [@bits register_width]
       ; funct7_switch : 'a
       ; funct7_bit_other_than_switch_is_selected : 'a
-      ; is_system : 'a
       ; is_ecall : 'a
       ; is_csr : 'a
-      ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
-      ; opcode_signals : 'a Opcodes.Signals.t
       }
     [@@deriving hardcaml]
 

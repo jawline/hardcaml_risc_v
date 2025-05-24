@@ -6,7 +6,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
   let register_width = Register_width.bits Hart_config.register_width
 
   type 'a t =
-    { opcode : 'a [@bits 7]
+    { opcode : 'a Decoded_opcode.Packed.t
     ; funct3 : 'a [@bits 3]
     ; funct7 : 'a [@bits 7]
     ; rs1 : 'a [@bits register_width]
@@ -24,21 +24,16 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; store_address : 'a [@bits register_width]
     ; funct7_switch : 'a
     ; funct7_bit_other_than_switch_is_selected : 'a
-    ; is_system : 'a
     ; is_ecall : 'a
     ; is_csr : 'a
-    ; decoded_opcode_or_error : 'a [@bits Opcodes.Or_error.bits_to_repr]
-    ; opcode_signals : 'a Opcodes.Signals.t
+    ; error : 'a
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
 
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
   let of_instruction instruction registers scope =
-    let decoded_opcode_or_error = Opcodes.Or_error.decode (Decoder.opcode instruction) in
-    let opcode_signals = Opcodes.Signals.of_signal (Decoder.opcode instruction) in
     let%hw funct3 = Decoder.funct3 instruction in
-    let is_system = opcode_signals.system in
     let%hw is_ecall = funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak in
     let%hw is_csr =
       let f t = funct3 ==:. Funct3.System.to_int t in
@@ -50,13 +45,22 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let s_immediate = Decoder.s_immediate ~width:register_width instruction in
     let funct7 = Decoder.funct7 instruction in
     let csr = Decoder.csr ~width:12 instruction in
-    { opcode = Decoder.opcode instruction
+    let decoded_opcode =
+      Decoded_opcode.construct_onehot ~f:(function
+        | ALU -> Decoder.opcode instruction
+        | Jal | Jalr | Lui | Auipc | Branch | Load | Store | Fence | System ->
+          assert false)
+    in
+    { opcode = decoded_opcode
     ; funct3
     ; funct7
     ; rs1
     ; rs2
     ; rd =
-        mux2 (is_system &: is_ecall) (of_unsigned_int ~width:5 5) (Decoder.rd instruction)
+        mux2
+          (Decoded_opcode.valid decoded_opcode System &: is_ecall)
+          (of_unsigned_int ~width:5 5)
+          (Decoder.rd instruction)
     ; rd_value = select_register registers (Decoder.rd instruction)
     ; csr
     ; i_immediate
@@ -68,11 +72,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; store_address = rs1 +: s_immediate
     ; funct7_switch = funct7.:(5)
     ; funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0
-    ; is_system
     ; is_ecall
     ; is_csr
-    ; decoded_opcode_or_error
-    ; opcode_signals
+    ; error = assert false
     }
   ;;
 end
