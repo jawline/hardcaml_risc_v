@@ -24,7 +24,10 @@ let test ~lhs ~rhs ~funct3 ~funct7 sim =
   let inputs : _ Op.I.t = Cyclesim.inputs sim in
   inputs.lhs := of_unsigned_int ~width:32 lhs;
   inputs.rhs := of_unsigned_int ~width:32 rhs;
-  inputs.funct3 := of_unsigned_int ~width:3 funct3;
+  inputs.funct3.packed
+  := (Funct3.Op.Onehot.construct_onehot_bits ~f:(fun t ->
+        Funct3.Op.equal t funct3 |> Bits.of_bool))
+       .packed;
   inputs.subtract_instead_of_add := of_bool funct7;
   inputs.arithmetic_shift := of_bool funct7;
   Cyclesim.cycle sim
@@ -42,7 +45,7 @@ let simple_test ~funct3 sim =
 
 let%expect_test "branch tests" =
   create_sim (fun sim ->
-    simple_test ~funct3:(Funct3.Op.to_int Add_or_sub) sim;
+    simple_test ~funct3:Add_or_sub sim;
     [%expect
       {|
       Funct 7 = 0
@@ -50,7 +53,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 14)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int Sll) sim;
+    simple_test ~funct3:Sll sim;
     [%expect
       {|
       Funct 7 = 0
@@ -58,7 +61,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 136)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int Slt) sim;
+    simple_test ~funct3:Slt sim;
     [%expect
       {|
       Funct 7 = 0
@@ -66,7 +69,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 0)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int Xor) sim;
+    simple_test ~funct3:Xor sim;
     [%expect
       {|
       Funct 7 = 0
@@ -74,7 +77,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 18)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int Sltu) sim;
+    simple_test ~funct3:Sltu sim;
     [%expect
       {|
       Funct 7 = 0
@@ -82,7 +85,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 0)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int Or) sim;
+    simple_test ~funct3:Or sim;
     [%expect
       {|
       Funct 7 = 0
@@ -90,7 +93,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 19)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int And) sim;
+    simple_test ~funct3:And sim;
     [%expect
       {|
       Funct 7 = 0
@@ -98,7 +101,7 @@ let%expect_test "branch tests" =
       Funct 7 = 1
       (rd 1)
       |}];
-    simple_test ~funct3:(Funct3.Op.to_int Srl_or_sra) sim;
+    simple_test ~funct3:Srl_or_sra sim;
     [%expect
       {|
       Funct 7 = 0

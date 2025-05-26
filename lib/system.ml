@@ -245,6 +245,7 @@ struct
   ;;
 
   let create scope (i : _ I.t) =
+    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     (* If the design has requested a video out then initialize it. *)
     let maybe_video_out = maybe_video_out scope i in
     (* If the design has requested a DMA controller then initialize it. *)
@@ -307,7 +308,7 @@ struct
               ~instance:[%string "hart_%{which_hart#Int}"]
               scope
               { Hart.I.clock = i.clock
-              ; clear = io_clear |: i.clear
+              ; clear = pipeline ~n:2 reg_spec_no_clear (io_clear |: i.clear)
               ; read_bus = select_rd_chs_for_hart which_hart controller.read_to_controller
               ; write_bus =
                   select_wr_chs_for_hart which_hart controller.write_to_controller

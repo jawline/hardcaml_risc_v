@@ -27,6 +27,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; is_ecall : 'a
     ; is_csr : 'a
     ; alu_specifics : 'a ALU_specifics.t
+    ; op_onehot : 'a Funct3.Op.Onehot.t
+    ; branch_onehot : 'a Funct3.Branch.Onehot.t
     ; error : 'a
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
@@ -71,8 +73,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let funct7_switch = funct7.:(5) in
     let funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0 in
     let j_immediate = Decoder.j_immediate ~width:register_width instruction in
-    let load_address = rs1 +: i_immediate in
-    let store_address = rs1 +: s_immediate in
     let u_immediate = Decoder.u_immediate ~width:register_width instruction in
     { opcode = decoded_opcode
     ; funct3
@@ -81,8 +81,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
         onehot_select_with_default
           ~default:rs1
           [ { With_valid.valid = test_opcode Jal; value = j_immediate }
-          ; { With_valid.valid = test_opcode Load; value = load_address }
-          ; { With_valid.valid = test_opcode Store; value = store_address }
           ; { With_valid.valid = test_opcode Lui |: test_opcode Auipc
             ; value = u_immediate
             }
@@ -94,7 +92,14 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
             ; value = i_immediate
             }
           ]
-    ; argument_3 = Decoder.b_immediate ~width:register_width instruction
+    ; argument_3 =
+        onehot_select
+          [ { With_valid.valid = test_opcode Branch
+            ; value = Decoder.b_immediate ~width:register_width instruction
+            }
+          ; { With_valid.valid = test_opcode Load; value = i_immediate }
+          ; { With_valid.valid = test_opcode Store; value = s_immediate }
+          ]
     ; rd =
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)
@@ -108,6 +113,12 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
         { ALU_specifics.subtract_instead_of_add = funct7_switch &: is_op
         ; arithmetic_shift = funct7_switch
         }
+    ; op_onehot =
+        (let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
+         Funct3.Op.Onehot.construct_onehot ~f:test_funct3)
+    ; branch_onehot =
+        (let test_funct3 op = funct3 ==:. Funct3.Branch.to_int op in
+         Funct3.Branch.Onehot.construct_onehot ~f:test_funct3)
     ; error =
         decoded_opcode.packed ==:. 0 |: (is_op &: funct7_bit_other_than_switch_is_selected)
     }

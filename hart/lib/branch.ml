@@ -10,26 +10,21 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       { pc : 'a [@bits register_width]
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
-      ; funct3 : 'a [@bits 3]
+      ; funct3 : 'a Funct3.Branch.Onehot.t
       ; branch_offset : 'a [@bits register_width]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
-    type 'a t =
-      { new_pc : 'a [@bits register_width]
-      ; error : 'a
-      }
+    type 'a t = { new_pc : 'a [@bits register_width] }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; branch_offset } : _ I.t) =
-    let branch_when ~f = mux2 (f lhs rhs) (pc +: branch_offset) (pc +:. 4), gnd in
-    let new_pc, error =
-      Util.switch2
-        (module Funct3.Branch)
-        ~if_not_found:(zero register_width, vdd)
+    let branch_when ~f = mux2 (f lhs rhs) (pc +: branch_offset) (pc +:. 4) in
+    let new_pc =
+      Funct3.Branch.Onehot.switch
         ~f:(function
           | Funct3.Branch.Beq -> branch_when ~f:( ==: )
           | Bne -> branch_when ~f:( <>: )
@@ -39,7 +34,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
           | Bgeu -> branch_when ~f:( >=: ))
         funct3
     in
-    { O.new_pc; error }
+    { O.new_pc }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =

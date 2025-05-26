@@ -21,11 +21,11 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; valid : 'a [@rtlprefix "input_"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; error : 'a
+      ; error : 'a [@rtlprefix "input_"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

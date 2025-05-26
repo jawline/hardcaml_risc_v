@@ -64,14 +64,14 @@ struct
         ~valid
         ~(registers : _ Registers.t)
         scope
-        ({ opcode; funct3; argument_1; argument_2; alu_specifics; _ } :
+        ({ opcode; argument_1; argument_2; alu_specifics; op_onehot; _ } :
           _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd } =
       Op.hierarchical
         ~instance:"op"
         scope
-        { Op.I.funct3
+        { Op.I.funct3 = op_onehot
         ; subtract_instead_of_add = alu_specifics.subtract_instead_of_add
         ; arithmetic_shift = alu_specifics.arithmetic_shift
         ; lhs = argument_1
@@ -177,11 +177,11 @@ struct
         (decoded_instruction : _ Decoded_instruction.t)
         scope
     =
-    let { Branch.O.new_pc; error } =
+    let { Branch.O.new_pc } =
       Branch.hierarchical
         ~instance:"branch"
         scope
-        { Branch.I.funct3 = decoded_instruction.funct3
+        { Branch.I.funct3 = decoded_instruction.branch_onehot
         ; lhs = decoded_instruction.argument_1
         ; rhs = decoded_instruction.argument_2
         ; branch_offset = decoded_instruction.argument_3
@@ -193,7 +193,7 @@ struct
     ; read_bus = None
     ; write_bus = None
     ; transaction =
-        { Transaction.set_rd = gnd; new_rd = zero register_width; error; new_pc }
+        { Transaction.set_rd = gnd; new_rd = zero register_width; error = gnd; new_pc }
     }
   ;;
 
@@ -236,7 +236,7 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             valid &: Decoded_opcode.valid decoded_instruction.opcode Load
         ; funct3 = decoded_instruction.funct3
-        ; address = decoded_instruction.argument_1
+        ; address = decoded_instruction.argument_1 +: decoded_instruction.argument_3
         ; read_bus
         ; read_response
         }
@@ -273,7 +273,7 @@ struct
                state machine might try to load data and get stuck otherwise. *)
             valid &: Decoded_opcode.valid decoded_instruction.opcode Store
         ; funct3 = decoded_instruction.funct3
-        ; destination = decoded_instruction.argument_1
+        ; destination = decoded_instruction.argument_1 +: decoded_instruction.argument_3
         ; value = decoded_instruction.argument_2
         ; read_bus
         ; read_response

@@ -28,8 +28,8 @@ struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; valid : 'a [@rtlprefix "input_"]
+      ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; instret : 'a
       ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]

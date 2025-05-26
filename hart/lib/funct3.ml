@@ -1,76 +1,116 @@
 open! Core
+open Hardcaml
+open Signal
 
-module Op = struct
-  type t =
-    | (* These seem identical to the op_imm versions but I'll leave it for
-         clarity in use. *)
-      Add_or_sub
-    | Sll
-    | Slt
-    | Xor
-    | Sltu
-    | Or
-    | And
-    | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
-      Srl_or_sra
-  [@@deriving enumerate]
+module Make_onehot (C : sig
+    type t
 
-  let to_int t =
-    match t with
-    | Add_or_sub -> 0b000
-    | Sll -> 0b001
-    | Slt -> 0b010
-    | Xor -> 0b100
-    | Sltu -> 0b011
-    | Or -> 0b110
-    | And -> 0b111
-    | Srl_or_sra -> 0b101
-  ;;
+    val all : t list
 
-  let of_int i =
-    match i with
-    | 0b000 -> Some Add_or_sub
-    | 0b001 -> Some Sll
-    | 0b010 -> Some Slt
-    | 0b100 -> Some Xor
-    | 0b011 -> Some Sltu
-    | 0b110 -> Some Or
-    | 0b111 -> Some And
-    | 0b101 -> Some Srl_or_sra
-    | _ -> None
+    module Variants : sig
+      val to_rank : t -> int
+    end
+  end) =
+struct
+  type nonrec base = C.t
+
+  let max_rank = List.length C.all - 1
+  let width = num_bits_to_represent (1 lsl max_rank)
+
+  type 'a t = { packed : 'a [@bits width] } [@@deriving hardcaml]
+
+  let valid (t : _ t) code = t.packed.:(C.Variants.to_rank code)
+  let construct_onehot ~f = { packed = C.all |> List.map ~f |> concat_lsb }
+  let construct_onehot_bits ~f = { packed = C.all |> List.map ~f |> Bits.concat_lsb }
+
+  let switch ~f t =
+    onehot_select
+      ((List.map ~f:(fun code -> { With_valid.valid = valid t code; value = f code }))
+         C.all)
   ;;
 end
 
+module Op = struct
+  module T = struct
+    type t =
+      | (* These seem identical to the op_imm versions but I'll leave it for
+         clarity in use. *)
+        Add_or_sub
+      | Sll
+      | Slt
+      | Xor
+      | Sltu
+      | Or
+      | And
+      | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
+        Srl_or_sra
+    [@@deriving equal, enumerate, variants]
+
+    let to_int t =
+      match t with
+      | Add_or_sub -> 0b000
+      | Sll -> 0b001
+      | Slt -> 0b010
+      | Xor -> 0b100
+      | Sltu -> 0b011
+      | Or -> 0b110
+      | And -> 0b111
+      | Srl_or_sra -> 0b101
+    ;;
+
+    let of_int i =
+      match i with
+      | 0b000 -> Some Add_or_sub
+      | 0b001 -> Some Sll
+      | 0b010 -> Some Slt
+      | 0b100 -> Some Xor
+      | 0b011 -> Some Sltu
+      | 0b110 -> Some Or
+      | 0b111 -> Some And
+      | 0b101 -> Some Srl_or_sra
+      | _ -> None
+    ;;
+  end
+
+  include T
+  module Onehot = Make_onehot (T)
+end
+
 module Branch = struct
-  type t =
-    | Beq
-    | Bne
-    | Blt
-    | Bge
-    | Bltu
-    | Bgeu
-  [@@deriving enumerate]
+  module T = struct
+    type t =
+      | Beq
+      | Bne
+      | Blt
+      | Bge
+      | Bltu
+      | Bgeu
+    [@@deriving equal, enumerate, variants]
 
-  let to_int t =
-    match t with
-    | Beq -> 0b000
-    | Bne -> 0b001
-    | Blt -> 0b100
-    | Bge -> 0b101
-    | Bltu -> 0b110
-    | Bgeu -> 0b111
-  ;;
+    let to_int t =
+      match t with
+      | Beq -> 0b000
+      | Bne -> 0b001
+      | Blt -> 0b100
+      | Bge -> 0b101
+      | Bltu -> 0b110
+      | Bgeu -> 0b111
+    ;;
 
-  let of_int i =
-    match i with
-    | 0b000 -> Some Beq
-    | 0b001 -> Some Bne
-    | 0b100 -> Some Blt
-    | 0b101 -> Some Bge
-    | 0b110 -> Some Bltu
-    | 0b111 -> Some Bgeu
-    | _ -> None
-  ;;
+    let of_int i =
+      match i with
+      | 0b000 -> Some Beq
+      | 0b001 -> Some Bne
+      | 0b100 -> Some Blt
+      | 0b101 -> Some Bge
+      | 0b110 -> Some Bltu
+      | 0b111 -> Some Bgeu
+      | _ -> None
+    ;;
+  end
+
+  include T
+  module Onehot = Make_onehot (T)
 end
 
 module Load = struct

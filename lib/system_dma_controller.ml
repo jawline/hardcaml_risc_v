@@ -4,7 +4,10 @@ open Hardcaml_memory_controller
 open Hardcaml_io_framework
 open Hardcaml_io_controller
 open Hardcaml_uart
+open Hardcaml_circuits
 open Signal
+
+(* TODO: This file does too much wiring. Split it out and clean it up. *)
 
 module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) = struct
   module Memory_to_packet8 =
@@ -15,6 +18,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       (Memory)
       (Axi8)
 
+  module Write_dpath = Datapath_register.Make (Memory.Write)
   module Tx_input = Memory_to_packet8.Input
 
   type 'a t =
@@ -86,7 +90,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         ; out_ready = serial_to_packet_ready
         }
     in
-    let router_ready = wire 1 in
+    let dpath_ready = wire 1 in
     let { Serial_to_packet.O.dn; up_ready = serial_to_packet_ready' } =
       Serial_to_packet.hierarchical
         scope
@@ -94,12 +98,22 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         ; clear
         ; in_valid = serial_buffer_valid
         ; in_data = serial_buffer_data
-        ; dn = { tready = router_ready }
+        ; dn = { tready = dpath_ready }
         }
     in
+    let router_ready = wire 1 in
+    let { Axi8.Datapath_register.IO.source = dn; dest = dpath_ready' } =
+      Axi8.Datapath_register.hierarchical
+        scope
+        { clock
+        ; clear
+        ; i = { Axi8.Datapath_register.IO.source = dn; dest = { tready = router_ready } }
+        }
+    in
+    dpath_ready <-- dpath_ready'.tready;
     let serial_to_packet_valid = dn.tvalid in
     serial_to_packet_ready <-- serial_to_packet_ready';
-    let dma_ready = wire 1 in
+    let dma_dpath_ready = wire 1 in
     let pulse_ready = wire 1 in
     let router =
       Router.hierarchical
@@ -107,22 +121,40 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
         { Router.I.clock
         ; clear
         ; up = dn
-        ; dns = [ { tready = dma_ready }; { tready = pulse_ready } ]
+        ; dns = [ { tready = dma_dpath_ready }; { tready = pulse_ready } ]
         }
     in
     router_ready <-- router.up.tready;
+    let dma_ready = wire 1 in
+    let { Axi8.Datapath_register.IO.source = dma; dest = dpath_ready' } =
+      Axi8.Datapath_register.hierarchical
+        scope
+        { clock
+        ; clear
+        ; i =
+            { Axi8.Datapath_register.IO.source = List.nth_exn router.dns 0
+            ; dest = { tready = dma_ready }
+            }
+        }
+    in
+    dma_dpath_ready <-- dpath_ready'.tready;
+    let dma_write_dpath_ready = wire 1 in
     let dma =
       Dma.hierarchical
         ~instance:"dma"
         scope
-        { Dma.I.clock
-        ; clear
-        ; in_ = List.nth_exn router.dns 0
-        ; out = write_bus
-        ; out_ack = write_response
-        }
+        { Dma.I.clock; clear; in_ = dma; out = write_bus; out_ack = write_response }
     in
     dma_ready <-- dma.in_.tready;
+    let dma_write_dpath_reg =
+      Write_dpath.hierarchical
+        scope
+        { Write_dpath.I.clock
+        ; clear
+        ; i = { valid = dma.out.valid; data = dma.out.data; ready = write_bus.ready }
+        }
+    in
+    dma_write_dpath_ready <-- dma_write_dpath_reg.ready;
     let pulse =
       Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
     in
@@ -151,7 +183,8 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     in
     uart_tx_ready <-- dma_out_uart_tx.data_in_ready;
     Some
-      { write_request = dma.out
+      { write_request =
+          { valid = dma_write_dpath_reg.valid; data = dma_write_dpath_reg.data }
       ; read_request = dma_out.memory
       ; read_response
       ; write_response

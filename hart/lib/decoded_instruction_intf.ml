@@ -26,6 +26,8 @@ module M (Registers : Registers_intf.S) = struct
       ; is_ecall : 'a
       ; is_csr : 'a
       ; alu_specifics : 'a ALU_specifics.t
+      ; op_onehot : 'a Funct3.Op.Onehot.t
+      ; branch_onehot : 'a Funct3.Branch.Onehot.t
       ; error : 'a
       }
     [@@deriving hardcaml]

@@ -57,20 +57,14 @@ struct
     let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
     let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
-    let%hw restarting =
-      reg_fb ~clear_to:vdd ~width:1 ~f:(fun _t -> gnd) reg_spec_with_clear
-    in
+    let just_cleared = reg (Reg_spec.create ~clock:i.clock ()) i.clear in
     let executor =
       Execute_pipeline.hierarchical
         scope
         { Execute_pipeline.I.clock = i.clock
         ; clear = i.clear
-        ; valid = executor_finished |: restarting
-        ; registers =
-            Registers.For_writeback.Of_signal.mux2
-              restarting
-              (Registers.For_writeback.Of_signal.of_int 0)
-              executor_registers
+        ; valid = executor_finished |: just_cleared
+        ; registers = executor_registers
         ; instret = executor_finished
         ; ecall_transaction = i.ecall_transaction
         ; read_bus = i.read_bus

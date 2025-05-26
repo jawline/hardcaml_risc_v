@@ -19,11 +19,7 @@ let create_sim f =
 
 let print (outputs : _ Branch.O.t) =
   let open Bits in
-  print_s
-    [%message
-      ""
-        ~pc:(!(outputs.new_pc) |> to_unsigned_int : int)
-        ~error:(!(outputs.error) |> to_bool : bool)]
+  print_s [%message "" ~pc:(!(outputs.new_pc) |> to_unsigned_int : int)]
 ;;
 
 let test ~pc ~lhs ~rhs ~funct3 ~b_immediate sim =
@@ -31,7 +27,10 @@ let test ~pc ~lhs ~rhs ~funct3 ~b_immediate sim =
   inputs.pc := of_unsigned_int ~width:32 pc;
   inputs.lhs := of_unsigned_int ~width:32 lhs;
   inputs.rhs := of_unsigned_int ~width:32 rhs;
-  inputs.funct3 := of_unsigned_int ~width:3 funct3;
+  inputs.funct3.packed
+  := (Funct3.Branch.Onehot.construct_onehot_bits ~f:(fun t ->
+        Funct3.Branch.equal t funct3 |> Bits.of_bool))
+       .packed;
   inputs.branch_offset := of_unsigned_int ~width:32 b_immediate;
   Cyclesim.cycle sim
 ;;
@@ -48,38 +47,38 @@ let simple_test ~funct3 sim =
 
 let%expect_test "branch tests" =
   create_sim (fun sim ->
-    simple_test ~funct3:(Funct3.Branch.to_int Beq) sim;
+    simple_test ~funct3:Beq sim;
     [%expect
       {|
       ((pc 504) (error false))
       ((pc 504) (error false))
       ((pc 2000) (error false)) |}];
-    simple_test ~funct3:(Funct3.Branch.to_int Bne) sim;
+    simple_test ~funct3:Bne sim;
     [%expect
       {|
     ((pc 2000) (error false))
     ((pc 2000) (error false))
     ((pc 504) (error false)) |}];
-    simple_test ~funct3:(Funct3.Branch.to_int Blt) sim;
+    simple_test ~funct3:Blt sim;
     [%expect
       {|
     ((pc 504) (error false))
     ((pc 2000) (error false))
     ((pc 504) (error false)) |}];
-    simple_test ~funct3:(Funct3.Branch.to_int Bge) sim;
+    simple_test ~funct3:Bge sim;
     [%expect
       {|
     ((pc 2000) (error false))
     ((pc 504) (error false))
     ((pc 2000) (error false)) |}];
     (* TODO: Add explicit tests for unsigned registers. *)
-    simple_test ~funct3:(Funct3.Branch.to_int Bltu) sim;
+    simple_test ~funct3:Bltu sim;
     [%expect
       {|
     ((pc 504) (error false))
     ((pc 2000) (error false))
     ((pc 504) (error false)) |}];
-    simple_test ~funct3:(Funct3.Branch.to_int Bgeu) sim;
+    simple_test ~funct3:Bgeu sim;
     [%expect
       {|
     ((pc 2000) (error false))

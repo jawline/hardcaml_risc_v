@@ -2,6 +2,7 @@
  (name hardcaml_risc_v)
  (libraries
   hardcaml
+  hardcaml_circuits
   hardcaml_memory_controller
   hardcaml_uart
   hardcaml_io_controller

@@ -184,7 +184,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                            unaligned destination as it is used to decide how to
                            rewrite the word. *)
                           ~funct3
-                          ~destination
+                          ~destination:
+                            (reg ~enable:(current_state.is Idle) reg_spec destination)
                           ~old_word:read_response.value.read_data
                           ~new_word:value
                           scope
@@ -210,7 +211,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         store_finished.value
     ; write_bus =
         { valid = issue_write.value
-        ; data = { address = aligned_address; write_data = word_to_write.value }
+        ; data =
+            { address = reg ~enable:(current_state.is Idle) reg_spec aligned_address
+            ; write_data = word_to_write.value
+            }
         }
     ; read_bus = { valid = issue_read.value; data = { address = aligned_address } }
     }

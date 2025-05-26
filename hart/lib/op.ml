@@ -7,7 +7,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   module I = struct
     type 'a t =
-      { funct3 : 'a [@bits 3]
+      { funct3 : 'a Funct3.Op.Onehot.t
       ; subtract_instead_of_add : 'a
       ; arithmetic_shift : 'a
       ; lhs : 'a [@bits register_width]
@@ -25,9 +25,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
         ({ I.funct3; subtract_instead_of_add; arithmetic_shift; lhs; rhs } : _ I.t)
     =
     let rd =
-      Util.switch
-        (module Funct3.Op)
-        ~if_not_found:(zero register_width)
+      Funct3.Op.Onehot.switch
         ~f:(function
           | Funct3.Op.Add_or_sub -> mux2 subtract_instead_of_add (lhs -: rhs) (lhs +: rhs)
           | Slt -> uresize ~width:32 (lhs <+ rhs)

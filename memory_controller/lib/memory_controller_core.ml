@@ -28,16 +28,16 @@ struct
   ;;
 
   let capacity_in_words = M.capacity_in_bytes / data_bus_in_bytes
-  let address_width = num_bits_to_represent (capacity_in_words - 1)
+  let address_width = address_bits_for capacity_in_words
   let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8)
 
   module I = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; which_read_ch : 'a [@bits num_bits_to_represent M.num_read_channels - 1]
+      ; which_read_ch : 'a [@bits address_bits_for M.num_read_channels]
       ; selected_read_ch : 'a Memory_bus.Read_bus.Source.t
-      ; which_write_ch : 'a [@bits num_bits_to_represent M.num_write_channels - 1]
+      ; which_write_ch : 'a [@bits address_bits_for M.num_write_channels]
       ; selected_write_ch : 'a Memory_bus.Write_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -110,20 +110,17 @@ struct
         List.init
           ~f:(fun channel ->
             { With_valid.valid =
-                (let read_was_valid =
-                   reg reg_spec_with_clear selected_read_ch.valid
-                   &: (reg reg_spec_with_clear which_read_ch ==:. channel)
-                 in
-                 pipeline ~n:(read_latency - 1) reg_spec_no_clear read_was_valid)
+                pipeline
+                  ~n:read_latency
+                  reg_spec_with_clear
+                  (selected_read_ch.valid &: (which_read_ch ==:. channel))
             ; value =
                 { Read_response.error =
-                    (let read_was_error =
-                       reg
-                         reg_spec_with_clear
-                         (illegal_operation ~scope selected_read_ch.data.address)
-                       &: (reg reg_spec_with_clear which_read_ch ==:. channel)
-                     in
-                     pipeline ~n:(read_latency - 1) reg_spec_no_clear read_was_error)
+                    pipeline
+                      ~n:read_latency
+                      reg_spec_no_clear
+                      (illegal_operation ~scope selected_read_ch.data.address
+                       &: (which_read_ch ==:. channel))
                 ; read_data = pipeline ~n:(read_latency - 1) reg_spec_no_clear read_data
                 }
             })
@@ -132,8 +129,9 @@ struct
         List.init
           ~f:(fun channel ->
             { With_valid.valid =
-                reg reg_spec_with_clear selected_write_ch.valid
-                &: (reg reg_spec_with_clear which_write_ch ==:. channel)
+                reg
+                  reg_spec_with_clear
+                  (selected_write_ch.valid &: (which_write_ch ==:. channel))
             ; value =
                 { Write_response.error =
                     reg

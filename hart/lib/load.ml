@@ -122,7 +122,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            funct3)
     ; error = read_response.valid &: read_response.value.error |: inputs_are_error
     ; finished = finished.value
-    ; read_bus = { valid = load_valid.value; data = { address = aligned_address } }
+    ; read_bus =
+        { valid = load_valid.value; data = { address = reg reg_spec aligned_address } }
     }
   ;;
 
