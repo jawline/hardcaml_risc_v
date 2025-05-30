@@ -60,10 +60,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let decoded_opcode =
       Decoded_opcode.construct_onehot ~f:(function
         | ALU -> test_opcode Op |: test_opcode Op_imm
-        | Jal -> test_opcode Jal
-        | Jalr -> test_opcode Jalr
+        | Assign_pc_sum_of_arguments ->
+          test_opcode Jal |: test_opcode Jalr |: test_opcode Auipc
         | Lui -> test_opcode Lui
-        | Auipc -> test_opcode Auipc
         | Branch -> test_opcode Branch
         | Load -> test_opcode Load
         | Store -> test_opcode Store
@@ -80,10 +79,10 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; argument_1 =
         onehot_select_with_default
           ~default:rs1
-          [ { With_valid.valid = test_opcode Jal; value = j_immediate }
-          ; { With_valid.valid = test_opcode Lui |: test_opcode Auipc
-            ; value = u_immediate
+          [ { With_valid.valid = test_opcode Jal |: test_opcode Auipc
+            ; value = registers.pc
             }
+          ; { With_valid.valid = test_opcode Lui; value = u_immediate }
           ]
     ; argument_2 =
         onehot_select_with_default
@@ -91,6 +90,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           [ { With_valid.valid = test_opcode Op_imm |: test_opcode Jalr
             ; value = i_immediate
             }
+          ; { With_valid.valid = test_opcode Jal; value = j_immediate }
+          ; { With_valid.valid = test_opcode Auipc; value = u_immediate }
           ]
     ; argument_3 =
         onehot_select

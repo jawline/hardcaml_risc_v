@@ -4,10 +4,8 @@ open Signal
 
 type t =
   | ALU
-  | Jal
-  | Jalr
+  | Assign_pc_sum_of_arguments
   | Lui
-  | Auipc
   | Branch
   | Load
   | Store

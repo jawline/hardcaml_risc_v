@@ -86,46 +86,26 @@ struct
     }
   ;;
 
-  (** JAL (jump and link) adds the signed J-immediate value to the current PC
-      after storing the current PC + 4 in the destination register. *)
-  let jal_instruction
-        ~valid
-        ~(registers : _ Registers.t)
-        (decoded_instruction : _ Decoded_instruction.t)
-        scope
-    =
-    let%hw new_pc = registers.pc +: decoded_instruction.argument_1 in
-    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Jal
-    ; read_bus = None
-    ; write_bus = None
-    ; transaction =
-        { Transaction.set_rd = vdd; new_rd = registers.pc +:. 4; new_pc; error = gnd }
-    }
-  ;;
-
-  let drop_lsb t = concat_msb [ sel_top ~width:(width t - 1) t; gnd ]
-
-  (** JALR (Indirect jump) adds a 12-bit signed immediate to whatever is at rs1,
-      sets the LSB of that result to zero (e.g, result = result & (!1)), and
-      finally sets the PC to this new result.  rd is set to the original PC + 4
-      (the start of the next instruction).  Regiser 0 can be used to discard the
-      result. *)
-  let jalr_instruction
+  (** Assign PC = argument 1 + argument 2, set rd = pc + 4. Implements JAL and JALR. *)
+  let assign_pc_sum_of_arguments
         ~valid
         ~(registers : _ Registers.t)
         (decoded_instruction : _ Decoded_instruction.t)
         scope
     =
     let new_pc =
-      let%hw jalr_rs1 = decoded_instruction.argument_1 in
-      let%hw jalr_i = decoded_instruction.argument_2 in
-      jalr_rs1 +: jalr_i |> drop_lsb
+      let%hw arg1 = decoded_instruction.argument_1 in
+      let%hw arg2 = decoded_instruction.argument_2 in
+      arg1 +: arg2
     in
-    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Jalr
+    let new_pc = concat_msb [ drop_bottom ~width:1 new_pc; zero 1 ] in
+    { Opcode_output.valid =
+        valid
+        &: Decoded_opcode.valid decoded_instruction.opcode Assign_pc_sum_of_arguments
     ; read_bus = None
     ; write_bus = None
     ; transaction =
-        { Transaction.set_rd = vdd; new_pc; error = gnd; new_rd = registers.pc +:. 4 }
+        { Transaction.set_rd = vdd; new_rd = registers.pc +:. 4; new_pc; error = gnd }
     }
   ;;
 
@@ -142,26 +122,6 @@ struct
     ; transaction =
         { Transaction.set_rd = vdd
         ; new_rd = decoded_instruction.argument_1
-        ; error = gnd
-        ; new_pc = registers.pc +:. 4
-        }
-    }
-  ;;
-
-  (** Add upper immediate to PC. Similar to LUI but adds the loaded immediate to
-      current the program counter and places it in RD. This can be used to compute
-      addresses for JALR instructions. *)
-  let auipc_instruction
-        ~valid
-        ~(registers : _ Registers.t)
-        (decoded_instruction : _ Decoded_instruction.t)
-    =
-    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Auipc
-    ; read_bus = None
-    ; write_bus = None
-    ; transaction =
-        { Transaction.set_rd = vdd
-        ; new_rd = registers.pc +: decoded_instruction.argument_1
         ; error = gnd
         ; new_pc = registers.pc +:. 4
         }
@@ -360,17 +320,11 @@ struct
         ~opcode:Decoded_opcode.ALU
         (op_instructions ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
-        ~opcode:Decoded_opcode.Jal
-        (jal_instruction ~valid ~registers decoded_instruction scope)
-    ; Table_entry.create
-        ~opcode:Decoded_opcode.Jalr
-        (jalr_instruction ~valid ~registers decoded_instruction scope)
+        ~opcode:Decoded_opcode.Assign_pc_sum_of_arguments
+        (assign_pc_sum_of_arguments ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
         ~opcode:Decoded_opcode.Lui
         (lui_instruction ~valid ~registers decoded_instruction)
-    ; Table_entry.create
-        ~opcode:Decoded_opcode.Auipc
-        (auipc_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
         ~opcode:Decoded_opcode.Fence
         (fence ~valid ~registers decoded_instruction)

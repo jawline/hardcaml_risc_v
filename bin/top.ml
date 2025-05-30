@@ -4,7 +4,6 @@ open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
 module Report_synth = Hardcaml_xilinx_reports
 
-
 module Make (C : sig
     val include_video_out : bool
     val hart_frequency : int
@@ -85,17 +84,14 @@ let rtl_command =
          "include-video-out"
          (required bool)
          ~doc:"include logic for generating a video signal"
- and  hart_frequency = 
-       flag
-         "hart-frequency"
-         (required int)
-         ~doc:"clock frequency in hz for the hart"
+     and hart_frequency =
+       flag "hart-frequency" (required int) ~doc:"clock frequency in hz for the hart"
      in
      fun () ->
        let module M =
          Make (struct
            let include_video_out = include_video_out
-           let hart_frequency = hart_frequency 
+           let hart_frequency = hart_frequency
          end)
        in
        M.Rtl.emit ())
