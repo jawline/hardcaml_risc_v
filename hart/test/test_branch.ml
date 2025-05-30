@@ -50,38 +50,44 @@ let%expect_test "branch tests" =
     simple_test ~funct3:Beq sim;
     [%expect
       {|
-      ((pc 504) (error false))
-      ((pc 504) (error false))
-      ((pc 2000) (error false)) |}];
+      (pc 504)
+      (pc 504)
+      (pc 2000)
+      |}];
     simple_test ~funct3:Bne sim;
     [%expect
       {|
-    ((pc 2000) (error false))
-    ((pc 2000) (error false))
-    ((pc 504) (error false)) |}];
+      (pc 2000)
+      (pc 2000)
+      (pc 504)
+      |}];
     simple_test ~funct3:Blt sim;
     [%expect
       {|
-    ((pc 504) (error false))
-    ((pc 2000) (error false))
-    ((pc 504) (error false)) |}];
+      (pc 504)
+      (pc 2000)
+      (pc 504)
+      |}];
     simple_test ~funct3:Bge sim;
     [%expect
       {|
-    ((pc 2000) (error false))
-    ((pc 504) (error false))
-    ((pc 2000) (error false)) |}];
+      (pc 2000)
+      (pc 504)
+      (pc 2000)
+      |}];
     (* TODO: Add explicit tests for unsigned registers. *)
     simple_test ~funct3:Bltu sim;
     [%expect
       {|
-    ((pc 504) (error false))
-    ((pc 2000) (error false))
-    ((pc 504) (error false)) |}];
+      (pc 504)
+      (pc 2000)
+      (pc 504)
+      |}];
     simple_test ~funct3:Bgeu sim;
     [%expect
       {|
-    ((pc 2000) (error false))
-    ((pc 504) (error false))
-    ((pc 2000) (error false)) |}])
+      (pc 2000)
+      (pc 504)
+      (pc 2000)
+      |}])
 ;;

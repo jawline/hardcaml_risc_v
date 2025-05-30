@@ -22,19 +22,26 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   end
 
   let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; branch_offset } : _ I.t) =
-    let branch_when ~f = mux2 (f lhs rhs) (pc +: branch_offset) (pc +:. 4) in
-    let new_pc =
-      Funct3.Branch.Onehot.switch
-        ~f:(function
-          | Funct3.Branch.Beq -> branch_when ~f:( ==: )
-          | Bne -> branch_when ~f:( <>: )
-          | Blt -> branch_when ~f:( <+ )
-          | Bge -> branch_when ~f:( >=+ )
-          | Bltu -> branch_when ~f:( <: )
-          | Bgeu -> branch_when ~f:( >=: ))
-        funct3
+    let branch_when ~key ~f =
+      [ { With_valid.valid = Funct3.Branch.Onehot.valid funct3 key &: f lhs rhs
+        ; value = pc +: branch_offset
+        }
+      ; { With_valid.valid = Funct3.Branch.Onehot.valid funct3 key &: ~:(f lhs rhs)
+        ; value = pc +:. 4
+        }
+      ]
     in
-    { O.new_pc }
+    let all_options_with_valid =
+      List.concat
+        [ branch_when ~key:Beq ~f:( ==: )
+        ; branch_when ~key:Bne ~f:( <>: )
+        ; branch_when ~key:Blt ~f:( <+ )
+        ; branch_when ~key:Bge ~f:( >=+ )
+        ; branch_when ~key:Bltu ~f:( <: )
+        ; branch_when ~key:Bgeu ~f:( >=: )
+        ]
+    in
+    { O.new_pc = onehot_select all_options_with_valid }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =

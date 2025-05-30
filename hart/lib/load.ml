@@ -92,7 +92,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   [ if_
                       inputs_are_error
                       [ finished <-- vdd ]
-                      [ current_state.set_next Waiting_for_memory_controller; issue_load ]
+                      [ current_state.set_next Waiting_for_memory_controller ]
                   ]
               ] )
           ; Waiting_for_memory_controller, [ issue_load ]

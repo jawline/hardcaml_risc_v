@@ -4,10 +4,10 @@ open Hardcaml_risc_v
 open Hardcaml_risc_v_hart
 module Report_synth = Hardcaml_xilinx_reports
 
-let design_frequency = 50_000_000
 
 module Make (C : sig
     val include_video_out : bool
+    val hart_frequency : int
   end) =
 struct
   module Design =
@@ -15,7 +15,7 @@ struct
       (struct
         let register_width = Register_width.B32
         let num_registers = 32
-        let design_frequency = design_frequency
+        let design_frequency = C.hart_frequency
       end)
       (struct
         let num_bytes = 65536
@@ -26,7 +26,7 @@ struct
         let include_io_controller =
           Io_controller_config.Uart_controller
             { baud_rate = 9600
-            ; clock_frequency = design_frequency
+            ; clock_frequency = C.hart_frequency
             ; include_parity_bit = false
             ; stop_bits = 2
             }
@@ -85,11 +85,17 @@ let rtl_command =
          "include-video-out"
          (required bool)
          ~doc:"include logic for generating a video signal"
+ and  hart_frequency = 
+       flag
+         "hart-frequency"
+         (required int)
+         ~doc:"clock frequency in hz for the hart"
      in
      fun () ->
        let module M =
          Make (struct
            let include_video_out = include_video_out
+           let hart_frequency = hart_frequency 
          end)
        in
        M.Rtl.emit ())
@@ -163,10 +169,12 @@ end
 
 module Without_video = Make (struct
     let include_video_out = false
+    let hart_frequency = 100_000_000
   end)
 
 module With_video = Make (struct
     let include_video_out = true
+    let hart_frequency = 100_000_000
   end)
 
 let all_commands =

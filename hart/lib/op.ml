@@ -30,7 +30,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
           | Funct3.Op.Add_or_sub -> mux2 subtract_instead_of_add (lhs -: rhs) (lhs +: rhs)
           | Slt -> uresize ~width:32 (lhs <+ rhs)
           | Sltu -> uresize ~width:32 (lhs <: rhs)
-          | Sll -> log_shift ~f:sll ~by:rhs lhs
+          | Sll -> log_shift ~f:sll ~by:(sel_bottom ~width:6 rhs) lhs
           | Xor -> lhs ^: rhs
           | Or -> lhs |: rhs
           | And -> lhs &: rhs

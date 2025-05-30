@@ -143,19 +143,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       Variable.reg ~width:register_width reg_spec_no_clear
     in
     let store_finished = Variable.wire ~default:gnd in
-    let issue_read = Variable.wire ~default:gnd in
-    let issue_write = Variable.wire ~default:gnd in
-    let idle_or_starting =
-      proc
-        [ (* If we are loading a whole word and it is aligned
-             we do not need to read from the memory controller,
-             we can just write the whole thing skipping the
-             load step.
-          *)
-          issue_read <-- vdd
-        ; when_ read_bus.ready [ current_state.set_next Waiting_for_load ]
-        ]
-    in
     (* TODO: Error signal is not correctly propagated here. *)
     compile
       [ current_state.switch
@@ -170,11 +157,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                           [ word_to_write <-- value
                           ; current_state.set_next Preparing_store
                           ]
-                          [ current_state.set_next Preparing_load; idle_or_starting ]
+                          [ (* To ease timings, we don't issue a load thsi cycle. *)
+                            current_state.set_next Preparing_load
+                          ]
                       ]
                   ]
               ] )
-          ; Preparing_load, [ idle_or_starting ]
+          ; ( Preparing_load
+            , [ when_ read_bus.ready [ current_state.set_next Waiting_for_load ] ] )
           ; ( Waiting_for_load
             , [ when_
                   read_response.valid
@@ -193,9 +183,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   ]
               ] )
           ; ( Preparing_store
-            , [ issue_write <-- vdd
-              ; when_ write_bus.ready [ current_state.set_next Waiting_for_store ]
-              ] )
+            , [ when_ write_bus.ready [ current_state.set_next Waiting_for_store ] ] )
           ; ( Waiting_for_store
             , [ when_
                   write_response.valid
@@ -210,13 +198,17 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         *)
         store_finished.value
     ; write_bus =
-        { valid = issue_write.value
+        { valid = current_state.is Preparing_store
         ; data =
             { address = reg ~enable:(current_state.is Idle) reg_spec aligned_address
             ; write_data = word_to_write.value
             }
         }
-    ; read_bus = { valid = issue_read.value; data = { address = aligned_address } }
+    ; read_bus =
+        { valid = current_state.is Preparing_load
+        ; data =
+            { address = reg ~enable:(current_state.is Idle) reg_spec aligned_address }
+        }
     }
   ;;
 
