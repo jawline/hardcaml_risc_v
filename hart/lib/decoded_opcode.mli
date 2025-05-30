@@ -4,7 +4,6 @@ open Hardcaml
 type t =
   | ALU
   | Assign_pc_sum_of_arguments
-  | Lui
   | Branch
   | Load
   | Store

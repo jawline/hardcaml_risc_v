@@ -109,25 +109,6 @@ struct
     }
   ;;
 
-  (** LUI (load upper immediate) sets rd to the decoded U immediate (20 bit
-      value from the msb with zeros for the lower 12. *)
-  let lui_instruction
-        ~valid
-        ~(registers : _ Registers.t)
-        (decoded_instruction : _ Decoded_instruction.t)
-    =
-    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Lui
-    ; read_bus = None
-    ; write_bus = None
-    ; transaction =
-        { Transaction.set_rd = vdd
-        ; new_rd = decoded_instruction.argument_1
-        ; error = gnd
-        ; new_pc = registers.pc +:. 4
-        }
-    }
-  ;;
-
   (** The branch table either compares rs1 and rs2 based on funct3 and then
       either adds a b immediate to the PC or skips to the next instruction
       based on the result. *)
@@ -322,9 +303,6 @@ struct
     ; Table_entry.create
         ~opcode:Decoded_opcode.Assign_pc_sum_of_arguments
         (assign_pc_sum_of_arguments ~valid ~registers decoded_instruction scope)
-    ; Table_entry.create
-        ~opcode:Decoded_opcode.Lui
-        (lui_instruction ~valid ~registers decoded_instruction)
     ; Table_entry.create
         ~opcode:Decoded_opcode.Fence
         (fence ~valid ~registers decoded_instruction)
