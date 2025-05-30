@@ -59,9 +59,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let is_op = test_opcode Op in
     let decoded_opcode =
       Decoded_opcode.construct_onehot ~f:(function
-        | ALU -> test_opcode Op |: test_opcode Op_imm |: test_opcode Lui
-        | Assign_pc_sum_of_arguments ->
-          test_opcode Jal |: test_opcode Jalr |: test_opcode Auipc 
+        | ALU ->
+          test_opcode Op |: test_opcode Op_imm |: test_opcode Lui |: test_opcode Auipc
+        | Assign_pc_sum_of_arguments -> test_opcode Jal |: test_opcode Jalr
         | Branch -> test_opcode Branch
         | Load -> test_opcode Load
         | Store -> test_opcode Store
@@ -117,14 +117,13 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; op_onehot =
         (let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
          Funct3.Op.Onehot.Of_signal.mux2
-         (* We decode LUI to an add with argument_2 = 0, but funct3 is part of
+           (* We decode LUI, AUIPC to an add with argument_2 = 0, but funct3 is part of
             the immediate we loaded so we ignore it. *)
-           (test_opcode Lui)
-(Funct3.Op.Onehot.construct_onehot ~f:(function
+           (test_opcode Lui |: test_opcode Auipc)
+           (Funct3.Op.Onehot.construct_onehot ~f:(function
               | Funct3.Op.Add_or_sub -> vdd
               | _ -> gnd))
-           (Funct3.Op.Onehot.construct_onehot ~f:test_funct3)
-           )
+           (Funct3.Op.Onehot.construct_onehot ~f:test_funct3))
     ; branch_onehot =
         (let test_funct3 op = funct3 ==:. Funct3.Branch.to_int op in
          Funct3.Branch.Onehot.construct_onehot ~f:test_funct3)
