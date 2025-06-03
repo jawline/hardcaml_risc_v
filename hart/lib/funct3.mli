@@ -47,6 +47,8 @@ module Load : sig
 
   val to_int : t -> int
   val of_int : int -> t option
+
+  module Onehot : Onehot_intf.S with type base := t
 end
 
 module Store : sig
@@ -58,6 +60,8 @@ module Store : sig
 
   val to_int : t -> int
   val of_int : int -> t option
+
+  module Onehot : Onehot_intf.S with type base := t
 end
 
 module System : sig

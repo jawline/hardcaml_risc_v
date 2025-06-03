@@ -12,7 +12,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       { clock : 'a
       ; clear : 'a
       ; enable : 'a
-      ; funct3 : 'a [@bits 3]
+      ; op : 'a Funct3.Load.Onehot.t
       ; address : 'a [@bits register_width]
       ; read_bus : 'a Memory.Read_bus.Dest.t
       ; read_response : 'a Memory.Read_response.With_valid.t
@@ -40,7 +40,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let create
         (scope : Scope.t)
-        ({ I.clock; clear; enable; funct3; address; read_bus; read_response } : _ I.t)
+        ({ I.clock; clear; enable; op; address; read_bus; read_response } : _ I.t)
     =
     (* TODO: We currently disallow loads that are not aligned on a {load width}
        boundary. We could support this by loading a second word and muxing the
@@ -58,19 +58,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       concat_msb [ drop_bottom address ~width:2; zero 2 ]
     in
     let%hw is_unaligned =
-      Util.switch
-        (module Funct3.Load)
-        ~if_not_found:gnd
+      Funct3.Load.Onehot.switch
         ~f:(function
           | Funct3.Load.Lw -> sel_bottom ~width:2 address <>:. 0
           | Lh | Lhu -> sel_bottom ~width:1 address
           | Lb | Lbu -> gnd)
-        funct3
+        op
     in
-    let funct3_is_error =
-      Util.switch (module Funct3.Load) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
-    in
-    let inputs_are_error = is_unaligned |: funct3_is_error in
+    let inputs_are_error = is_unaligned in
     let issue_load =
       proc
         [ load_valid <-- vdd
@@ -104,16 +99,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word)
          in
          let%hw byte = mux alignment_bits (split_lsb ~part_width:8 full_word) in
-         Util.switch
-           (module Funct3.Load)
-           ~if_not_found:(zero register_width)
+         Funct3.Load.Onehot.switch
            ~f:(function
              | Funct3.Load.Lw -> full_word
              | Lh -> Util.sign_extend ~width:register_width half_word
              | Lhu -> uresize ~width:register_width half_word
              | Lb -> Util.sign_extend ~width:register_width byte
              | Lbu -> uresize ~width:register_width byte)
-           funct3)
+           op)
     ; error = read_response.valid &: read_response.value.error |: inputs_are_error
     ; finished = finished.value
     ; read_bus =

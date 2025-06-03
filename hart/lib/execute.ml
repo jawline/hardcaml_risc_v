@@ -114,7 +114,7 @@ struct
     let { Branch.O.new_pc } =
       Branch.hierarchical
         scope
-        { Branch.I.funct3 = decoded_instruction.branch_onehot
+        { Branch.I.op = decoded_instruction.branch_onehot
         ; lhs = decoded_instruction.argument_1
         ; rhs = decoded_instruction.argument_2
         ; branch_offset = decoded_instruction.argument_3
@@ -167,7 +167,7 @@ struct
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
             valid &: Decoded_opcode.valid decoded_instruction.opcode Load
-        ; funct3 = decoded_instruction.funct3
+        ; op = decoded_instruction.load_onehot
         ; address = decoded_instruction.argument_1 +: decoded_instruction.argument_3
         ; read_bus
         ; read_response
@@ -196,7 +196,6 @@ struct
     =
     let { Store.O.finished; error; read_bus; write_bus } =
       Store.hierarchical
-        ~instance:"store"
         scope
         { Store.I.clock
         ; clear
@@ -204,7 +203,7 @@ struct
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
             valid &: Decoded_opcode.valid decoded_instruction.opcode Store
-        ; funct3 = decoded_instruction.funct3
+        ; op = decoded_instruction.store_onehot
         ; destination = decoded_instruction.argument_1 +: decoded_instruction.argument_3
         ; value = decoded_instruction.argument_2
         ; read_bus

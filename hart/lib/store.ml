@@ -23,7 +23,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       { clock : 'a
       ; clear : 'a
       ; enable : 'a
-      ; funct3 : 'a [@bits 3]
+      ; op : 'a Funct3.Store.Onehot.t
       ; destination : 'a [@bits register_width]
       ; value : 'a [@bits register_width]
       ; write_bus : 'a Memory.Write_bus.Dest.t
@@ -54,13 +54,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     [@@deriving sexp, enumerate, compare]
   end
 
-  let combine_old_and_new_word ~funct3 ~destination ~old_word ~new_word _scope =
+  let combine_old_and_new_word ~op ~destination ~old_word ~new_word _scope =
     mux_init
       ~f:(fun alignment ->
-        Util.switch
-          (module Funct3.Store)
-          ~if_not_found:
-            ((* In practice, this arm should be impossible *) zero register_width)
+        Funct3.Store.Onehot.switch
           ~f:(function
             | Funct3.Store.Sw ->
               (* In practice, this isn't possible as we do not do the load step
@@ -87,7 +84,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               let parts = split_lsb ~part_width:8 old_word in
               concat_lsb
                 (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
-          funct3)
+          op)
       (uresize ~width:(Int.floor_log2 (register_width / 8)) destination)
       (register_width / 8)
   ;;
@@ -97,7 +94,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         ({ I.clock
          ; clear
          ; enable
-         ; funct3
+         ; op
          ; destination
          ; value
          ; write_bus
@@ -119,22 +116,17 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       destination &: ~:(of_unsigned_int ~width:register_width 0b11)
     in
     let unaligned_bits =
-      Util.switch
-        (module Funct3.Store)
-        ~if_not_found:(zero 2)
+      Funct3.Store.Onehot.switch
         ~f:(function
           | Funct3.Store.Sw -> uresize ~width:2 destination &:. 0b11
           | Sh -> uresize ~width:2 destination &:. 0b1
           | Sb -> zero 2)
-        funct3
+        op
       -- "unaligned_bits"
     in
-    let is_load_word = Util.is (module Funct3.Store) funct3 Funct3.Store.Sw in
+    let is_load_word = Funct3.Store.Onehot.valid op Funct3.Store.Sw in
     let is_unaligned = unaligned_bits <>:. 0 in
-    let funct3_is_error =
-      Util.switch (module Funct3.Store) ~if_not_found:vdd ~f:(fun _ -> gnd) funct3
-    in
-    let inputs_are_error = is_unaligned |: funct3_is_error in
+    let inputs_are_error = is_unaligned in
     let word_to_write =
       (* The word to write back to memory during
          Waiting_for_store.  If we are writing a full word, this is set on cycle 0,
@@ -173,7 +165,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                         (* Here we supply the
                            unaligned destination as it is used to decide how to
                            rewrite the word. *)
-                          ~funct3
+                          ~op
                           ~destination:
                             (reg ~enable:(current_state.is Idle) reg_spec destination)
                           ~old_word:read_response.value.read_data
@@ -212,8 +204,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"store" ~instance create input
+    H.hierarchical ~scope ~name:"store" create input
   ;;
 end

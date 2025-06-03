@@ -10,7 +10,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       { pc : 'a [@bits register_width]
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
-      ; funct3 : 'a Funct3.Branch.Onehot.t
+      ; op : 'a Funct3.Branch.Onehot.t
       ; branch_offset : 'a [@bits register_width]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -21,12 +21,12 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create (_scope : Scope.t) ({ I.pc; funct3; lhs; rhs; branch_offset } : _ I.t) =
+  let create (_scope : Scope.t) ({ I.pc; op; lhs; rhs; branch_offset } : _ I.t) =
     let branch_when ~key ~f =
-      [ { With_valid.valid = Funct3.Branch.Onehot.valid funct3 key &: f lhs rhs
+      [ { With_valid.valid = Funct3.Branch.Onehot.valid op key &: f lhs rhs
         ; value = pc +: branch_offset
         }
-      ; { With_valid.valid = Funct3.Branch.Onehot.valid funct3 key &: ~:(f lhs rhs)
+      ; { With_valid.valid = Funct3.Branch.Onehot.valid op key &: ~:(f lhs rhs)
         ; value = pc +:. 4
         }
       ]

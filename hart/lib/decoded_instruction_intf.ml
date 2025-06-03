@@ -20,6 +20,8 @@ module M (Registers : Registers_intf.S) = struct
       ; alu_operation : 'a Alu_operation.Onehot.t
         (** The ALU operation onehot encodes what the ALU should do if Decoded_opcode is ALU. The includes the pre-coded Add | Sub and Srl | Sra operations. *)
       ; branch_onehot : 'a Funct3.Branch.Onehot.t
+      ; load_onehot : 'a Funct3.Load.Onehot.t
+      ; store_onehot : 'a Funct3.Store.Onehot.t
       ; error : 'a
       }
     [@@deriving hardcaml]

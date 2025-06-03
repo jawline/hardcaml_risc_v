@@ -84,51 +84,61 @@ module Branch = struct
 end
 
 module Load = struct
-  type t =
-    | Lb
-    | Lh
-    | Lw
-    | Lbu
-    | Lhu
-  [@@deriving enumerate]
+  module T = struct
+    type t =
+      | Lb
+      | Lh
+      | Lw
+      | Lbu
+      | Lhu
+    [@@deriving enumerate, variants]
 
-  let to_int = function
-    | Lb -> 0b000
-    | Lh -> 0b001
-    | Lw -> 0b010
-    | Lbu -> 0b100
-    | Lhu -> 0b101
-  ;;
+    let to_int = function
+      | Lb -> 0b000
+      | Lh -> 0b001
+      | Lw -> 0b010
+      | Lbu -> 0b100
+      | Lhu -> 0b101
+    ;;
 
-  let of_int = function
-    | 0b000 -> Some Lb
-    | 0b001 -> Some Lh
-    | 0b010 -> Some Lw
-    | 0b100 -> Some Lbu
-    | 0b101 -> Some Lhu
-    | _ -> None
-  ;;
+    let of_int = function
+      | 0b000 -> Some Lb
+      | 0b001 -> Some Lh
+      | 0b010 -> Some Lw
+      | 0b100 -> Some Lbu
+      | 0b101 -> Some Lhu
+      | _ -> None
+    ;;
+  end
+
+  include T
+  module Onehot = Onehot.Make (T)
 end
 
 module Store = struct
-  type t =
-    | Sb
-    | Sh
-    | Sw
-  [@@deriving enumerate]
+  module T = struct
+    type t =
+      | Sb
+      | Sh
+      | Sw
+    [@@deriving enumerate, variants]
 
-  let to_int = function
-    | Sb -> 0b000
-    | Sh -> 0b001
-    | Sw -> 0b010
-  ;;
+    let to_int = function
+      | Sb -> 0b000
+      | Sh -> 0b001
+      | Sw -> 0b010
+    ;;
 
-  let of_int = function
-    | 0b000 -> Some Sb
-    | 0b001 -> Some Sh
-    | 0b010 -> Some Sw
-    | _ -> None
-  ;;
+    let of_int = function
+      | 0b000 -> Some Sb
+      | 0b001 -> Some Sh
+      | 0b010 -> Some Sw
+      | _ -> None
+    ;;
+  end
+
+  include T
+  module Onehot = Onehot.Make (T)
 end
 
 module System = struct

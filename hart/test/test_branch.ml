@@ -27,7 +27,7 @@ let test ~pc ~lhs ~rhs ~funct3 ~b_immediate sim =
   inputs.pc := of_unsigned_int ~width:32 pc;
   inputs.lhs := of_unsigned_int ~width:32 lhs;
   inputs.rhs := of_unsigned_int ~width:32 rhs;
-  inputs.funct3.packed
+  inputs.op.packed
   := (Funct3.Branch.Onehot.construct_onehot_bits ~f:(fun t ->
         Funct3.Branch.equal t funct3 |> Bits.of_bool))
        .packed;

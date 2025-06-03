@@ -20,6 +20,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; is_csr : 'a
     ; alu_operation : 'a Alu_operation.Onehot.t
     ; branch_onehot : 'a Funct3.Branch.Onehot.t
+    ; load_onehot : 'a Funct3.Load.Onehot.t
+    ; store_onehot : 'a Funct3.Store.Onehot.t
     ; error : 'a
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
@@ -136,6 +138,12 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; branch_onehot =
         (let test_funct3 op = funct3 ==:. Funct3.Branch.to_int op in
          Funct3.Branch.Onehot.construct_onehot ~f:test_funct3)
+    ; load_onehot =
+        (let test_funct3 op = funct3 ==:. Funct3.Load.to_int op in
+         Funct3.Load.Onehot.construct_onehot ~f:test_funct3)
+    ; store_onehot =
+        (let test_funct3 op = funct3 ==:. Funct3.Store.to_int op in
+         Funct3.Store.Onehot.construct_onehot ~f:test_funct3)
     ; error =
         decoded_opcode.packed ==:. 0 |: (is_op &: funct7_bit_other_than_switch_is_selected)
     }

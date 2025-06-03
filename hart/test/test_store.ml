@@ -60,12 +60,13 @@ module Test_machine = struct
     let write_response = Write_response.With_valid.Of_always.wire zero in
     let store =
       Store.hierarchical
-        ~instance:"store"
         scope
         { Store.I.clock
         ; clear
         ; enable
-        ; funct3
+        ; op =
+            (let test_funct3 op = funct3 ==:. Funct3.Store.to_int op in
+             Funct3.Store.Onehot.construct_onehot ~f:test_funct3)
         ; destination
         ; value
         ; read_bus = Read_bus.Dest.Of_always.value read_bus

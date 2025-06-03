@@ -7,7 +7,7 @@ module Make (Hart_config : Hart_config_intf.S) : sig
       { pc : 'a [@bits register_width]
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
-      ; funct3 : 'a Funct3.Branch.Onehot.t
+      ; op : 'a Funct3.Branch.Onehot.t
       ; branch_offset : 'a [@bits register_width]
       }
     [@@deriving hardcaml]

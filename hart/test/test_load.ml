@@ -56,7 +56,9 @@ module Test_machine = struct
         { Load.I.clock
         ; clear
         ; enable
-        ; funct3
+        ; op =
+            (let test_funct3 op = funct3 ==:. Funct3.Load.to_int op in
+             Funct3.Load.Onehot.construct_onehot ~f:test_funct3)
         ; address
         ; read_bus = Read_bus.Dest.Of_always.value read_bus
         ; read_response = Read_response.With_valid.Of_always.value read_response

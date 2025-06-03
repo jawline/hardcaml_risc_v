@@ -12,7 +12,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) : si
       { clock : 'a
       ; clear : 'a
       ; enable : 'a
-      ; funct3 : 'a
+      ; op : 'a Funct3.Load.Onehot.t
       ; address : 'a
       ; read_bus : 'a Memory.Read_bus.Dest.t
       ; read_response : 'a Memory.Read_response.With_valid.t
