@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+dune exec ./bin/top.exe -- generate-rtl -include-video-out false -hart-frequency 200_000_000 &> ./rtl/rtl.v

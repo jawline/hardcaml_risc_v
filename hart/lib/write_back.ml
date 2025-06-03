@@ -15,8 +15,6 @@ struct
   module Load = Load.Make (Hart_config) (Memory)
   module Store = Store.Make (Hart_config) (Memory)
 
-  let register_width = Register_width.bits Hart_config.register_width
-
   module I = struct
     type 'a t =
       { clock : 'a

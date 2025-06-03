@@ -27,9 +27,6 @@ struct
       { clock : 'a
       ; clear : 'a
       ; ecall_transaction : 'a Transaction.With_valid.t
-        (* When is_ecall is high the opcode will be considered finished when
-             ecall_transaction is finished. If a user wants custom behaviour on ecall
-             they should hold ecall finished low, do the work, then raise finished. *)
       ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
             [@length required_write_channels]
@@ -45,8 +42,6 @@ struct
       { registers : 'a Registers.t
       ; error : 'a
       ; is_ecall : 'a
-        (** Set high when the hart is in an ecall and is delagating behaviour to
-          the user design. *)
       ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
       }
@@ -88,8 +83,8 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ?instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"hart" ~instance create input
+    H.hierarchical ?instance ~scope ~name:"hart" create input
   ;;
 end
