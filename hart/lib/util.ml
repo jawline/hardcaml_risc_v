@@ -33,3 +33,11 @@ let switch2 (type a) (module M : Switchable with type t = a) ~f ~if_not_found si
 let is (type a) (module M : Switchable with type t = a) signal (opt : M.t) =
   mux2 (signal ==:. M.to_int opt) vdd gnd
 ;;
+
+(** Sign extend an immediate to ~to_ bits, filling the msbs with all ones or
+    all zeros depending on the sign bit of the original value. *)
+let sign_extend ~width t =
+  let sign_bit = msb t in
+  let extended_bits = width - Signal.width t in
+  concat_msb [ mux2 sign_bit (ones extended_bits) (zero extended_bits); t ]
+;;

@@ -43,19 +43,21 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
   ;;
 
   let of_instruction instruction registers scope =
-    let%hw funct3 = Decoder.funct3 instruction in
+    let%hw funct3 = Instruction_parts.funct3 instruction in
     let%hw is_ecall = funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak in
     let%hw is_csr =
       let f t = funct3 ==:. Funct3.System.to_int t in
       f Funct3.System.Csrrw |: f Funct3.System.Csrrs |: f Funct3.System.Csrrc
     in
-    let rs1 = select_register registers (Decoder.rs1 instruction) in
-    let rs2 = select_register registers (Decoder.rs2 instruction) in
-    let i_immediate = Decoder.i_immediate ~width:register_width instruction in
-    let s_immediate = Decoder.s_immediate ~width:register_width instruction in
-    let funct7 = Decoder.funct7 instruction in
-    let csr = Decoder.csr ~width:12 instruction in
-    let test_opcode op = Decoder.opcode instruction ==:. Opcodes.to_int_repr op in
+    let rs1 = select_register registers (Instruction_parts.rs1 instruction) in
+    let rs2 = select_register registers (Instruction_parts.rs2 instruction) in
+    let i_immediate = Instruction_parts.i_immediate ~width:register_width instruction in
+    let s_immediate = Instruction_parts.s_immediate ~width:register_width instruction in
+    let funct7 = Instruction_parts.funct7 instruction in
+    let csr = Instruction_parts.csr ~width:12 instruction in
+    let test_opcode op =
+      Instruction_parts.opcode instruction ==:. Opcodes.to_int_repr op
+    in
     let is_op = test_opcode Op in
     let decoded_opcode =
       Decoded_opcode.construct_onehot ~f:(function
@@ -70,8 +72,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     in
     let funct7_switch = funct7.:(5) in
     let funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0 in
-    let j_immediate = Decoder.j_immediate ~width:register_width instruction in
-    let u_immediate = Decoder.u_immediate ~width:register_width instruction in
+    let j_immediate = Instruction_parts.j_immediate ~width:register_width instruction in
+    let u_immediate = Instruction_parts.u_immediate ~width:register_width instruction in
     { opcode = decoded_opcode
     ; funct3
     ; funct7
@@ -96,7 +98,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; argument_3 =
         onehot_select
           [ { With_valid.valid = test_opcode Branch
-            ; value = Decoder.b_immediate ~width:register_width instruction
+            ; value = Instruction_parts.b_immediate ~width:register_width instruction
             }
           ; { With_valid.valid = test_opcode Load; value = i_immediate }
           ; { With_valid.valid = test_opcode Store; value = s_immediate }
@@ -105,8 +107,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)
           (of_unsigned_int ~width:5 5)
-          (Decoder.rd instruction)
-    ; rd_value = select_register registers (Decoder.rd instruction)
+          (Instruction_parts.rd instruction)
+    ; rd_value = select_register registers (Instruction_parts.rd instruction)
     ; csr
     ; is_ecall
     ; is_csr

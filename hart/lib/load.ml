@@ -115,9 +115,9 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
            ~if_not_found:(zero register_width)
            ~f:(function
              | Funct3.Load.Lw -> full_word
-             | Lh -> Decoder.sign_extend ~width:register_width half_word
+             | Lh -> Util.sign_extend ~width:register_width half_word
              | Lhu -> uresize ~width:register_width half_word
-             | Lb -> Decoder.sign_extend ~width:register_width byte
+             | Lb -> Util.sign_extend ~width:register_width byte
              | Lbu -> uresize ~width:register_width byte)
            funct3)
     ; error = read_response.valid &: read_response.value.error |: inputs_are_error
