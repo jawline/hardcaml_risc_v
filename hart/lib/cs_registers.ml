@@ -2,16 +2,6 @@ open! Core
 open Hardcaml
 open Signal
 
-(* TODO: Test *)
-
-(** This forms the control & status register set. The control & status registers
-    are a memory region, addressed in register widths, which software can
-    use to read from the device state or change device state.
-
-    The registers are split into small contiguous banks, each having a specific
-    purpose. The banks are not necessarily contiguous. To implement this
-    we activate a bank based on the upper bits of an address and then mux the result
-    based on the same upper bits. The lower bits are used as the bank address.*)
 module Make (Hart_config : Hart_config_intf.S) = struct
   module I = struct
     type 'a t =
