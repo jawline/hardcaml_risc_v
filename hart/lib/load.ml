@@ -1,11 +1,7 @@
-(** The Load opcode implements LW, LH, LB and non sign extended variants LHU and LBU.
-    We currently disallow non-width aligned loads (e.g, shorts at index 1 and words
-    at indices 1, 2, 3). *)
 open! Core
-
 open Hardcaml
 open Hardcaml_memory_controller
-open! Signal
+open Signal
 open Always
 
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
@@ -41,8 +37,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       | Waiting_for_load
     [@@deriving sexp, enumerate, compare]
   end
-
-  let unaligned_bits = 2
 
   let create
         (scope : Scope.t)
@@ -127,8 +121,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"load" ~instance create input
+    H.hierarchical ~scope ~name:"load" create input
   ;;
 end

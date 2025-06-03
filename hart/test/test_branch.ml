@@ -14,7 +14,7 @@ module Branch = Branch.Make (Hart_config)
 module Harness = Cyclesim_harness.Make (Branch.I) (Branch.O)
 
 let create_sim f =
-  Harness.run ~create:Branch.create (fun ~inputs:_ ~outputs:_ sim -> f sim)
+  Harness.run ~create:Branch.hierarchical (fun ~inputs:_ ~outputs:_ sim -> f sim)
 ;;
 
 let print (outputs : _ Branch.O.t) =

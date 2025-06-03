@@ -52,7 +52,6 @@ module Test_machine = struct
     let read_response = Read_response.With_valid.Of_always.wire zero in
     let load =
       Load.hierarchical
-        ~instance:"load"
         scope
         { Load.I.clock
         ; clear

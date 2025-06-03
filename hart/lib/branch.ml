@@ -44,8 +44,8 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     { O.new_pc = onehot_select all_options_with_valid }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"branch" ~instance create input
+    H.hierarchical ~scope ~name:"branch" create input
   ;;
 end

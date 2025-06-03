@@ -64,19 +64,12 @@ struct
         ~valid
         ~(registers : _ Registers.t)
         scope
-        ({ opcode; argument_1; argument_2; alu_specifics; op_onehot; _ } :
-          _ Decoded_instruction.t)
+        ({ opcode; argument_1; argument_2; alu_operation; _ } : _ Decoded_instruction.t)
     =
     let { Op.O.rd = new_rd } =
       Op.hierarchical
-        ~instance:"op"
         scope
-        { Op.I.funct3 = op_onehot
-        ; subtract_instead_of_add = alu_specifics.subtract_instead_of_add
-        ; arithmetic_shift = alu_specifics.arithmetic_shift
-        ; lhs = argument_1
-        ; rhs = argument_2
-        }
+        { Op.I.op = alu_operation; lhs = argument_1; rhs = argument_2 }
     in
     { Opcode_output.valid = valid &: Decoded_opcode.valid opcode ALU
     ; read_bus = None
@@ -120,7 +113,6 @@ struct
     =
     let { Branch.O.new_pc } =
       Branch.hierarchical
-        ~instance:"branch"
         scope
         { Branch.I.funct3 = decoded_instruction.branch_onehot
         ; lhs = decoded_instruction.argument_1
@@ -168,7 +160,6 @@ struct
     =
     let { Load.O.finished; new_rd; error; read_bus } =
       Load.hierarchical
-        ~instance:"load"
         scope
         { Load.I.clock
         ; clear

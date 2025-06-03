@@ -17,5 +17,5 @@ module Make (Hart_config : Hart_config_intf.S) : sig
     type 'a t = { new_pc : 'a [@bits register_width] } [@@deriving hardcaml]
   end
 
-  val hierarchical : instance:string -> Scope.t -> Signal.t I.t -> Signal.t O.t
+  val hierarchical : Scope.t -> Signal.t I.t -> Signal.t O.t
 end

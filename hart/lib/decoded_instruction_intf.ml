@@ -2,14 +2,6 @@ open Hardcaml
 
 module M (Registers : Registers_intf.S) = struct
   module type S = sig
-    module ALU_specifics : sig
-      type 'a t =
-        { subtract_instead_of_add : 'a
-        ; arithmetic_shift : 'a
-        }
-      [@@deriving hardcaml]
-    end
-
     type 'a t =
       { opcode : 'a Decoded_opcode.Packed.t
       ; funct3 : 'a [@bits 3]
@@ -25,8 +17,8 @@ module M (Registers : Registers_intf.S) = struct
       ; csr : 'a [@bits 12]
       ; is_ecall : 'a
       ; is_csr : 'a
-      ; alu_specifics : 'a ALU_specifics.t
-      ; op_onehot : 'a Funct3.Op.Onehot.t
+      ; alu_operation : 'a Alu_operation.Onehot.t
+        (** The ALU operation onehot encodes what the ALU should do if Decoded_opcode is ALU. The includes the pre-coded Add | Sub and Srl | Sra operations. *)
       ; branch_onehot : 'a Funct3.Branch.Onehot.t
       ; error : 'a
       }

@@ -5,14 +5,6 @@ open Signal
 module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = struct
   let register_width = Register_width.bits Hart_config.register_width
 
-  module ALU_specifics = struct
-    type 'a t =
-      { subtract_instead_of_add : 'a
-      ; arithmetic_shift : 'a
-      }
-    [@@deriving hardcaml ~rtlmangle:"$"]
-  end
-
   type 'a t =
     { opcode : 'a Decoded_opcode.Packed.t
     ; funct3 : 'a [@bits 3]
@@ -26,8 +18,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; csr : 'a [@bits 12]
     ; is_ecall : 'a
     ; is_csr : 'a
-    ; alu_specifics : 'a ALU_specifics.t
-    ; op_onehot : 'a Funct3.Op.Onehot.t
+    ; alu_operation : 'a Alu_operation.Onehot.t
     ; branch_onehot : 'a Funct3.Branch.Onehot.t
     ; error : 'a
     }
@@ -112,20 +103,36 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; csr
     ; is_ecall
     ; is_csr
-    ; alu_specifics =
-        { ALU_specifics.subtract_instead_of_add = funct7_switch &: is_op
-        ; arithmetic_shift = funct7_switch
-        }
-    ; op_onehot =
+    ; alu_operation =
         (let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
-         Funct3.Op.Onehot.Of_signal.mux2
+         let is_op_imm = test_opcode Op_imm in
+         let match_op op =
+           match op with
+           | Alu_operation.Add ->
+             (* The operation is an Add if Op &: ~:funct7 or if Op_imm. Op_imm
+                does not have sub and uses the funct switch to encode it's
+                immediate. *)
+             test_funct3 Add_or_sub &: (is_op_imm |: ~:funct7_switch)
+           | Sub ->
+             (* Sub is if Add_or_sub &: ~:Add. *)
+             test_funct3 Add_or_sub &: (~:is_op_imm &: funct7_switch)
+           | Srl -> test_funct3 Srl_or_sra &: ~:funct7_switch
+           | Sra -> test_funct3 Srl_or_sra &: funct7_switch
+           | Sll -> test_funct3 Sll
+           | Slt -> test_funct3 Slt
+           | Xor -> test_funct3 Xor
+           | Sltu -> test_funct3 Sltu
+           | Or -> test_funct3 Or
+           | And -> test_funct3 And
+         in
+         Alu_operation.Onehot.Of_signal.mux2
            (* We decode LUI, AUIPC to an add with argument_2 = 0, but funct3 is part of
             the immediate we loaded so we ignore it. *)
            (test_opcode Lui |: test_opcode Auipc)
-           (Funct3.Op.Onehot.construct_onehot ~f:(function
-              | Funct3.Op.Add_or_sub -> vdd
+           (Alu_operation.Onehot.construct_onehot ~f:(function
+              | Alu_operation.Add -> vdd
               | _ -> gnd))
-           (Funct3.Op.Onehot.construct_onehot ~f:test_funct3))
+           (Alu_operation.Onehot.construct_onehot ~f:match_op))
     ; branch_onehot =
         (let test_funct3 op = funct3 ==:. Funct3.Branch.to_int op in
          Funct3.Branch.Onehot.construct_onehot ~f:test_funct3)
