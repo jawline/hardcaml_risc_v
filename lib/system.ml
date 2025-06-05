@@ -1,6 +1,7 @@
 open! Core
 open Hardcaml
 open Hardcaml_memory_controller
+open Hardcaml_io_controller
 open Hardcaml_risc_v_hart
 open Signal
 
@@ -83,7 +84,18 @@ struct
       (Decoded_instruction)
       (Transaction)
 
-  module Dma = System_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
+  module Memory_to_packet8 =
+    Memory_to_packet8.Make
+      (struct
+        let header = Some 'D'
+      end)
+      (Memory_controller.Memory_bus)
+      (Axi8)
+
+  module Dma =
+    System_dma_controller.Make (General_config) (Memory_controller.Memory_bus)
+      (Memory_to_packet8)
+
   module Video_out_with_memory = Video_out.Make (Memory_controller.Memory_bus)
 
   let include_uart_wires =
@@ -167,13 +179,13 @@ struct
       reg
         reg_spec_no_clear
         (List.nth_exn hart0.registers.general 7
-         |> uresize ~width:Dma.Tx_input.port_widths.length)
+         |> uresize ~width:Memory_to_packet8.Input.port_widths.length)
     in
     let%hw is_dma_write = hart0.is_ecall &: delayed_r5 in
     let%hw next_pc = reg reg_spec_no_clear (hart0.registers.pc +:. 4) in
     (* TODO: I think this can race. *)
     let not_busy = ~:tx_busy in
-    Dma.Tx_input.With_valid.Of_signal.(
+    Memory_to_packet8.Input.With_valid.Of_signal.(
       tx_input
       <-- { valid = is_dma_write &: not_busy
           ; value = { address = delayed_r6; length = delayed_r7 }

@@ -3,23 +3,18 @@ open Hardcaml
 open Hardcaml_memory_controller
 open Hardcaml_io_framework
 open Hardcaml_io_controller
-open Hardcaml_uart
 open Hardcaml_circuits
+open Hardcaml_uart
 open Signal
 
 (* TODO: This file does too much wiring. Split it out and clean it up. *)
 
-module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) = struct
-  module Memory_to_packet8 =
-    Memory_to_packet8.Make
-      (struct
-        let header = Some 'D'
-      end)
-      (Memory)
-      (Axi8)
-
+module Make
+    (General_config : System_intf.Config)
+    (Memory : Memory_bus_intf.S)
+    (Memory_to_packet8 : Memory_to_packet8_intf.M(Memory)(Axi8).S) =
+struct
   module Write_dpath = Datapath_register.Make (Memory.Write)
-  module Tx_input = Memory_to_packet8.Input
 
   type 'a t =
     { write_request : Signal.t Memory.Write_bus.Source.t
@@ -29,7 +24,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
     ; write_bus : Signal.t Memory.Write_bus.Dest.t
     ; read_bus : Signal.t Memory.Read_bus.Dest.t
     ; uart_rx_valid : 'a
-    ; tx_input : Signal.t Tx_input.With_valid.t
+    ; tx_input : Signal.t Memory_to_packet8.Input.With_valid.t
     ; tx_busy : 'a
     ; uart_tx : Signal.t
     ; parity_error : 'a
@@ -159,7 +154,7 @@ module Make (General_config : System_intf.Config) (Memory : Memory_bus_intf.S) =
       Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
     in
     pulse_ready <-- pulse.up.tready;
-    let tx_enable = Tx_input.With_valid.Of_signal.wires () in
+    let tx_enable = Memory_to_packet8.Input.With_valid.Of_signal.wires () in
     let uart_tx_ready = wire 1 in
     let dma_out =
       Memory_to_packet8.hierarchical
