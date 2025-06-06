@@ -3,6 +3,12 @@ open Hardcaml
 open Hardcaml_memory_controller
 open Hardcaml_risc_v_hart
 
+(** This module constructs an entire system, including harts, a memory
+    controller, and optionally an IO controller and a video signal generator
+    that generates a framebuffer by expanding pixels in memory. The system is
+    defined by three parts, a general config which decides what features to
+    enable, a memory config that describes the shape of the memory controller,
+    and a hart config which configures each hart. All harts must be homogeneous. *)
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory_config : System_intf.Memory_config)
