@@ -16,6 +16,32 @@ module Make
 struct
   module Write_dpath = Datapath_register.Make (Memory.Write)
 
+  module I = struct
+    type 'a t =
+      { clock : 'a
+      ; clear : 'a
+      ; uart_rx : 'a
+      ; tx_input : 'a Memory_to_packet8.Input.With_valid.t
+      ; read_request : 'a Memory.Read_bus.Dest.t
+      ; write_request : 'a Memory.Write_bus.Dest.t
+      ; read_response : 'a Memory.Read_response.With_valid.t
+      ; write_response : 'a Memory.Write_response.With_valid.t
+      }
+    [@@deriving hardcaml ~rtlmangle:"$"]
+  end
+
+  module O = struct
+    type 'a t =
+      { uart_rx_valid : 'a
+      ; uart_tx : 'a
+      ; tx_busy : 'a
+      ; read_request : 'a Memory.Read_bus.Source.t
+      ; write_request : 'a Memory.Write_bus.Source.t
+      ; clear_message : 'a
+      }
+    [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
+  end
+
   type 'a t =
     { write_request : Signal.t Memory.Write_bus.Source.t
     ; read_request : Signal.t Memory.Read_bus.Source.t
@@ -33,9 +59,21 @@ struct
     }
   [@@deriving fields]
 
-  let dma_controller ~config ~uart_rx ~clock ~clear scope =
+  let create
+        ~uart_config
+        scope
+        { I.clock
+        ; clear
+        ; uart_rx
+        ; tx_input
+        ; read_request
+        ; write_request
+        ; read_response
+        ; write_response
+        }
+    =
     let module Config = struct
-      let config = config
+      let config = uart_config
     end
     in
     let module Dma = Packet_to_memory.Make (Memory) (Axi8) in
@@ -61,13 +99,9 @@ struct
         (Axi8)
     in
     let module Pulse = Pulse.Make (Axi8) in
-    let read_bus = Memory.Read_bus.Dest.Of_signal.wires () in
-    let write_bus = Memory.Write_bus.Dest.Of_signal.wires () in
-    let read_response = Memory.Read_response.With_valid.Of_signal.wires () in
-    let write_response = Memory.Write_response.With_valid.Of_signal.wires () in
     let { Uart_rx.O.data_out_valid = uart_rx_valid
         ; data_out = uart_rx_data
-        ; parity_error
+        ; parity_error = _
         }
       =
       Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx }
@@ -106,7 +140,6 @@ struct
         }
     in
     dpath_ready <-- dpath_ready'.tready;
-    let serial_to_packet_valid = dn.tvalid in
     serial_to_packet_ready <-- serial_to_packet_ready';
     let dma_dpath_ready = wire 1 in
     let pulse_ready = wire 1 in
@@ -138,7 +171,7 @@ struct
       Dma.hierarchical
         ~instance:"dma"
         scope
-        { Dma.I.clock; clear; in_ = dma; out = write_bus; out_ack = write_response }
+        { Dma.I.clock; clear; in_ = dma; out = write_request; out_ack = write_response }
     in
     dma_ready <-- dma.in_.tready;
     let dma_write_dpath_reg =
@@ -146,7 +179,7 @@ struct
         scope
         { Write_dpath.I.clock
         ; clear
-        ; i = { valid = dma.out.valid; data = dma.out.data; ready = write_bus.ready }
+        ; i = { valid = dma.out.valid; data = dma.out.data; ready = write_request.ready }
         }
     in
     dma_write_dpath_ready <-- dma_write_dpath_reg.ready;
@@ -154,15 +187,14 @@ struct
       Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
     in
     pulse_ready <-- pulse.up.tready;
-    let tx_enable = Memory_to_packet8.Input.With_valid.Of_signal.wires () in
     let uart_tx_ready = wire 1 in
     let dma_out =
       Memory_to_packet8.hierarchical
         scope
         { Memory_to_packet8.I.clock
         ; clear
-        ; enable = tx_enable
-        ; memory = read_bus
+        ; enable = tx_input
+        ; memory = read_request
         ; memory_response = read_response
         ; output_packet = { tready = uart_tx_ready }
         }
@@ -177,28 +209,23 @@ struct
         }
     in
     uart_tx_ready <-- dma_out_uart_tx.data_in_ready;
-    Some
-      { write_request =
-          { valid = dma_write_dpath_reg.valid; data = dma_write_dpath_reg.data }
-      ; read_request = dma_out.memory
-      ; read_response
-      ; write_response
-      ; write_bus
-      ; read_bus
-      ; tx_input = tx_enable
-      ; tx_busy = dma_out.busy
-      ; uart_tx = dma_out_uart_tx.uart_tx
-      ; uart_rx_valid
-      ; parity_error
-      ; serial_to_packet_valid
-      ; clear_message = pulse.signal
-      }
+    { O.write_request =
+        { valid = dma_write_dpath_reg.valid; data = dma_write_dpath_reg.data }
+    ; read_request = dma_out.memory
+    ; uart_tx = dma_out_uart_tx.uart_tx
+    ; uart_rx_valid
+    ; clear_message = pulse.signal
+    ; tx_busy = dma_out.busy
+    }
   ;;
 
-  let maybe_dma_controller ~uart_rx ~clock ~clear scope =
-    match General_config.include_io_controller with
-    | No_io_controller -> None
-    | Uart_controller config ->
-      dma_controller ~config ~uart_rx:(Option.value_exn uart_rx) ~clock ~clear scope
+  let hierarchical ?instance ~uart_config (scope : Scope.t) (input : Signal.t I.t) =
+    let module H = Hierarchy.In_scope (I) (O) in
+    H.hierarchical
+      ?instance
+      ~scope
+      ~name:"system_dma_controller"
+      (create ~uart_config)
+      input
   ;;
 end

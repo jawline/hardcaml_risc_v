@@ -124,8 +124,6 @@ struct
       { registers : 'a Registers.t list [@length General_config.num_harts]
       ; uart_tx : 'a option [@exists include_uart_wires]
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
-      ; parity_error : 'a option [@exists include_uart_wires]
-      ; serial_to_packet_valid : 'a option [@exists include_uart_wires]
       ; video_out : 'a Video_out_with_memory.O.t option [@exists include_video_out]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -159,7 +157,8 @@ struct
         ~clock
         (harts : _ Hart.O.t list)
         hart_ecall_transactions
-        { Dma.tx_input; tx_busy; _ }
+        ~tx_input
+        ~tx_busy
         scope
     =
     (* For now we only allow Hart0 to do IO. This isn't
@@ -207,11 +206,12 @@ struct
     |> List.iter ~f:assign_non_io_ecall
   ;;
 
-  let assign_ecalls ~clock maybe_dma_controller harts hart_ecall_transactions scope =
+  let assign_ecalls ~clock ~tx_input_and_busy harts hart_ecall_transactions scope =
     (* If a DMA controller is in the design then wire up DMA related ecalls
        otherwise do not include any ecalls *)
-    match maybe_dma_controller with
-    | Some config -> assign_dma_io_ecall ~clock harts hart_ecall_transactions config scope
+    match tx_input_and_busy with
+    | Some (tx_input, tx_busy) ->
+      assign_dma_io_ecall ~clock ~tx_input ~tx_busy harts hart_ecall_transactions scope
     | None -> assign_empty_ecalls harts hart_ecall_transactions
   ;;
 
@@ -256,13 +256,78 @@ struct
         }
   ;;
 
+  let initialize_harts
+        ~io_clear
+        ~hart_ecall_transactions
+        ~read_bus_per_hart
+        ~write_bus_per_hart
+        ~(memory_controller : _ Memory_controller.O.t)
+        scope
+        { I.clock; clear; _ }
+    =
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let harts =
+      List.init
+        ~f:(fun which_hart ->
+          let hart =
+            Hart.hierarchical
+              ~instance:[%string "hart_%{which_hart#Int}"]
+              scope
+              { Hart.I.clock
+              ; clear = pipeline ~n:2 reg_spec_no_clear (io_clear |: clear)
+              ; read_bus =
+                  select_rd_chs_for_hart which_hart memory_controller.read_to_controller
+              ; write_bus =
+                  select_wr_chs_for_hart which_hart memory_controller.write_to_controller
+              ; read_response =
+                  select_rd_chs_for_hart which_hart memory_controller.read_response
+              ; write_response =
+                  select_wr_chs_for_hart which_hart memory_controller.write_response
+              ; ecall_transaction = List.nth_exn hart_ecall_transactions which_hart
+              }
+          in
+          hart)
+        General_config.num_harts
+    in
+    List.iter2_exn
+      ~f:(List.iter2_exn ~f:Read_bus.Source.Of_signal.( <-- ))
+      read_bus_per_hart
+      (List.map ~f:Hart.O.read_bus harts);
+    List.iter2_exn
+      ~f:(List.iter2_exn ~f:Write_bus.Source.Of_signal.( <-- ))
+      write_bus_per_hart
+      (List.map ~f:Hart.O.write_bus harts);
+    harts
+  ;;
+
   let create scope (i : _ I.t) =
-    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     (* If the design has requested a video out then initialize it. *)
     let maybe_video_out = maybe_video_out scope i in
-    (* If the design has requested a DMA controller then initialize it. *)
+    (* If the design has requested a DMA controller then initialize it with a
+       bunch of unconnected wires. These will be wired to the memory controller
+       and harts below. *)
+    let tx_input = Memory_to_packet8.Input.With_valid.Of_signal.wires () in
+    let dma_read_request = Read_bus.Dest.Of_signal.wires () in
+    let dma_write_request = Write_bus.Dest.Of_signal.wires () in
+    let dma_read_response = Read_response.With_valid.Of_signal.wires () in
+    let dma_write_response = Write_response.With_valid.Of_signal.wires () in
     let maybe_dma_controller =
-      Dma.maybe_dma_controller ~uart_rx:i.uart_rx ~clock:i.clock ~clear:i.clear scope
+      match General_config.include_io_controller with
+      | No_io_controller -> None
+      | Uart_controller config ->
+        Some
+          (Dma.hierarchical
+             ~uart_config:config
+             scope
+             { Dma.I.clock = i.clock
+             ; clear = i.clear
+             ; uart_rx = Option.value_exn i.uart_rx
+             ; tx_input
+             ; read_request = dma_read_request
+             ; write_request = dma_write_request
+             ; read_response = dma_read_response
+             ; write_response = dma_write_response
+             })
     in
     let of_dma ~f = Option.map ~f maybe_dma_controller in
     let of_video_out ~f = Option.map ~f maybe_video_out in
@@ -287,7 +352,6 @@ struct
     in
     let controller =
       Memory_controller.hierarchical
-      (* TODO: We should straddled each of the hart read and write bus signals if in Priority order mode to ensure fairness between harts (assuming each hart correctly priority orders its ports). *)
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:2
@@ -308,32 +372,27 @@ struct
         ~f:(fun _ -> Transaction.With_valid.Of_signal.wires ())
         General_config.num_harts
     in
-    let io_clear =
-      (* Allow resets via remote IO if a DMA controller is attached. *)
-      of_dma ~f:Dma.clear_message |> Option.value ~default:gnd
-    in
     let harts =
-      List.init
-        ~f:(fun which_hart ->
-          let hart =
-            Hart.hierarchical
-              ~instance:[%string "hart_%{which_hart#Int}"]
-              scope
-              { Hart.I.clock = i.clock
-              ; clear = pipeline ~n:2 reg_spec_no_clear (io_clear |: i.clear)
-              ; read_bus = select_rd_chs_for_hart which_hart controller.read_to_controller
-              ; write_bus =
-                  select_wr_chs_for_hart which_hart controller.write_to_controller
-              ; read_response = select_rd_chs_for_hart which_hart controller.read_response
-              ; write_response =
-                  select_wr_chs_for_hart which_hart controller.write_response
-              ; ecall_transaction = List.nth_exn hart_ecall_transactions which_hart
-              }
-          in
-          hart)
-        General_config.num_harts
+      initialize_harts
+        ~io_clear:(of_dma ~f:Dma.O.clear_message |> Option.value ~default:gnd)
+          (* Clear harts when the DMA core pulses clear in addition to the
+             global clear if a DMA controller is attached. *)
+        ~hart_ecall_transactions
+        ~write_bus_per_hart
+        ~read_bus_per_hart
+        ~memory_controller:controller
+        scope
+        i
     in
-    assign_ecalls ~clock:i.clock maybe_dma_controller harts hart_ecall_transactions scope;
+    assign_ecalls
+      ~clock:i.clock
+      ~tx_input_and_busy:
+        (match maybe_dma_controller with
+         | Some dma -> Some (tx_input, dma.tx_busy)
+         | None -> None)
+      harts
+      hart_ecall_transactions
+      scope;
     Option.iter
       ~f:(fun video_out ->
         Read_bus.Dest.Of_signal.(
@@ -343,30 +402,20 @@ struct
           video_out.memory_response
           <-- List.nth_exn controller.read_response video_out_read_slot))
       maybe_video_out;
-    Option.iter
-      ~f:(fun { read_bus; write_bus; read_response; write_response; _ } ->
-        Read_bus.Dest.Of_signal.(
-          read_bus <-- List.nth_exn controller.read_to_controller dma_read_slot);
-        Read_response.With_valid.Of_signal.(
-          read_response <-- List.nth_exn controller.read_response dma_read_slot);
-        Write_bus.Dest.Of_signal.(
-          write_bus <-- List.nth_exn controller.write_to_controller dma_write_slot);
-        Write_response.With_valid.Of_signal.(
-          write_response <-- List.nth_exn controller.write_response dma_write_slot))
-      maybe_dma_controller;
-    List.iter2_exn
-      ~f:(List.iter2_exn ~f:Read_bus.Source.Of_signal.( <-- ))
-      read_bus_per_hart
-      (List.map ~f:Hart.O.read_bus harts);
-    List.iter2_exn
-      ~f:(List.iter2_exn ~f:Write_bus.Source.Of_signal.( <-- ))
-      write_bus_per_hart
-      (List.map ~f:Hart.O.write_bus harts);
+    (match maybe_dma_controller with
+     | Some _ ->
+       Read_bus.Dest.Of_signal.(
+         dma_read_request <-- List.nth_exn controller.read_to_controller dma_read_slot);
+       Read_response.With_valid.Of_signal.(
+         dma_read_response <-- List.nth_exn controller.read_response dma_read_slot);
+       Write_bus.Dest.Of_signal.(
+         dma_write_request <-- List.nth_exn controller.write_to_controller dma_write_slot);
+       Write_response.With_valid.Of_signal.(
+         dma_write_response <-- List.nth_exn controller.write_response dma_write_slot)
+     | None -> ());
     { O.registers = List.map ~f:(fun o -> o.registers) harts
-    ; uart_tx = of_dma ~f:Dma.uart_tx
-    ; uart_rx_valid = of_dma ~f:Dma.uart_rx_valid
-    ; parity_error = of_dma ~f:Dma.parity_error
-    ; serial_to_packet_valid = of_dma ~f:Dma.serial_to_packet_valid
+    ; uart_tx = of_dma ~f:Dma.O.uart_tx
+    ; uart_rx_valid = of_dma ~f:Dma.O.uart_rx_valid
     ; video_out = of_video_out ~f:Video_data.video_data
     }
   ;;
