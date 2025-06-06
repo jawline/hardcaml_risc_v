@@ -41,7 +41,7 @@ struct
                   let input_width = 64
                   let input_height = 32
                   let framebuffer_address = 0x8000
-                end : Video_out.Config)
+                end : Video_out_intf.Config)
               , (module struct
                   (* TODO: Add a clock requirement *)
 
@@ -60,15 +60,15 @@ struct
 
   module Report_command = Report_synth.Command.With_interface (Design.I) (Design.O)
 
-  let report_command = Report_command.command_basic ~name:"Generate_top" Design.create
+  let report_command =
+    Report_command.command_basic ~name:"Generate_top" Design.hierarchical
+  ;;
 
   module Rtl = struct
     let emit () =
       let module M = Circuit.With_interface (Design.I) (Design.O) in
       let scope = Scope.create ~flatten_design:false () in
-      let circuit =
-        M.create_exn ~name:"top" (Design.hierarchical ~instance:"cpu_top" scope)
-      in
+      let circuit = M.create_exn ~name:"top" (Design.hierarchical scope) in
       Rtl.print ~database:(Scope.circuit_database scope) Verilog circuit
     ;;
   end

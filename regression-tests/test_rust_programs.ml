@@ -50,7 +50,7 @@ module Cpu_with_dma_memory =
               let input_width = 32
               let input_height = 32
               let framebuffer_address = 0x8000
-            end : Video_out.Config)
+            end : Video_out_intf.Config)
           , (module struct
               (* TODO: Add a clock requirement *)
 
@@ -93,10 +93,7 @@ module With_transmitter = struct
       Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
-      Cpu_with_dma_memory.hierarchical
-        ~instance:"cpu"
-        scope
-        { clock; clear; uart_rx = Some uart_tx }
+      Cpu_with_dma_memory.hierarchical scope { clock; clear; uart_rx = Some uart_tx }
     in
     let { Uart_rx.O.data_out_valid; data_out; _ } =
       Uart_rx.hierarchical

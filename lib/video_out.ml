@@ -4,14 +4,6 @@ open Signal
 open Hardcaml_memory_controller
 open Hardcaml_framebuffer_expander
 
-module type Config = sig
-  val input_width : int
-  val input_height : int
-  val output_width : int
-  val output_height : int
-  val framebuffer_address : int
-end
-
 module Make (Memory : Memory_bus_intf.S) = struct
   module Video_data = struct
     type 'a t = { vdata : 'a [@bits 24] } [@@deriving hardcaml ~rtlmangle:"$"]
@@ -39,7 +31,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
   let create ~framebuffer_config ~video_signals_config scope (i : _ I.t) =
     let module Video_signals_config = (val video_signals_config : Video_signals.Config) in
     let module Video_signals = Video_signals.Make (Video_signals_config) in
-    let module Framebuffer_config = (val framebuffer_config : Config) in
+    let module Framebuffer_config = (val framebuffer_config : Video_out_intf.Config) in
     let module Framebuffer_expander =
       Framebuffer_expander.Make (Framebuffer_config) (Memory)
     in

@@ -10,71 +10,69 @@ module Make
     (Memory_config : System_intf.Memory_config)
     (General_config : System_intf.Config) =
 struct
-  module Memory_controller_wiring = struct
-    let required_read_channels_per_hart = Hart.required_read_channels
-    let required_write_channels_per_hart = Hart.required_write_channels
-
-    let system_non_hart_read_memory_channels =
-      (match General_config.include_io_controller with
-       | No_io_controller -> 0
-       | Uart_controller _ -> 1)
-      +
-      match General_config.include_video_out with
-      | No_video_out -> 0
-      | Video_out _ -> 1
-    ;;
-
-    let system_non_hart_write_memory_channels =
-      match General_config.include_io_controller with
-      | No_io_controller -> 0
-      | Uart_controller _ -> 1
-    ;;
-
-    module Memory_controller = Memory_controller.Make (struct
-        let capacity_in_bytes = Memory_config.num_bytes
-
-        let num_read_channels =
-          system_non_hart_read_memory_channels
-          + (General_config.num_harts * Hart.required_read_channels)
-        ;;
-
-        let num_write_channels =
-          system_non_hart_write_memory_channels
-          + (General_config.num_harts * Hart.required_write_channels)
-        ;;
-
-        let address_width = Register_width.bits Hart_config.register_width
-        let data_bus_width = 32
-      end)
-
-    include Memory_controller.Memory_bus
-
-    let write_ch_start_offset which_hart =
-      system_non_hart_write_memory_channels
-      + (which_hart * required_read_channels_per_hart)
-    ;;
-
-    let read_ch_start_offset which_hart =
-      system_non_hart_read_memory_channels + (which_hart * required_read_channels_per_hart)
-    ;;
-
-    let select arr ch sz =
-      let start = List.drop arr ch in
-      List.take start sz
-    ;;
-
-    let select_rd_chs_for_hart which_hart arr =
-      select arr (read_ch_start_offset which_hart) required_read_channels_per_hart
-    ;;
-
-    let select_wr_chs_for_hart which_hart arr =
-      select arr (write_ch_start_offset which_hart) required_write_channels_per_hart
-    ;;
-  end
-
-  open Memory_controller_wiring
   module Registers = Registers.Make (Hart_config)
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
+
+  let required_read_channels_per_hart = Hart.required_read_channels
+  let required_write_channels_per_hart = Hart.required_write_channels
+
+  let system_non_hart_read_memory_channels =
+    (match General_config.include_io_controller with
+     | No_io_controller -> 0
+     | Uart_controller _ -> 1)
+    +
+    match General_config.include_video_out with
+    | No_video_out -> 0
+    | Video_out _ -> 1
+  ;;
+
+  let system_non_hart_write_memory_channels =
+    match General_config.include_io_controller with
+    | No_io_controller -> 0
+    | Uart_controller _ -> 1
+  ;;
+
+  module Memory_controller = Memory_controller.Make (struct
+      let capacity_in_bytes = Memory_config.num_bytes
+
+      let num_read_channels =
+        system_non_hart_read_memory_channels
+        + (General_config.num_harts * Hart.required_read_channels)
+      ;;
+
+      let num_write_channels =
+        system_non_hart_write_memory_channels
+        + (General_config.num_harts * Hart.required_write_channels)
+      ;;
+
+      let address_width = Register_width.bits Hart_config.register_width
+      let data_bus_width = 32
+    end)
+
+  module Memory_bus = Memory_controller.Memory_bus
+  include Memory_bus
+
+  let write_ch_start_offset which_hart =
+    system_non_hart_write_memory_channels + (which_hart * required_read_channels_per_hart)
+  ;;
+
+  let read_ch_start_offset which_hart =
+    system_non_hart_read_memory_channels + (which_hart * required_read_channels_per_hart)
+  ;;
+
+  let select arr ch sz =
+    let start = List.drop arr ch in
+    List.take start sz
+  ;;
+
+  let select_rd_chs_for_hart which_hart arr =
+    select arr (read_ch_start_offset which_hart) required_read_channels_per_hart
+  ;;
+
+  let select_wr_chs_for_hart which_hart arr =
+    select arr (write_ch_start_offset which_hart) required_write_channels_per_hart
+  ;;
+
   module Transaction = Transaction.Make (Hart_config) (Memory_controller.Memory_bus)
 
   let register_width = Register_width.bits Hart_config.register_width
@@ -229,7 +227,7 @@ struct
     match General_config.include_video_out with
     | No_video_out -> None
     | Video_out
-        ( (module Framebuffer_config : Video_out.Config)
+        ( (module Framebuffer_config : Video_out_intf.Config)
         , (module Video_signals_config : Video_signals.Config) ) ->
       let memory_request_ack =
         Memory_controller.Memory_bus.Read_bus.Dest.Of_signal.wires ()
@@ -420,8 +418,8 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"system" ~instance create input
+    H.hierarchical ~scope ~name:"system" create input
   ;;
 end
