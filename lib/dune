@@ -1,13 +1,14 @@
 (library
  (name hardcaml_risc_v)
+ (public_name hardcaml_risc_v)
  (libraries
+  core
   hardcaml
   hardcaml_circuits
   hardcaml_memory_controller
   hardcaml_uart
   hardcaml_io_controller
   hardcaml_framebuffer_expander
-  core
   hardcaml_risc_v_hart)
  (inline_tests)
  (preprocess

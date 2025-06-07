@@ -1,5 +1,6 @@
 (library
  (name hardcaml_framebuffer_expander)
+ (public_name hardcaml_framebuffer_expander)
  (libraries hardcaml hardcaml_memory_controller core)
  (inline_tests)
  (preprocess

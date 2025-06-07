@@ -11,3 +11,27 @@
  (description "A complete Risc-V system in Hardcaml")
  (depends ocaml dune)
  )
+(package
+ (name hardcaml_risc_v_hart)
+ (synopsis "A Risc-V hart")
+ (description "A Risc-V hart")
+ (depends ocaml dune)
+ )
+(package
+ (name hardcaml_memory_controller)
+ (synopsis "A memory controller")
+ (description "A memory controller")
+ (depends ocaml dune)
+ )
+(package
+ (name hardcaml_framebuffer_expander)
+ (synopsis "A framebuffer expander")
+ (description "A framebuffer expander")
+ (depends ocaml dune)
+ )
+(package
+ (name hardcaml_io_controller)
+ (synopsis "An IO controller")
+ (description "An IO controller")
+ (depends ocaml dune)
+ )

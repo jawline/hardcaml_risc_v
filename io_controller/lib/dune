@@ -1,5 +1,6 @@
 (library
  (name hardcaml_io_controller)
+ (public_name hardcaml_io_controller)
  (libraries
   hardcaml
   hardcaml_axi

@@ -1,5 +1,6 @@
 (library
  (name hardcaml_memory_controller)
+ (public_name hardcaml_memory_controller)
  (libraries hardcaml hardcaml_custom_handshake core)
  (inline_tests)
  (preprocess
