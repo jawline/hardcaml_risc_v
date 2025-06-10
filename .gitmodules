@@ -4,3 +4,6 @@
 [submodule "hardcaml_io_framework"]
 	path = hardcaml_io_framework
 	url = git@github.com:jawline/hardcaml_io_framework.git
+[submodule "hardcaml_custom_handshake"]
+	path = hardcaml_custom_handshake
+	url = git@github.com:jawline/hardcaml_custom_handshake.git

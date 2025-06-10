@@ -154,7 +154,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
           scope
           { Memory_controller.I.clock
           ; clear
-          ; read_to_controller = [ Read_bus.Source.Of_signal.zero ()  ]
+          ; read_to_controller = [ Read_bus.Source.Of_signal.zero () ]
           ; write_to_controller = [ dma.out ]
           }
       in

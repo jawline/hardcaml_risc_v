@@ -1,7 +1,0 @@
-(library
- (name hardcaml_custom_handshake)
- (public_name hardcaml_custom_handshake)
- (libraries hardcaml core)
- (inline_tests)
- (preprocess
-  (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))
