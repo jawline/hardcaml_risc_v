@@ -49,10 +49,10 @@ let send_chunk ~writer ~address ~chunk =
 ;;
 
 (** Read packets from the serial device and print them out. *)
-let rec print_any_incoming_packets () =
+let rec print_any_incoming_packets ~reader  =
   let header, length, bytes_ = read_packet reader in
   printf "%c %i %s\n%!" header length bytes_;
-  print_any_incoming_packets ()
+  print_any_incoming_packets ~reader
 ;;
 
 let command =
@@ -87,7 +87,7 @@ let command =
        print_s [%message "Sending clear signal via DMA"];
        do_write ~ch:writer clear_packet;
        print_s [%message "Printing any received packets"];
-       loop ())
+       print_any_incoming_packets ~reader)
 ;;
 
 let () = Command_unix.run command
