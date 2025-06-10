@@ -20,8 +20,6 @@ let read_packet t =
   header, length, bytes_
 ;;
 
-let device_file = "/dev/ttyUSB1"
-
 let do_write ~ch data =
   List.iter ~f:(fun byte -> Out_channel.output_byte ch byte) data;
   Out_channel.flush ch;
@@ -29,17 +27,35 @@ let do_write ~ch data =
   ()
 ;;
 
+let open_with_stty_settings ~baud_rate ~stop_bits ~parity_bit ~device_filename =
+  let file_descr = Core_unix.openfile ~mode:[ O_RDWR ] device_filename in
+  let tio_attr = Core_unix.Terminal_io.tcgetattr file_descr in
+  tio_attr.c_obaud <- baud_rate;
+  tio_attr.c_ibaud <- baud_rate;
+  tio_attr.c_csize <- 8;
+  tio_attr.c_cstopb <- stop_bits;
+  tio_attr.c_parenb <- parity_bit;
+  Core_unix.out_channel_of_descr file_descr, Core_unix.in_channel_of_descr file_descr
+;;
+
 let command =
   Command.basic
     ~summary:"program running design and then listen for output"
     (let open Command.Let_syntax in
      let open Command.Param in
-     let%map program_filename = anon ("program-filename" %: string) in
+     let%map program_filename = anon ("program-filename" %: string)
+     and device_filename = anon ("device-filename" %: string) in
      fun () ->
-       printf "Opening out channel\n";
-       let writer = Out_channel.create ~binary:true device_file in
-       printf "Opening in channel\n%!";
-       let reader = In_channel.create ~binary:true device_file in
+       printf "Opening device\n";
+       (* Pick an arbitrary clock frequency, it doesn't matter for stty settings. *)
+       let settings = Uart_settings.default ~clock_frequency:0 in
+       let writer, reader =
+         open_with_stty_settings
+           ~baud_rate:settings.baud_rate
+           ~stop_bits:settings.stop_bits
+           ~parity_bit:settings.include_parity_bit
+           ~device_filename
+       in
        print_s [%message "Loading" (program_filename : string)];
        let program = In_channel.read_all program_filename in
        print_s [%message "Loaded" (String.length program : int)];
