@@ -27,6 +27,9 @@ let do_write ~ch data =
   ()
 ;;
 
+(** Open a serial device, configure the baud rate, stop bits and parity bit,
+    then convert the file descriptor into input and output channels and return
+    them. *)
 let open_with_stty_settings ~baud_rate ~stop_bits ~parity_bit ~device_filename =
   let file_descr = Core_unix.openfile ~mode:[ O_RDWR ] device_filename in
   let tio_attr = Core_unix.Terminal_io.tcgetattr file_descr in
@@ -38,13 +41,27 @@ let open_with_stty_settings ~baud_rate ~stop_bits ~parity_bit ~device_filename =
   Core_unix.out_channel_of_descr file_descr, Core_unix.in_channel_of_descr file_descr
 ;;
 
+(** Program a device with a chunk of memory at a specific address. The address
+    must be register width aligned. *)
+let send_chunk ~writer ~address ~chunk =
+  let formatted_packet = dma_packet ~address chunk in
+  do_write ~ch:writer formatted_packet
+;;
+
+(** Read packets from the serial device and print them out. *)
+let rec print_any_incoming_packets () =
+  let header, length, bytes_ = read_packet reader in
+  printf "%c %i %s\n%!" header length bytes_;
+  print_any_incoming_packets ()
+;;
+
 let command =
   Command.basic
     ~summary:"program running design and then listen for output"
     (let open Command.Let_syntax in
      let open Command.Param in
-     let%map program_filename = anon ("program-filename" %: string)
-     and device_filename = anon ("device-filename" %: string) in
+     let%map device_filename = anon ("device-filename" %: string)
+     and program_filename = anon ("program-filename" %: string) in
      fun () ->
        printf "Opening device\n";
        (* Pick an arbitrary clock frequency, it doesn't matter for stty settings. *)
@@ -56,26 +73,20 @@ let command =
            ~parity_bit:settings.include_parity_bit
            ~device_filename
        in
-       print_s [%message "Loading" (program_filename : string)];
+       print_s [%message "Loading program" ~_:(program_filename : string)];
        let program = In_channel.read_all program_filename in
-       print_s [%message "Loaded" (String.length program : int)];
-       let chunk_sz = 320000 in
+       print_s [%message "Progam length: " ~_:(String.length program : int)];
+       (* Split our program into 1024 byte chunks and send it. *)
+       let chunk_sz = 1024 in
        String.to_list program
        |> List.chunks_of ~length:chunk_sz
+       |> List.map ~f:String.of_char_list
        |> List.iteri ~f:(fun index chunk ->
-         print_s [%message "Sending chunk"];
-         let address = index * chunk_sz in
-         let program = String.of_char_list chunk in
-         let formatted_packet = dma_packet ~address program in
-         do_write ~ch:writer formatted_packet);
-       printf "Sending clear signal via DMA\n%!";
+         send_chunk ~writer ~address:(index * chunk_sz) ~chunk);
+       (* Send a clear signal to the device. *)
+       print_s [%message "Sending clear signal via DMA"];
        do_write ~ch:writer clear_packet;
-       printf "Waiting\n%!";
-       let rec loop () =
-         let header, length, bytes_ = read_packet reader in
-         printf "%c %i %s\n%!" header length bytes_;
-         loop ()
-       in
+       print_s [%message "Printing any received packets"];
        loop ())
 ;;
 
