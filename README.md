@@ -1,4 +1,14 @@
-# Getting Started
+# Hardcaml_risc_v
+
+This project implements a complete Risc-V based system in Hardcaml. The project
+includes a Risc-V core, IO system with DMA support, and video signal generator
+from a hardware upscaled framebuffer.
+
+The project has been tested on Artix-7 FPGAs but is simple enough that it
+should be broadly compatible with most FPGAs. It uses block RAM for memory, and
+the amount of available memory can be configured during RTL generation.
+
+## Getting Started
 
 To build this project, you will need Hardcaml from the Janestreet bleeding repository opam repository as well as a gcc and rust cross compiler for the test applications (instructions below).
 
@@ -14,7 +24,7 @@ dune exec ./bin/generate_cpu.exe -- generate-rtl -include-video-out false  -hart
 
 From there, you will need to generate a top file for your board.
 
-# Setting up an Ocaml environment 
+## Setting up an Ocaml environment 
 
 If you have opam installed, you can set up a compatible environment with:
 ```
@@ -25,7 +35,7 @@ opam update -y
 opam install -y dune core async hardcaml hardcaml_waveterm hardcaml_test_harness hardcaml_axi ppx_hardcaml ppx_deriving hardcaml_xilinx_reports
 ```
 
-# Setting up a GCC cross compiler
+## Setting up a GCC cross compiler
 
 To build some of the test programs you will need a rv32i cross compiler. You can build one using the instructions below (the export PATH line is best added to a .bashrc/.zshrc).
 
@@ -36,7 +46,7 @@ cd riscv-gnu-toolchain
 export PATH=$PATH:$HOME/gcc-riscv/bin/
 ```
 
-# Setting up a Rust cross compiler
+## Setting up a Rust cross compiler
 
 To build some of the test programs you will need a rv32i Rust compiler. If you have rustup installed, this is pretty trivial with:
 
