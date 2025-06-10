@@ -1,5 +1,5 @@
 (executables
- (names top uart_tests)
+ (names generate_cpu uart_tests)
  (preprocess
   (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect))
  (libraries

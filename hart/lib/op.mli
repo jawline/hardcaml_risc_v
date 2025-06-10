@@ -1,3 +1,6 @@
+(** Op implements the ALU for our core. This takes a onehot-encoded operation
+    and two arguments and places the result in rd. The implementation is
+    combinatorial, rather than registered. *)
 open! Core
 open Hardcaml
 

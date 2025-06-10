@@ -52,7 +52,7 @@ let test ~load_memory ~dma_address ~dma_length =
           { Memory_controller.I.clock
           ; clear
           ; read_to_controller = [ Read_bus.Source.Of_always.value ch_to_controller ]
-          ; write_to_controller = [ Write_bus.Source.Of_signal.of_int 0 ]
+          ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
           }
       in
       let output =

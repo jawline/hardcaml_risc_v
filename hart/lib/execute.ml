@@ -343,11 +343,11 @@ struct
       Memory.Read_bus.Source.Of_signal.mux2
         t.valid
         t
-        (Memory.Read_bus.Source.Of_signal.of_int 0)
+        (Memory.Read_bus.Source.Of_signal.zero () )
     in
     List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
     |> List.map ~f:gate
-    |> List.fold ~init:(Memory.Read_bus.Source.Of_signal.of_int 0) ~f:combine
+    |> List.fold ~init:(Memory.Read_bus.Source.Of_signal.zero () ) ~f:combine
   ;;
 
   let combine_write_bus (instruction_table : _ Table_entry.t list) =
@@ -356,11 +356,11 @@ struct
       Memory.Write_bus.Source.Of_signal.mux2
         t.valid
         t
-        (Memory.Write_bus.Source.Of_signal.of_int 0)
+        (Memory.Write_bus.Source.Of_signal.zero () )
     in
     List.filter_map ~f:(fun t -> t.output.write_bus) instruction_table
     |> List.map ~f:gate
-    |> List.fold ~init:(Memory.Write_bus.Source.Of_signal.of_int 0) ~f:combine
+    |> List.fold ~init:(Memory.Write_bus.Source.Of_signal.zero () ) ~f:combine
   ;;
 
   let create scope (i : _ I.t) =

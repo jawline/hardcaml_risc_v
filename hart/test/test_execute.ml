@@ -64,7 +64,7 @@ let test ~(instruction : Bits.t Decoded_instruction.t) sim =
 
 let%expect_test "branch tests" =
   create_sim (fun sim ->
-    test ~instruction:(Decoded_instruction.Of_bits.of_int 0) sim;
+    test ~instruction:(Decoded_instruction.Of_bits.zero ()) sim;
     [%expect.unreachable])
 [@@expect.uncaught_exn
   {|

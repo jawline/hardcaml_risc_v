@@ -72,7 +72,7 @@ module Test_machine = struct
         scope
         { Memory_controller.I.clock
         ; clear
-        ; write_to_controller = [ Write_bus.Source.Of_signal.of_int 0 ]
+        ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
         ; read_to_controller = [ load.read_bus ]
         }
     in
