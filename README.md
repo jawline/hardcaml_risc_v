@@ -52,4 +52,6 @@ To build some of the test programs you will need a rv32i Rust compiler. If you h
 
 ```
 rustup target add riscv32i-unknown-none-elf
+rustup component add llvm-tools
+cargo install cargo-binutils
 ```

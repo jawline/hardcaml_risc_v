@@ -7,7 +7,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = true
+let debug = false
 let trials = 1
 
 module Make (M : sig

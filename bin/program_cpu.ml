@@ -49,7 +49,7 @@ let send_chunk ~writer ~address ~chunk =
 ;;
 
 (** Read packets from the serial device and print them out. *)
-let rec print_any_incoming_packets ~reader  =
+let rec print_any_incoming_packets ~reader =
   let header, length, bytes_ = read_packet reader in
   printf "%c %i %s\n%!" header length bytes_;
   print_any_incoming_packets ~reader
