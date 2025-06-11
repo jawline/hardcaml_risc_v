@@ -83,12 +83,13 @@ module With_transmitter = struct
       ; data_out : 'a [@bits 8]
       ; video_out : 'a Cpu_with_dma_memory.Video_out_with_memory.O.t
       ; registers : 'a Cpu_with_dma_memory.Registers.t list [@length 1]
+      ; ready_for_next_input : 'a
       }
     [@@deriving sexp_of, hardcaml ~rtlmangle:"$"]
   end
 
   let create scope { I.clock; clear; data_in_valid; data_in } =
-    let { Uart_tx.O.uart_tx; _ } =
+    let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
       Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
@@ -99,7 +100,12 @@ module With_transmitter = struct
         scope
         { Uart_rx.I.clock; clear; uart_rx = Option.value_exn cpu_uart_tx }
     in
-    { O.registers; data_out_valid; data_out; video_out = Option.value_exn video_out }
+    { O.registers
+    ; data_out_valid
+    ; data_out
+    ; video_out = Option.value_exn video_out
+    ; ready_for_next_input
+    }
   ;;
 end
 
@@ -149,16 +155,16 @@ let clear_registers ~(inputs : Bits.t ref With_transmitter.I.t) sim =
 
 let send_dma_message ~address ~packet sim =
   let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
+  let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
   let whole_packet = dma_packet ~address packet in
   (* Send the DMA message through byte by byte. Uart_tx will transmit a
      byte once every ~10 cycles (this is dependent on the number of stop
      bits and the parity bit. *)
-  let rec loop_for n =
-    if n = 0
+  let rec loop_until_ready_for_next_input () =
+    Cyclesim.cycle sim;
+    if Bits.to_bool !(outputs.ready_for_next_input)
     then ()
-    else (
-      Cyclesim.cycle sim;
-      loop_for (n - 1))
+    else loop_until_ready_for_next_input ()
   in
   List.iter
     ~f:(fun input ->
@@ -166,7 +172,7 @@ let send_dma_message ~address ~packet sim =
       inputs.data_in := of_int_trunc ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := gnd;
-      loop_for 44)
+      loop_until_ready_for_next_input ())
     whole_packet
 ;;
 
