@@ -44,4 +44,3 @@ system_call:
   ecall
   addi x10, x5, 0
   ret
-

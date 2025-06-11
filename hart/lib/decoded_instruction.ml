@@ -42,8 +42,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       let f t = funct3 ==:. Funct3.System.to_int t in
       f Funct3.System.Csrrw |: f Funct3.System.Csrrs |: f Funct3.System.Csrrc
     in
-    let rs1 = select_register registers (Instruction_parts.rs1 instruction) in
-    let rs2 = select_register registers (Instruction_parts.rs2 instruction) in
+    let%hw rd_index = (Instruction_parts.rd instruction) in
+    let%hw rs1_index = (Instruction_parts.rs1 instruction) in
+    let%hw rs2_index = (Instruction_parts.rs2 instruction) in
+    let%hw rs1 = select_register registers  rs1_index in
+    let%hw rs2 = select_register registers  rs2_index in
     let i_immediate = Instruction_parts.i_immediate ~width:register_width instruction in
     let s_immediate = Instruction_parts.s_immediate ~width:register_width instruction in
     let funct7 = Instruction_parts.funct7 instruction in
@@ -60,20 +63,21 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
         | Branch -> test_opcode Branch
         | Load -> test_opcode Load
         | Store -> test_opcode Store
-        | Fence -> test_opcode Fence
         | System -> test_opcode System)
     in
     let funct7_switch = funct7.:(5) in
     let funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0 in
     let j_immediate = Instruction_parts.j_immediate ~width:register_width instruction in
     let u_immediate = Instruction_parts.u_immediate ~width:register_width instruction in
+    let%hw is_auipc = test_opcode Auipc in
+    let%hw is_jal = test_opcode Jal in
     { opcode = decoded_opcode
     ; funct3
     ; funct7
     ; argument_1 =
         onehot_select_with_default
           ~default:rs1
-          [ { With_valid.valid = test_opcode Jal |: test_opcode Auipc
+          [ { With_valid.valid = is_jal  |: is_auipc 
             ; value = registers.pc
             }
           ; { With_valid.valid = test_opcode Lui; value = u_immediate }
@@ -97,10 +101,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           ; { With_valid.valid = test_opcode Store; value = s_immediate }
           ]
     ; rd =
+
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)
           (of_unsigned_int ~width:5 5)
-          (Instruction_parts.rd instruction)
+          rd_index
     ; rd_value = select_register registers (Instruction_parts.rd instruction)
     ; csr
     ; is_ecall

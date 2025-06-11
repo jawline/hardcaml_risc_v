@@ -13,6 +13,7 @@
 bool framebuffer_get(unsigned int x, unsigned int y);
 void framebuffer_set(unsigned int x, unsigned int y, bool value);
 
+unsigned int c_strlen(char* msg);
 int system_call(int ecall_mode, void* input_pointer, unsigned int input_length);
 void send_dma_l(char* msg, int len);
 void send_dma(char* msg);

@@ -13,7 +13,6 @@ module T = struct
     | Branch
     | Load
     | Store
-    | Fence
     | System
   [@@deriving compare, sexp, enumerate, variants]
 end
@@ -21,22 +20,33 @@ end
 include T
 include Comparable.Make (T)
 
-let construct_opcode col row =
-  ((col land 0b111) lsl 2) lor ((row land 0b11) lsl 5) lor 0b11
+let to_int_repr = function
+  | Op -> 0b01_100_11 
+  | Op_imm -> 0b00_100_11 
+  | Jalr -> 0b11_001_11
+  | Jal -> 0b11_011_11
+  | Lui -> 0b01_101_11
+  | Auipc -> 0b00_101_11
+  | Branch -> 0b11_000_11 
+  | Load -> 0b00_000_11
+  | Store -> 0b01_000_11 
+  | System -> 0b11_100_11  
 ;;
 
-let to_int_repr = function
-  | Op -> construct_opcode 0b100 0b01
-  | Op_imm -> construct_opcode 0b100 0b00
-  | Jal -> construct_opcode 0b011 0b11
-  | Jalr -> construct_opcode 0b001 0b11
-  | Lui -> construct_opcode 0b101 0b01
-  | Auipc -> construct_opcode 0b101 0b00
-  | Branch -> construct_opcode 0b000 0b11
-  | Load -> construct_opcode 0b000 0b00
-  | Store -> construct_opcode 0b000 0b01
-  | Fence -> construct_opcode 0b011 0b00
-  | System -> construct_opcode 0b100 0b11
-;;
+let%expect_test "opcodes" = 
+        all |> List.iter ~f:(fun t ->
+                print_s [%message "" ~_:(t : t) (to_int_repr t : Int.Hex.t)]);
+  [%expect {|
+    (Op ("to_int_repr t" 0x33))
+    (Op_imm ("to_int_repr t" 0x13))
+    (Jal ("to_int_repr t" 0x6f))
+    (Jalr ("to_int_repr t" 0x67))
+    (Lui ("to_int_repr t" 0x37))
+    (Auipc ("to_int_repr t" 0x17))
+    (Branch ("to_int_repr t" 0x63))
+    (Load ("to_int_repr t" 0x3))
+    (Store ("to_int_repr t" 0x23))
+    (System ("to_int_repr t" 0x73))
+    |}]
 
 let matches signal k = signal ==:. to_int_repr k

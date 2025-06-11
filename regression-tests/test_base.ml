@@ -8,7 +8,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = false
+let debug = true
 let output_width = 64
 let output_height = 35
 
@@ -186,7 +186,7 @@ let test ~print_frames ~cycles ~data sim =
   Sequence.range 0 (Cyclesim.Memory.size_in_words initial_ram)
   |> Sequence.iter ~f:(fun i -> Cyclesim.Memory.of_bits ~address:i initial_ram (zero 32));
   (* Send a clear signal to initialize any CPU IO controller state back to
-   * default so we're ready to receive. *)
+     default so we're ready to receive. *)
   clear_registers ~inputs sim;
   let video_emulator = Video_emulator.create ~width:output_width ~height:output_height in
   send_dma_message ~address:0 ~packet:data sim;

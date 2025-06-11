@@ -2,7 +2,7 @@
 
 int system_call(int ecall_mode, void* input_pointer, unsigned int input_length) {
   int output_mode;
-  asm("addi x5, %[mode], 0\n"
+  asm volatile("addi x5, %[mode], 0\n"
       "addi x6, %[iptr], 0\n"
       "addi x7, %[ilength], 0\n"
       "ecall\n"

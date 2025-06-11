@@ -130,22 +130,6 @@ struct
     }
   ;;
 
-  let fence
-        ~valid
-        ~(registers : _ Registers.t)
-        (decoded_instruction : _ Decoded_instruction.t)
-    =
-    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Fence
-    ; read_bus = None
-    ; write_bus = None
-    ; transaction =
-        { Transaction.set_rd = vdd
-        ; new_rd = zero register_width
-        ; error = gnd
-        ; new_pc = registers.pc +:. 4
-        }
-    }
-  ;;
 
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
@@ -293,9 +277,6 @@ struct
     ; Table_entry.create
         ~opcode:Decoded_opcode.Assign_pc_sum_of_arguments
         (assign_pc_sum_of_arguments ~valid ~registers decoded_instruction scope)
-    ; Table_entry.create
-        ~opcode:Decoded_opcode.Fence
-        (fence ~valid ~registers decoded_instruction)
     ; Table_entry.create
         ~opcode:Decoded_opcode.Branch
         (branch_instruction ~valid ~registers decoded_instruction scope)
