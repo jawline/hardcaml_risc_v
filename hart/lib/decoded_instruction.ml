@@ -42,11 +42,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       let f t = funct3 ==:. Funct3.System.to_int t in
       f Funct3.System.Csrrw |: f Funct3.System.Csrrs |: f Funct3.System.Csrrc
     in
-    let%hw rd_index = (Instruction_parts.rd instruction) in
-    let%hw rs1_index = (Instruction_parts.rs1 instruction) in
-    let%hw rs2_index = (Instruction_parts.rs2 instruction) in
-    let%hw rs1 = select_register registers  rs1_index in
-    let%hw rs2 = select_register registers  rs2_index in
+    let%hw rd_index = Instruction_parts.rd instruction in
+    let%hw rs1_index = Instruction_parts.rs1 instruction in
+    let%hw rs2_index = Instruction_parts.rs2 instruction in
+    let%hw rs1 = select_register registers rs1_index in
+    let%hw rs2 = select_register registers rs2_index in
     let i_immediate = Instruction_parts.i_immediate ~width:register_width instruction in
     let s_immediate = Instruction_parts.s_immediate ~width:register_width instruction in
     let funct7 = Instruction_parts.funct7 instruction in
@@ -77,9 +77,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     ; argument_1 =
         onehot_select_with_default
           ~default:rs1
-          [ { With_valid.valid = is_jal  |: is_auipc 
-            ; value = registers.pc
-            }
+          [ { With_valid.valid = is_jal |: is_auipc; value = registers.pc }
           ; { With_valid.valid = test_opcode Lui; value = u_immediate }
           ]
     ; argument_2 =
@@ -101,7 +99,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           ; { With_valid.valid = test_opcode Store; value = s_immediate }
           ]
     ; rd =
-
         mux2
           (Decoded_opcode.valid decoded_opcode System &: is_ecall)
           (of_unsigned_int ~width:5 5)

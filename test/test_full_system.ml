@@ -96,7 +96,6 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sltu" =
@@ -220,7 +219,6 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
     [%expect {| |}]
-  
   ;;
 
   let%expect_test "sltu" =

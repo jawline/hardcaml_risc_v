@@ -130,7 +130,6 @@ struct
     }
   ;;
 
-
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
         ~clock
