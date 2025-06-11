@@ -1,9 +1,22 @@
 #include "shared.h"
 
+int system_call(int ecall_mode, void* input_pointer, unsigned int input_length) {
+  int output_mode;
+  asm("addi x5, %[mode], 0\n"
+      "addi x6, %[iptr], 0\n"
+      "addi x7, %[ilength], 0\n"
+      "ecall\n"
+      "addi %[output_mode], x5, 0"
+      : [output_mode] "=r" (output_mode) 
+      : [mode] "r" (ecall_mode),
+         [iptr] "r" (input_pointer),
+         [ilength] "r" (input_length));
+  return output_mode;
+}
+
 void send_dma_l(char* msg, int len) {
 	while (!system_call(0, msg, len)) {}
 }
-
 
 unsigned int strlen(char* msg) {
 	char* origin = msg;

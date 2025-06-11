@@ -54,11 +54,12 @@ extern "C" fn main() -> () {
     send_dma_l("Initialized, stepping");
     loop {
         machine.step();
+        /* 
         for _i in 0..5000 {
             unsafe {
                 let x = 0x9000 as *mut u8;
                 core::ptr::write_volatile(x, 0);
             }
-        }
+        } */
     }
 }

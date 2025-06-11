@@ -11,7 +11,7 @@
  (inline_tests
   (deps
    "../test-programs/test-c-programs/hello_world_c/hello_world.bin"
-   "../test-programs/test-c-programs/game_of_life/game_of_life.bin"
+   "../test-programs/test-c-programs/scan_line/scan_line.bin"
    "../test-programs/test-rust-programs/hello-world-rust/hello-world-rust.bin"
    "../test-programs/test-rust-programs/chip-8-rust/chip-8-rust.bin"))
  (preprocess
