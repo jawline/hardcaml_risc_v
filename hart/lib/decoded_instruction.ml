@@ -123,31 +123,37 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       in
       Alu_operation.Onehot.Of_signal.mux2 (is_lui |: is_auipc) add op_mode
     in
+    let%hw argument_1 =
+      onehot_select_with_default
+        ~default:rs1
+        [ { With_valid.valid = is_jal |: is_auipc; value = registers.pc }
+        ; { With_valid.valid = is_lui; value = u_immediate }
+        ]
+    in
+    let%hw argument_2 =
+      onehot_select_with_default
+        ~default:rs2
+        [ { With_valid.valid = is_op_imm |: is_jalr; value = i_immediate }
+        ; { With_valid.valid = is_jal; value = j_immediate }
+        ; { With_valid.valid = is_auipc; value = u_immediate }
+        ; { With_valid.valid = is_lui; value = zero register_width }
+        ]
+    in
+    let%hw argument_3 =
+      onehot_select
+        [ { With_valid.valid = is_branch
+          ; value = Instruction_parts.b_immediate ~width:register_width instruction
+          }
+        ; { With_valid.valid = is_load; value = i_immediate }
+        ; { With_valid.valid = is_store; value = s_immediate }
+        ]
+    in
     { opcode = decoded_opcode
     ; funct3
     ; funct7
-    ; argument_1 =
-        onehot_select_with_default
-          ~default:rs1
-          [ { With_valid.valid = is_jal |: is_auipc; value = registers.pc }
-          ; { With_valid.valid = is_lui; value = u_immediate }
-          ]
-    ; argument_2 =
-        onehot_select_with_default
-          ~default:rs2
-          [ { With_valid.valid = is_op_imm |: is_jalr; value = i_immediate }
-          ; { With_valid.valid = is_jal; value = j_immediate }
-          ; { With_valid.valid = is_auipc; value = u_immediate }
-          ; { With_valid.valid = is_lui; value = zero register_width }
-          ]
-    ; argument_3 =
-        onehot_select
-          [ { With_valid.valid = is_branch
-            ; value = Instruction_parts.b_immediate ~width:register_width instruction
-            }
-          ; { With_valid.valid = is_load; value = i_immediate }
-          ; { With_valid.valid = is_store; value = s_immediate }
-          ]
+    ; argument_1
+    ; argument_2
+    ; argument_3
     ; rd = mux2 (is_system &: is_ecall) (of_unsigned_int ~width:5 5) rd_index
     ; rd_value = select_register registers (Instruction_parts.rd instruction)
     ; csr
