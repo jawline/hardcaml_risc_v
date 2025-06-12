@@ -1,9 +1,4 @@
-(** An implementation of a one in flight Risc-V Hart. On clear the execution
-    pipeline is started.  It is restarted with the new state of the registers
-    each time the execution pipeline pulses a valid signal with a new set of
-    registers. *)
 open! Core
-
 open Hardcaml
 open Hardcaml_memory_controller
 open Signal
