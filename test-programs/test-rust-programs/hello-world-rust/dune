@@ -1,0 +1,10 @@
+(rule
+ (target hello-world-rust.bin)
+ (deps
+  Cargo.toml
+  Cargo.lock
+  (source_tree src)
+  (source_tree ld)
+  config.toml)
+ (action
+  (run ./compile)))

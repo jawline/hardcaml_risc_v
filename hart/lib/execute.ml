@@ -130,23 +130,6 @@ struct
     }
   ;;
 
-  let fence
-        ~valid
-        ~(registers : _ Registers.t)
-        (decoded_instruction : _ Decoded_instruction.t)
-    =
-    { Opcode_output.valid = valid &: Decoded_opcode.valid decoded_instruction.opcode Fence
-    ; read_bus = None
-    ; write_bus = None
-    ; transaction =
-        { Transaction.set_rd = vdd
-        ; new_rd = zero register_width
-        ; error = gnd
-        ; new_pc = registers.pc +:. 4
-        }
-    }
-  ;;
-
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
         ~clock
@@ -294,9 +277,6 @@ struct
         ~opcode:Decoded_opcode.Assign_pc_sum_of_arguments
         (assign_pc_sum_of_arguments ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
-        ~opcode:Decoded_opcode.Fence
-        (fence ~valid ~registers decoded_instruction)
-    ; Table_entry.create
         ~opcode:Decoded_opcode.Branch
         (branch_instruction ~valid ~registers decoded_instruction scope)
     ; Table_entry.create
@@ -343,11 +323,11 @@ struct
       Memory.Read_bus.Source.Of_signal.mux2
         t.valid
         t
-        (Memory.Read_bus.Source.Of_signal.of_int 0)
+        (Memory.Read_bus.Source.Of_signal.zero ())
     in
     List.filter_map ~f:(fun t -> t.output.read_bus) instruction_table
     |> List.map ~f:gate
-    |> List.fold ~init:(Memory.Read_bus.Source.Of_signal.of_int 0) ~f:combine
+    |> List.fold ~init:(Memory.Read_bus.Source.Of_signal.zero ()) ~f:combine
   ;;
 
   let combine_write_bus (instruction_table : _ Table_entry.t list) =
@@ -356,11 +336,11 @@ struct
       Memory.Write_bus.Source.Of_signal.mux2
         t.valid
         t
-        (Memory.Write_bus.Source.Of_signal.of_int 0)
+        (Memory.Write_bus.Source.Of_signal.zero ())
     in
     List.filter_map ~f:(fun t -> t.output.write_bus) instruction_table
     |> List.map ~f:gate
-    |> List.fold ~init:(Memory.Write_bus.Source.Of_signal.of_int 0) ~f:combine
+    |> List.fold ~init:(Memory.Write_bus.Source.Of_signal.zero ()) ~f:combine
   ;;
 
   let create scope (i : _ I.t) =

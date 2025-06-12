@@ -65,7 +65,7 @@ module Machine = struct
         { Memory_controller.I.clock
         ; clear
         ; read_to_controller = [ frame.memory_request ]
-        ; write_to_controller = [ Write_bus.Source.Of_signal.of_int 0 ]
+        ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
         }
     in
     Read_bus.Dest.Of_signal.(request_ack <-- List.hd_exn controller.read_to_controller);

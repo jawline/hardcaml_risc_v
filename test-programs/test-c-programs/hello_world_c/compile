@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+riscv32-unknown-elf-as -o entry.o entry.s -march=rv32i
+riscv32-unknown-elf-gcc -O3 -ffreestanding -nostdlib -nostartfiles -c hello_world.c -march=rv32i -mstrict-align -fomit-frame-pointer -Wall -I ../shared/
+riscv32-unknown-elf-gcc -O3 -ffreestanding -nostdlib -nostartfiles -c ../shared/shared.c -march=rv32i -mstrict-align -fomit-frame-pointer -Wall
+riscv32-unknown-elf-ld -o hello_world.elf entry.o hello_world.o shared.o -Tlink.ld 
+riscv32-unknown-elf-objcopy hello_world.elf -O binary hello_world.bin

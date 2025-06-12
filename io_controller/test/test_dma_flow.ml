@@ -88,6 +88,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
     module O = struct
       type 'a t =
         { parity_error : 'a
+        ; ready_for_next_input : 'a
         ; write_response : 'a Write_response.With_valid.t
         ; read_response : 'a Read_response.With_valid.t
         }
@@ -95,7 +96,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
     end
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
-      let { Uart_tx.O.uart_tx; _ } =
+      let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
         Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid = uart_rx_valid
@@ -154,7 +155,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
           scope
           { Memory_controller.I.clock
           ; clear
-          ; read_to_controller = [ Read_bus.Source.Of_signal.of_int 0 ]
+          ; read_to_controller = [ Read_bus.Source.Of_signal.zero () ]
           ; write_to_controller = [ dma.out ]
           }
       in
@@ -169,6 +170,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       (* We echo the read and write responses to avoid dead code elimination
          deleting the entire BRAM *)
       { O.parity_error
+      ; ready_for_next_input
       ; write_response = List.nth_exn controller.write_response 0
       ; read_response = List.nth_exn controller.read_response 0
       }
@@ -176,18 +178,17 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
   end
   in
   let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
-  Harness.run ~trace:`All_named ~create:Machine.create (fun ~inputs ~outputs:_ sim ->
+  Harness.run ~trace:`All_named ~create:Machine.create (fun ~inputs ~outputs sim ->
     (* The fifo needs a clear cycle to initialize *)
     inputs.clear := vdd;
     Cyclesim.cycle sim;
     inputs.clear := gnd;
     Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-    let rec loop_for n =
-      if n = 0
+    let rec loop_until_ready_for_next_input () =
+      Cyclesim.cycle sim;
+      if Bits.to_bool !(outputs.ready_for_next_input)
       then ()
-      else (
-        Cyclesim.cycle sim;
-        loop_for (n - 1))
+      else loop_until_ready_for_next_input ()
     in
     List.iter
       ~f:(fun input ->
@@ -195,9 +196,10 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
         inputs.data_in := of_unsigned_int ~width:8 input;
         Cyclesim.cycle sim;
         inputs.data_in_valid := gnd;
-        loop_for 44)
+        loop_until_ready_for_next_input ())
       all_inputs;
-    loop_for 1000;
+    (* Wait some cycles for the writes to all finalize. *)
+    Cyclesim.cycle ~n:100 sim;
     print_ram sim)
 ;;
 

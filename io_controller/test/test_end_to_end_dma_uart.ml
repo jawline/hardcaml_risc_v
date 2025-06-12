@@ -89,6 +89,7 @@ let test
       type 'a t =
         { out_valid : 'a [@bits 1]
         ; out_data : 'a [@bits 8]
+        ; ready_for_next_input : 'a
         }
       [@@deriving hardcaml]
     end
@@ -104,7 +105,7 @@ let test
           ; dma_out_length
           }
       =
-      let { Uart_tx.O.uart_tx; _ } =
+      let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
         Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
@@ -194,6 +195,7 @@ let test
         ];
       { O.out_valid = dma_out_uart_rx.data_out_valid
       ; out_data = dma_out_uart_rx.data_out
+      ; ready_for_next_input
       }
     ;;
   end
@@ -209,12 +211,11 @@ let test
        Cyclesim.cycle sim;
        inputs.clear := gnd;
        Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-       let rec loop_for n =
-         if n = 0
+       let rec loop_until_ready_for_next_input () =
+         Cyclesim.cycle sim;
+         if Bits.to_bool !(outputs.ready_for_next_input)
          then ()
-         else (
-           Cyclesim.cycle sim;
-           loop_for (n - 1))
+         else loop_until_ready_for_next_input ()
        in
        List.iter
          ~f:(fun input ->
@@ -222,9 +223,10 @@ let test
            inputs.data_in := of_unsigned_int ~width:8 input;
            Cyclesim.cycle sim;
            inputs.data_in_valid := gnd;
-           loop_for 50)
+           loop_until_ready_for_next_input ())
          all_inputs;
-       loop_for 100;
+       (* Wait for any writes to flush. *)
+       Cyclesim.cycle ~n:50 sim;
        if verbose
        then (
          printf "Printing ram (not DMA response):\n";

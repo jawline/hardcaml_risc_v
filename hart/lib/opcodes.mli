@@ -11,7 +11,6 @@ type t =
   | Branch
   | Load
   | Store
-  | Fence
   | System
 [@@deriving compare, sexp, enumerate, variants]
 

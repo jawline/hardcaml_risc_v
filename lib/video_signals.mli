@@ -25,9 +25,12 @@ module Video_signals : sig
 end
 
 module Make (Config : Config) : sig
+<<<<<<< HEAD
   val h_total_pixels : int
   val v_total_lines : int
 
+=======
+>>>>>>> refs/remotes/origin/master
   module I : sig
     type 'a t =
       { clock : 'a

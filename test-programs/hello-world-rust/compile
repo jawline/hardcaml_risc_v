@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-rm -rf ./target/
-cargo objcopy --release --target=riscv32i-unknown-none-elf -- -S -O binary hello-world-rust.bin

@@ -7,7 +7,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = true
+let debug = false
 let trials = 1
 
 module Make (M : sig
@@ -942,14 +942,7 @@ module With_manually_programmed_ram = Make (struct
       in
       let outputs : _ Cpu_with_no_io_controller.O.t = Cyclesim.outputs sim in
       clear_registers ~inputs sim;
-      let rec loop_for cycles =
-        if cycles = 0
-        then ()
-        else (
-          Cyclesim.cycle sim;
-          loop_for (cycles - 1))
-      in
-      loop_for cycles;
+      Cyclesim.cycle ~n:cycles sim;
       match outputs.registers with
       | [ outputs ] ->
         let outputs =
@@ -1008,18 +1001,21 @@ module With_transmitter = struct
   end
 
   module O = struct
-    type 'a t = { registers : 'a Cpu_with_dma_memory.Registers.t list [@length 1] }
+    type 'a t =
+      { registers : 'a Cpu_with_dma_memory.Registers.t list [@length 1]
+      ; ready_for_next_input : 'a
+      }
     [@@deriving hardcaml]
   end
 
   let create scope { I.clock; clear; data_in_valid; data_in } =
-    let { Uart_tx.O.uart_tx; _ } =
+    let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
       Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; _ } =
       Cpu_with_dma_memory.hierarchical scope { clock; clear; uart_rx = Some uart_tx }
     in
-    { O.registers }
+    { O.registers; ready_for_next_input }
   ;;
 end
 
@@ -1062,15 +1058,15 @@ module With_dma_ram = struct
 
     let send_bits sim whole_packet =
       (* Send the message through byte by byte. Uart_tx will transmit a
-       * byte once every ~10 cycles (this is dependent on the number of stop
-       * bits and the parity bit. *)
+         byte once every ~10 cycles (this is dependent on the number of stop
+         bits and the parity bit. *)
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
-      let rec loop_for n =
-        if n = 0
+      let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
+      let rec loop_until_ready_for_next_input () =
+        Cyclesim.cycle sim;
+        if Bits.to_bool !(outputs.ready_for_next_input)
         then ()
-        else (
-          Cyclesim.cycle sim;
-          loop_for (n - 1))
+        else loop_until_ready_for_next_input ()
       in
       List.iter
         ~f:(fun input ->
@@ -1078,8 +1074,7 @@ module With_dma_ram = struct
           inputs.data_in := of_int_trunc ~width:8 input;
           Cyclesim.cycle sim;
           inputs.data_in_valid := of_int_trunc ~width:1 0;
-          (* TODO: Tighter loop *)
-          loop_for 44)
+          loop_until_ready_for_next_input ())
         whole_packet
     ;;
 
@@ -1148,8 +1143,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
-      ("PC: " 12 REG:
-       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 16 REG:
+       (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1179,8 +1174,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
-      ("PC: " 12 REG:
-       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 16 REG:
+       (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000010  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1211,8 +1206,8 @@ module With_dma_ram = struct
     [%expect
       {|
       ("PC: " 24 REG:
-       (0 4 11000000 2 25 32000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-        0 0))
+       (0 3 9000000 2 21 27000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0))
       ("00000000  f3 20 00 c0 73 21 10 c0  f3 21 20 c0 73 22 00 c0  |. ..s!...! .s\"..|"
        "00000010  f3 22 10 c0 73 23 20 c0  00 00 00 00 00 00 00 00  |.\"..s# .........|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
