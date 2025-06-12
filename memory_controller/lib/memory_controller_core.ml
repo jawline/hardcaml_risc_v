@@ -135,9 +135,9 @@ struct
             ; value =
                 { Write_response.error =
                     reg
-                      reg_spec_with_clear
-                      (illegal_operation ~scope selected_write_ch.data.address)
-                    &: (reg reg_spec_with_clear which_write_ch ==:. channel)
+                      reg_spec_no_clear
+                      (illegal_operation ~scope selected_write_ch.data.address
+                       &: (which_write_ch ==:. channel))
                 }
             })
           M.num_write_channels

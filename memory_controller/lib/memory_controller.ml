@@ -78,8 +78,13 @@ struct
         scope
         { Core.I.clock
         ; clear
-        ; which_write_ch = write_arbitrator.which_ch
-        ; selected_write_ch = write_arbitrator.selected_ch
+        ; which_write_ch =
+            pipeline ~n:request_delay reg_spec_no_clear write_arbitrator.which_ch
+        ; selected_write_ch =
+            Memory_bus.Write_bus.Source.Of_signal.pipeline
+              ~n:request_delay
+              reg_spec_no_clear
+              write_arbitrator.selected_ch
         ; which_read_ch =
             pipeline ~n:request_delay reg_spec_no_clear read_arbitrator.which_ch
         ; selected_read_ch =
@@ -98,8 +103,7 @@ struct
 
   let hierarchical
         ~read_latency
-        ~(* TODO: Rename read_request_delay *)
-         request_delay
+        ~request_delay
         ~priority_mode
         (scope : Scope.t)
         (input : Signal.t I.t)

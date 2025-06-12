@@ -352,7 +352,7 @@ struct
       Memory_controller.hierarchical
         ~priority_mode:Priority_order
         ~request_delay:1
-        ~read_latency:2
+        ~read_latency:1
         scope
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear

@@ -123,6 +123,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       in
       Alu_operation.Onehot.Of_signal.mux2 (is_lui |: is_auipc) add op_mode
     in
+    (* Decoded operation arguments. *)
     let%hw argument_1 =
       onehot_select_with_default
         ~default:rs1

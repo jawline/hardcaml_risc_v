@@ -179,7 +179,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ; ( Waiting_for_store
             , [ when_
                   write_response.valid
-                  [ store_finished <--. 1; current_state.set_next Idle ]
+                  [ store_finished <-- vdd; current_state.set_next Idle ]
               ] )
           ]
       ];
