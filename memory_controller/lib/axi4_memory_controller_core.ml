@@ -34,6 +34,22 @@ struct
 
   module Axi4 = Axi4.Make (Config)
 
+  let () =
+    if Config.id_width < M.num_read_channels
+    then
+      raise_s
+        [%message
+          "BUG: The AXI4 MIG config should have an ID width large enough to address each \
+           read channel"];
+    if Config.id_width < M.num_write_channels
+    then
+      raise_s
+        [%message
+          "BUG: The AXI4 MIG config should have an ID with large enough to address each \
+           write channel"];
+    ()
+  ;;
+
   module I = struct
     type 'a t =
       { clock : 'a
@@ -50,8 +66,10 @@ struct
   module O = struct
     type 'a t =
       { read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
+      ; read_ready : 'a
       ; write_response : 'a Write_response.With_valid.t list
             [@length M.num_write_channels]
+      ; write_ready : 'a
       ; ddr : 'a Axi4.O.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -78,13 +96,37 @@ struct
          ; selected_read_ch
          ; which_write_ch
          ; selected_write_ch
+         ; ddr
          } :
           _ I.t)
     =
     let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let%hw read_data = assert false in
-    { O.read_response = assert false; write_response = assert false; ddr = assert false }
+    { O.read_response = assert false
+    ; read_ready = assert false
+    ; write_response = assert false
+    ; write_ready = ddr.s_axi_wready
+    ; ddr =
+        { s_axi_awvalid = selected_write_ch.valid
+        ; s_axi_awid = which_write_ch
+        ; s_axi_awaddr = (* drop_bottom selected_write_ch.value.address *) assert false
+        ; s_axi_awlena = one 8
+        ; s_axi_awsize = one 3
+        ; s_axi_awburst = zero 2
+        ; s_axi_wdata =
+            (* extend and shift selected_write_ch.value.write_data *) assert false
+        ; s_axi_wstrb = (* form tkeep of lower bits of address *) assert false
+        ; s_axi_wlast = vdd
+        ; s_axi_arvalid = assert false
+        ; s_axi_arid = which_read_ch
+        ; s_axi_araddr = (* drop_bottom selected_read_ch.data.address *) assert false
+        ; s_axi_arlen = one 8
+        ; s_axi_arsize = one 3
+        ; s_axi_arburst = zero 2
+        ; s_axi_rready = assert false
+        }
+    }
   ;;
 
   let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
