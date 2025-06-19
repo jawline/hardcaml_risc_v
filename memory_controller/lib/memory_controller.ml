@@ -27,7 +27,7 @@ struct
         let num_channels = M.num_write_channels
       end)
 
-  module Core = Memory_controller_core.Make (Memory_bus) (M)
+  module Core = Bram_memory_controller_core.Make (Memory_bus) (M)
 
   module I = struct
     type 'a t =
