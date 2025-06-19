@@ -8,8 +8,9 @@ module type S = sig
 
   module Write : sig
     type 'a t =
-      { address : 'a [@bits M.address_width]
-      ; write_data : 'a [@bits M.data_bus_width]
+      { address : 'a 
+      ; write_data : 'a 
+      ; wstrb : 'a
       }
     [@@deriving hardcaml]
   end
@@ -17,7 +18,7 @@ module type S = sig
   module Read_response : sig
     type 'a t =
       { error : 'a
-      ; read_data : 'a [@bits M.data_bus_width]
+      ; read_data : 'a 
       }
     [@@deriving hardcaml]
 

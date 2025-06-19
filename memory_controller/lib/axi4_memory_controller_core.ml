@@ -36,7 +36,12 @@ struct
       interface has a wider addressing scheme (usually 32 / 64 bytes). *)
   let unaligned_bits_data_bus = num_bits_to_represent (M.data_bus_width / 8)
 
-  let unaligned_bits_mig = num_bits_to_represent (Config.data_width / 8)
+  let () =
+    if Config.data_width <> M.data_bus_width
+    then
+      raise_s
+        [%message "BUG: currently bus widths different to axi width are not supported"]
+  ;;
 
   module Axi4 = Axi4.Make (Config)
 
@@ -83,7 +88,7 @@ struct
 
   let real_address ~scope address =
     let%hw base_address = address in
-    drop_bottom ~width:unaligned_bits_mig base_address
+    drop_bottom ~width:unaligned_bits_data_bus base_address
   ;;
 
   let illegal_operation ~scope address =
@@ -108,31 +113,43 @@ struct
     =
     let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let%hw read_data = assert false in
-    { O.read_response = assert false
-    ; read_ready = assert false
-    ; write_response = assert false
+    { O.read_response =
+        List.init
+          ~f:(fun channel ->
+            let is_channel = ddr.s_axi_rid ==:. channel in
+            { With_valid.valid = ddr.s_axi_rvalid &: is_channel
+            ; value = { Read_response.error = assert false; read_data = assert false }
+            })
+          M.num_read_channels
+    ; read_ready = ddr.s_axi_rready
+    ; write_response =
+        List.init
+          ~f:(fun channel ->
+            let is_channel = ddr.s_axi_bid ==:. channel in
+            { With_valid.valid = ddr.s_axi_bvalid &: is_channel
+            ; value = { Write_response.error = assert false }
+            })
+          M.num_read_channels
     ; write_ready = ddr.s_axi_wready
     ; ddr =
         { s_axi_awvalid = selected_write_ch.valid
         ; s_axi_awid = which_write_ch
         ; s_axi_awaddr =
-            drop_bottom ~width:unaligned_bits_mig selected_write_ch.value.address
+            drop_bottom ~width:unaligned_bits_data_bus selected_write_ch.data.address
         ; s_axi_awlena = one 8
         ; s_axi_awsize = one 3
         ; s_axi_awburst = zero 2
-        ; s_axi_wdata =
-            (* extend and shift selected_write_ch.value.write_data *) assert false
-        ; s_axi_wstrb = (* form tkeep of lower bits of address *) assert false
+        ; s_axi_wdata = selected_write_ch.data.write_data
+        ; s_axi_wstrb = selected_write_ch.data.wstrb
         ; s_axi_wlast = vdd
-        ; s_axi_arvalid = assert false
+        ; s_axi_arvalid = selected_read_ch.valid
         ; s_axi_arid = which_read_ch
         ; s_axi_araddr =
-            drop_bottom ~width:unaligned_bits_mig selected_read_ch.data.address
+            drop_bottom ~width:unaligned_bits_data_bus selected_read_ch.data.address
         ; s_axi_arlen = one 8
         ; s_axi_arsize = one 3
         ; s_axi_arburst = zero 2
-        ; s_axi_rready = assert false
+        ; s_axi_rready = vdd
         }
     }
   ;;
