@@ -33,9 +33,9 @@ module Make
   module O : sig
     type 'a t =
       { read_response : 'a Memory_bus.Read_response.With_valid.t list
-      ; read_ready : 'a 
+      ; read_ready : 'a
       ; write_response : 'a Memory_bus.Write_response.With_valid.t list
-      ; write_ready : 'a 
+      ; write_ready : 'a
       ; ddr : 'a Axi4.O.t
       }
     [@@deriving hardcaml]

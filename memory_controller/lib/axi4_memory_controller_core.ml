@@ -30,7 +30,13 @@ struct
 
   let capacity_in_words = M.capacity_in_bytes / data_bus_in_bytes
   let address_width = address_bits_for capacity_in_words
-  let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8)
+
+  (** There are two alignments of the base address. The base address is host addressed (bytes),
+      our core requires that memory be aligned to a word address (4 bytes / 8 bytes) and the AXI4
+      interface has a wider addressing scheme (usually 32 / 64 bytes). *)
+  let unaligned_bits_data_bus = num_bits_to_represent (M.data_bus_width / 8)
+
+  let unaligned_bits_mig = num_bits_to_represent (Config.data_width / 8)
 
   module Axi4 = Axi4.Make (Config)
 
@@ -77,11 +83,11 @@ struct
 
   let real_address ~scope address =
     let%hw base_address = address in
-    srl ~by:unaligned_bits base_address
+    drop_bottom ~width:unaligned_bits_mig base_address
   ;;
 
   let illegal_operation ~scope address =
-    let%hw is_unaligned = sel_bottom ~width:unaligned_bits address <>:. 0 in
+    let%hw is_unaligned = sel_bottom ~width:unaligned_bits_data_bus address <>:. 0 in
     let%hw is_out_of_range = real_address ~scope address >=:. capacity_in_words in
     is_unaligned |: is_out_of_range
   ;;
@@ -110,7 +116,8 @@ struct
     ; ddr =
         { s_axi_awvalid = selected_write_ch.valid
         ; s_axi_awid = which_write_ch
-        ; s_axi_awaddr = (* drop_bottom selected_write_ch.value.address *) assert false
+        ; s_axi_awaddr =
+            drop_bottom ~width:unaligned_bits_mig selected_write_ch.value.address
         ; s_axi_awlena = one 8
         ; s_axi_awsize = one 3
         ; s_axi_awburst = zero 2
@@ -120,7 +127,8 @@ struct
         ; s_axi_wlast = vdd
         ; s_axi_arvalid = assert false
         ; s_axi_arid = which_read_ch
-        ; s_axi_araddr = (* drop_bottom selected_read_ch.data.address *) assert false
+        ; s_axi_araddr =
+            drop_bottom ~width:unaligned_bits_mig selected_read_ch.data.address
         ; s_axi_arlen = one 8
         ; s_axi_arsize = one 3
         ; s_axi_arburst = zero 2

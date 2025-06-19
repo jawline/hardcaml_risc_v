@@ -16,6 +16,7 @@ struct
     type 'a t =
       { address : 'a [@bits M.address_width]
       ; write_data : 'a [@bits M.data_bus_width]
+      ; wstrb : 'a [@bits M.data_bus_width / 8]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end

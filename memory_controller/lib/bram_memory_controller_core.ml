@@ -29,7 +29,7 @@ struct
 
   let capacity_in_words = M.capacity_in_bytes / data_bus_in_bytes
   let address_width = address_bits_for capacity_in_words
-  let unaligned_bits = Int.floor_log2 (M.data_bus_width / 8)
+  let unaligned_bits = num_bits_to_represent (M.data_bus_width / 8)
 
   module I = struct
     type 'a t =
@@ -54,7 +54,7 @@ struct
 
   let real_address ~scope address =
     let%hw base_address = address in
-    srl ~by:unaligned_bits base_address
+    drop_bottom ~width:unaligned_bits base_address
   ;;
 
   let illegal_operation ~scope address =

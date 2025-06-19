@@ -19,6 +19,7 @@ module Make (M : sig
     type 'a t =
       { address : 'a
       ; write_data : 'a
+      ; wstrb : 'a
       }
     [@@deriving hardcaml]
   end

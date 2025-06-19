@@ -25,7 +25,6 @@ module Video_signals : sig
 end
 
 module Make (Config : Config) : sig
-
   module I : sig
     type 'a t =
       { clock : 'a
