@@ -68,8 +68,9 @@ struct
     is_unaligned |: is_out_of_range
   ;;
 
+  let data_bus_elements_in_memory_bus = Config.data_width / data_bus_width
+
   let create
-        ~read_latency
         scope
         ({ clock
          ; clear
@@ -86,8 +87,8 @@ struct
     { O.read_response = assert false; write_response = assert false; ddr = assert false }
   ;;
 
-  let hierarchical ~read_latency (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"memory_controller_core" (create ~read_latency) input
+    H.hierarchical ~scope ~name:"memory_controller_core" create input
   ;;
 end
