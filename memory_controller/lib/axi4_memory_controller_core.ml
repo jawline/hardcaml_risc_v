@@ -82,71 +82,8 @@ struct
     =
     let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let memory =
-      Ram.create
-        ~name:"main_memory_bram"
-        ~collision_mode:Read_before_write
-        ~size:capacity_in_words
-        ~write_ports:
-          [| { write_enable =
-                 selected_write_ch.valid
-                 &: ~:(illegal_operation ~scope selected_write_ch.data.address)
-             ; write_address =
-                 real_address ~scope selected_write_ch.data.address
-                 |> sel_bottom ~width:address_width
-             ; write_data = selected_write_ch.data.write_data
-             ; write_clock = clock
-             }
-          |]
-        ~read_ports:
-          [| { read_enable =
-                 selected_read_ch.valid
-                 &: ~:(illegal_operation ~scope selected_read_ch.data.address)
-             ; read_address =
-                 real_address ~scope selected_read_ch.data.address
-                 |> sel_bottom ~width:address_width
-             ; read_clock = clock
-             }
-          |]
-        ()
-    in
-    let%hw read_data = memory.(0) in
-    { O.read_response =
-        List.init
-          ~f:(fun channel ->
-            { With_valid.valid =
-                pipeline
-                  ~n:read_latency
-                  reg_spec_with_clear
-                  (selected_read_ch.valid &: (which_read_ch ==:. channel))
-            ; value =
-                { Read_response.error =
-                    pipeline
-                      ~n:read_latency
-                      reg_spec_no_clear
-                      (illegal_operation ~scope selected_read_ch.data.address
-                       &: (which_read_ch ==:. channel))
-                ; read_data = pipeline ~n:(read_latency - 1) reg_spec_no_clear read_data
-                }
-            })
-          M.num_read_channels
-    ; write_response =
-        List.init
-          ~f:(fun channel ->
-            { With_valid.valid =
-                reg
-                  reg_spec_with_clear
-                  (selected_write_ch.valid &: (which_write_ch ==:. channel))
-            ; value =
-                { Write_response.error =
-                    reg
-                      reg_spec_no_clear
-                      (illegal_operation ~scope selected_write_ch.data.address
-                       &: (which_write_ch ==:. channel))
-                }
-            })
-          M.num_write_channels
-    }
+    let%hw read_data = assert false in
+    { O.read_response = assert false; write_response = assert false; ddr = assert false }
   ;;
 
   let hierarchical ~read_latency (scope : Scope.t) (input : Signal.t I.t) =
