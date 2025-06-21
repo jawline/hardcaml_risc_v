@@ -35,7 +35,6 @@ struct
   module O = struct
     type 'a t =
       { registers : 'a Registers.t
-      ; error : 'a
       ; is_ecall : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
@@ -45,9 +44,10 @@ struct
 
   let create scope (i : _ I.t) =
     let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
     let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
-    let just_cleared = reg (Reg_spec.create ~clock:i.clock ()) i.clear in
+    let%hw just_cleared = ~:(i.clear) &: reg reg_spec_no_clear i.clear in
     let executor =
       Execute_pipeline.hierarchical
         scope
@@ -63,15 +63,14 @@ struct
         ; write_response = i.write_response
         }
     in
-    executor_finished <-- (executor.valid &: ~:(executor.error));
+    executor_finished <-- executor.valid;
     Registers.For_writeback.Of_signal.(executor_registers <-- executor.registers);
     { O.registers =
         Registers.For_writeback.Of_signal.reg
-          ~enable:(executor.valid &: ~:(executor.error))
+          ~enable:executor.valid
           reg_spec_with_clear
           executor.registers
         |> Registers.For_writeback.to_registers
-    ; error = reg ~enable:executor.valid reg_spec_with_clear executor.error
     ; is_ecall = executor.is_ecall
     ; read_bus = executor.read_bus
     ; write_bus = executor.write_bus

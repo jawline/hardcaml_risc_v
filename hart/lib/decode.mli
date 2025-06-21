@@ -12,7 +12,6 @@ module Make
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a [@bits 32]
-      ; error : 'a
       }
     [@@deriving hardcaml]
   end
@@ -22,7 +21,6 @@ module Make
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
-      ; error : 'a
       }
     [@@deriving hardcaml]
   end

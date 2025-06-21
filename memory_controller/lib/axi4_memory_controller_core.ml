@@ -29,12 +29,11 @@ struct
   ;;
 
   let capacity_in_words = M.capacity_in_bytes / data_bus_in_bytes
-  let address_width = address_bits_for capacity_in_words
 
   (** There are two alignments of the base address. The base address is host addressed (bytes),
       our core requires that memory be aligned to a word address (4 bytes / 8 bytes) and the AXI4
       interface has a wider addressing scheme (usually 32 / 64 bytes). *)
-  let unaligned_bits_data_bus = num_bits_to_represent (M.data_bus_width / 8)
+  let unaligned_bits_data_bus = address_bits_for (M.data_bus_width / 8)
 
   let () =
     if Config.data_width <> M.data_bus_width
@@ -78,9 +77,11 @@ struct
     type 'a t =
       { read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
       ; read_ready : 'a
+      ; read_error : 'a
       ; write_response : 'a Write_response.With_valid.t list
             [@length M.num_write_channels]
       ; write_ready : 'a
+      ; write_error : 'a
       ; ddr : 'a Axi4.O.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -97,12 +98,10 @@ struct
     is_unaligned |: is_out_of_range
   ;;
 
-  let data_bus_elements_in_memory_bus = Config.data_width / data_bus_width
-
   let create
         scope
-        ({ clock
-         ; clear
+        ({ clock = _
+         ; clear = _
          ; which_read_ch
          ; selected_read_ch
          ; which_write_ch
@@ -111,28 +110,30 @@ struct
          } :
           _ I.t)
     =
-    let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let read_invalid = illegal_operation ~scope selected_read_ch.data.address in
+    let write_invalid = illegal_operation ~scope selected_write_ch.data.address in
     { O.read_response =
         List.init
           ~f:(fun channel ->
             let is_channel = ddr.s_axi_rid ==:. channel in
             { With_valid.valid = ddr.s_axi_rvalid &: is_channel
-            ; value = { Read_response.error = assert false; read_data = assert false }
+            ; value = { Read_response.read_data = ddr.s_axi_rdata }
             })
           M.num_read_channels
     ; read_ready = ddr.s_axi_rready
+    ; read_error = selected_read_ch.valid &: read_invalid
     ; write_response =
         List.init
           ~f:(fun channel ->
             let is_channel = ddr.s_axi_bid ==:. channel in
             { With_valid.valid = ddr.s_axi_bvalid &: is_channel
-            ; value = { Write_response.error = assert false }
+            ; value = { Write_response.dummy = gnd }
             })
           M.num_read_channels
     ; write_ready = ddr.s_axi_wready
+    ; write_error = selected_write_ch.valid
     ; ddr =
-        { s_axi_awvalid = selected_write_ch.valid
+        { s_axi_awvalid = selected_write_ch.valid &: ~:write_invalid
         ; s_axi_awid = which_write_ch
         ; s_axi_awaddr =
             drop_bottom ~width:unaligned_bits_data_bus selected_write_ch.data.address
@@ -142,7 +143,7 @@ struct
         ; s_axi_wdata = selected_write_ch.data.write_data
         ; s_axi_wstrb = selected_write_ch.data.wstrb
         ; s_axi_wlast = vdd
-        ; s_axi_arvalid = selected_read_ch.valid
+        ; s_axi_arvalid = selected_read_ch.valid &: ~:read_invalid
         ; s_axi_arid = which_read_ch
         ; s_axi_araddr =
             drop_bottom ~width:unaligned_bits_data_bus selected_read_ch.data.address

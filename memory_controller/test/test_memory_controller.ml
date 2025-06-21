@@ -28,31 +28,14 @@ struct
       f
   ;;
 
-  let assert_error_bit ~assertion error =
-    match assertion with
-    | `Error ->
-      if not error
-      then raise_s [%message "BUG: Expected an error bit to be set but it was not"]
-      else ()
-    | `No_error ->
-      if error
-      then raise_s [%message "BUG: Expected no error bit to be set but it was"]
-      else ()
-  ;;
-
-  let rec wait_for_write_ack ~assertion ~ch sim =
+  let rec wait_for_write_ack ~ch sim =
     let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
     let ch_rx = List.nth_exn outputs.write_response ch in
     Cyclesim.cycle sim;
-    if to_bool !(ch_rx.valid)
-    then (
-      let error = to_bool !(ch_rx.value.error) in
-      assert_error_bit ~assertion error;
-      ())
-    else wait_for_write_ack ~assertion ~ch sim
+    if to_bool !(ch_rx.valid) then () else wait_for_write_ack ~ch sim
   ;;
 
-  let rec write ~assertion ~address ~value ~ch sim =
+  let rec write ~address ~value ~ch sim =
     (* Delay a cycle so we know we don't pick up the state of the previous read. *)
     Cyclesim.cycle sim;
     let inputs : _ Memory_controller.I.t = Cyclesim.inputs sim in
@@ -76,11 +59,11 @@ struct
           else ())
         outputs.write_to_controller;
       ch_tx.valid := gnd;
-      wait_for_write_ack ~assertion ~ch sim)
-    else write ~assertion ~address ~value ~ch sim
+      wait_for_write_ack ~ch sim)
+    else write ~address ~value ~ch sim
   ;;
 
-  let read ~assertion ~address ~ch sim =
+  let read ~address ~ch sim =
     Cyclesim.cycle sim;
     let inputs : _ Memory_controller.I.t = Cyclesim.inputs sim in
     let outputs : _ Memory_controller.O.t = Cyclesim.outputs ~clock_edge:Before sim in
@@ -98,8 +81,6 @@ struct
       if to_bool !(ch_rx.valid)
       then (
         ch_tx.valid := gnd;
-        let error = to_bool !(ch_rx.value.error) in
-        assert_error_bit ~assertion error;
         to_int_trunc !(ch_rx.value.read_data))
       else wait_for_data ()
     in
@@ -107,8 +88,8 @@ struct
     wait_for_data ()
   ;;
 
-  let read_and_assert ~assertion ~address ~value ~ch sim =
-    let result = read ~assertion ~address ~ch sim in
+  let read_and_assert ~address ~value ~ch sim =
+    let result = read ~address ~ch sim in
     if result <> value
     then print_s [%message "BUG: Expected" (result : int) "received" (value : int)]
   ;;
@@ -124,13 +105,14 @@ struct
         in
         let ch = Splittable_random.int ~lo:0 ~hi:(C.num_channels - 1) random in
         let address = Splittable_random.int ~lo:0 ~hi:127 random land lnot 0b11 in
-        write ~assertion:`No_error ~address ~value:next ~ch sim;
-        read_and_assert ~assertion:`No_error ~address ~value:next ~ch sim
+        write ~address ~value:next ~ch sim;
+        read_and_assert ~address ~value:next ~ch sim
       done;
       ());
     [%expect {| |}]
   ;;
 
+  (* TODO: Fix error reporting 
   let%expect_test "read unaligned" =
     create_sim (fun ~inputs:_ ~outputs:_ sim ->
       let ch = 0 in
@@ -151,7 +133,7 @@ struct
       write ~assertion:`No_error ~address:4 ~value:0 ~ch sim;
       ());
     [%expect {| |}]
-  ;;
+  ;; *)
 end
 
 include Make_tests (struct
@@ -165,3 +147,5 @@ include Make_tests (struct
 include Make_tests (struct
     let num_channels = 3
   end)
+
+(* TODO: Add errors to the memory controller and report them via a side channel. *)

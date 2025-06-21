@@ -47,9 +47,9 @@ struct
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
-      ; error : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
+      ; fault : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -74,7 +74,6 @@ struct
         ; valid = fetch.valid
         ; registers = fetch.registers
         ; instruction = fetch.instruction
-        ; error = fetch.error
         }
     in
     let execute =
@@ -87,7 +86,6 @@ struct
         ; instruction = decode.instruction
         ; instret = i.instret
         ; ecall_transaction = i.ecall_transaction
-        ; error = decode.error
         ; read_bus = List.nth_exn i.read_bus 0
         ; read_response = List.nth_exn i.read_response 0
         ; write_bus = List.nth_exn i.write_bus 0
@@ -103,15 +101,14 @@ struct
         ; registers = execute.registers
         ; instruction = execute.instruction
         ; transaction = execute.transaction
-        ; error = execute.error
         }
     in
     { O.valid = write_back.valid
     ; registers = write_back.registers
-    ; error = write_back.error
     ; read_bus = [ execute.read_bus; fetch.read_bus ]
     ; write_bus = [ execute.write_bus ]
     ; is_ecall = execute.is_ecall
+    ; fault = execute.error
     }
   ;;
 

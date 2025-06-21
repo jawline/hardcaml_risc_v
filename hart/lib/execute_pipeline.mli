@@ -44,9 +44,9 @@ module Make
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
-      ; error : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
       ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
+      ; fault : 'a
       }
     [@@deriving hardcaml]
   end

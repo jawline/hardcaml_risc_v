@@ -24,7 +24,9 @@ module Make
   module O : sig
     type 'a t =
       { read_response : 'a Memory_bus.Read_response.With_valid.t list
+      ; read_error : 'a
       ; write_response : 'a Memory_bus.Write_response.With_valid.t list
+      ; write_error : 'a
       }
     [@@deriving hardcaml]
   end

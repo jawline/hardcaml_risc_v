@@ -29,7 +29,7 @@ struct
 
   let capacity_in_words = M.capacity_in_bytes / data_bus_in_bytes
   let address_width = address_bits_for capacity_in_words
-  let unaligned_bits = num_bits_to_represent (M.data_bus_width / 8)
+  let unaligned_bits = address_bits_for (M.data_bus_width / 8)
 
   module I = struct
     type 'a t =
@@ -46,8 +46,10 @@ struct
   module O = struct
     type 'a t =
       { read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
+      ; read_error : 'a
       ; write_response : 'a Write_response.With_valid.t list
             [@length M.num_write_channels]
+      ; write_error : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -77,29 +79,38 @@ struct
     =
     let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let%hw bram_write_address =
+      real_address ~scope selected_write_ch.data.address
+      |> sel_bottom ~width:address_width
+    in
+    let%hw bram_read_address =
+      real_address ~scope selected_read_ch.data.address |> sel_bottom ~width:address_width
+    in
+    let%hw read_illegal =
+      illegal_operation
+        ~scope:(Scope.sub_scope scope "read")
+        selected_read_ch.data.address
+    in
+    let%hw write_illegal =
+      illegal_operation
+        ~scope:(Scope.sub_scope scope "write")
+        selected_write_ch.data.address
+    in
     let memory =
       Ram.create
         ~name:"main_memory_bram"
         ~collision_mode:Read_before_write
         ~size:capacity_in_words
         ~write_ports:
-          [| { write_enable =
-                 selected_write_ch.valid
-                 &: ~:(illegal_operation ~scope selected_write_ch.data.address)
-             ; write_address =
-                 real_address ~scope selected_write_ch.data.address
-                 |> sel_bottom ~width:address_width
+          [| { write_enable = selected_write_ch.valid &: ~:write_illegal
+             ; write_address = bram_write_address
              ; write_data = selected_write_ch.data.write_data
              ; write_clock = clock
              }
           |]
         ~read_ports:
-          [| { read_enable =
-                 selected_read_ch.valid
-                 &: ~:(illegal_operation ~scope selected_read_ch.data.address)
-             ; read_address =
-                 real_address ~scope selected_read_ch.data.address
-                 |> sel_bottom ~width:address_width
+          [| { read_enable = selected_read_ch.valid &: ~:read_illegal
+             ; read_address = bram_read_address
              ; read_clock = clock
              }
           |]
@@ -113,34 +124,29 @@ struct
                 pipeline
                   ~n:read_latency
                   reg_spec_with_clear
-                  (selected_read_ch.valid &: (which_read_ch ==:. channel))
+                  (selected_read_ch.valid
+                   &: (which_read_ch ==:. channel)
+                   &: ~:read_illegal)
             ; value =
-                { Read_response.error =
-                    pipeline
-                      ~n:read_latency
-                      reg_spec_no_clear
-                      (illegal_operation ~scope selected_read_ch.data.address
-                       &: (which_read_ch ==:. channel))
-                ; read_data = pipeline ~n:(read_latency - 1) reg_spec_no_clear read_data
+                { Read_response.read_data =
+                    pipeline ~n:(read_latency - 1) reg_spec_no_clear read_data
                 }
             })
           M.num_read_channels
+    ; read_error = read_illegal
     ; write_response =
         List.init
           ~f:(fun channel ->
             { With_valid.valid =
                 reg
                   reg_spec_with_clear
-                  (selected_write_ch.valid &: (which_write_ch ==:. channel))
-            ; value =
-                { Write_response.error =
-                    reg
-                      reg_spec_no_clear
-                      (illegal_operation ~scope selected_write_ch.data.address
-                       &: (which_write_ch ==:. channel))
-                }
+                  (selected_write_ch.valid
+                   &: (which_write_ch ==:. channel)
+                   &: ~:write_illegal)
+            ; value = { Write_response.dummy = gnd }
             })
           M.num_write_channels
+    ; write_error = write_illegal
     }
   ;;
 

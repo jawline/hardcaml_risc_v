@@ -34,8 +34,10 @@ module Make
     type 'a t =
       { read_response : 'a Memory_bus.Read_response.With_valid.t list
       ; read_ready : 'a
+      ; read_error : 'a
       ; write_response : 'a Memory_bus.Write_response.With_valid.t list
       ; write_ready : 'a
+      ; write_error : 'a
       ; ddr : 'a Axi4.O.t
       }
     [@@deriving hardcaml]

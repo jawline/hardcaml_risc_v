@@ -183,7 +183,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
               ] )
           ]
       ];
-    { O.error = inputs_are_error (* TODO: Write errors are getting ignored here. *)
+    { O.error = enable &: inputs_are_error
     ; finished =
         (* We are finished either once the memory controller responds with a
            write finished signal OR immediately with error if we are unaligned.
@@ -194,6 +194,8 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         ; data =
             { address = reg ~enable:(current_state.is Idle) reg_spec aligned_address
             ; write_data = word_to_write.value
+            ; wstrb =
+                ones (width word_to_write.value / 8) (* TODO: Use byte enables here: *)
             }
         }
     ; read_bus =

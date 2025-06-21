@@ -21,7 +21,6 @@ module Make
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.With_valid.t
-      ; error : 'a
       ; write_bus : 'a Memory.Write_bus.Dest.t
       ; read_bus : 'a Memory.Read_bus.Dest.t
       ; write_response : 'a Memory.Write_response.With_valid.t
@@ -37,10 +36,10 @@ module Make
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; error : 'a
       ; is_ecall : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t
       ; read_bus : 'a Memory.Read_bus.Source.t
+      ; error : 'a
       }
     [@@deriving hardcaml]
   end

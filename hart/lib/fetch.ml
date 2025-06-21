@@ -25,7 +25,6 @@ struct
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a [@bits 32]
-      ; error : 'a
       ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -53,7 +52,6 @@ struct
     ; valid = i.read_response.valid
     ; registers
     ; instruction = i.read_response.value.read_data
-    ; error = i.read_response.value.error
     }
   ;;
 

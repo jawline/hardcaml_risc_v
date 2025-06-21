@@ -93,7 +93,10 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
             &: word_buffer.out_valid
             |: (state.is Transfer_final_beat &: word_buffer.interim_data_buffered)
         ; data =
-            { address = current_address.value; write_data = bswap word_buffer.out_data }
+            { address = current_address.value
+            ; write_data = bswap word_buffer.out_data
+            ; wstrb = ones (width word_buffer.out_data / 8) (* TODO: Byte enables *)
+            }
         }
     }
   ;;

@@ -37,7 +37,6 @@ module Make
   module O : sig
     type 'a t =
       { registers : 'a Registers.t
-      ; error : 'a
       ; is_ecall : 'a
         (** Set high when the hart is in an ecall and is delagating behaviour to
           the user design. *)

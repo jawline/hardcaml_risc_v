@@ -23,7 +23,6 @@ module Make
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a
-      ; error : 'a
       ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml]

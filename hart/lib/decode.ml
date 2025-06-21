@@ -14,7 +14,6 @@ struct
       ; valid : 'a [@rtlprefix "input_"]
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; instruction : 'a [@bits 32]
-      ; error : 'a [@rtlprefix "input_"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -24,7 +23,6 @@ struct
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
-      ; error : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -46,7 +44,6 @@ struct
              i.instruction
              (Registers.For_writeback.to_registers i.registers)
              scope)
-    ; error = reg reg_spec_with_clear i.error
     }
   ;;
 

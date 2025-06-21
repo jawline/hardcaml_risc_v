@@ -36,7 +36,6 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.With_valid.t
-      ; error : 'a [@rtlname "input_error"]
       ; write_bus : 'a Memory.Write_bus.Dest.t
       ; read_bus : 'a Memory.Read_bus.Dest.t
       ; write_response : 'a Memory.Write_response.With_valid.t
@@ -52,10 +51,10 @@ struct
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; error : 'a [@rtlname "output_error"]
       ; is_ecall : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t
       ; read_bus : 'a Memory.Read_bus.Source.t
+      ; error : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$output_"]
   end
@@ -362,25 +361,19 @@ struct
     in
     let valid =
       let valid =
-        [ i.valid &: i.instruction.error ]
-        @ (List.map ~f:Table_entry.output instruction_table
-           |> List.map ~f:Opcode_output.valid)
+        List.map ~f:Table_entry.output instruction_table
+        |> List.map ~f:Opcode_output.valid
         |> List.reduce_exn ~f:( |: )
       in
       reg reg_spec_with_clear valid
     in
     let transaction =
-      let error_with_valid =
-        { With_valid.valid = i.instruction.error; value = Transaction.generic_error }
-      in
       let opcodes_with_valid =
         List.map ~f:Table_entry.output instruction_table
         |> List.map ~f:(fun output ->
           { With_valid.valid = output.valid; value = output.transaction })
       in
-      let result =
-        Transaction.Of_signal.onehot_select (error_with_valid :: opcodes_with_valid)
-      in
+      let result = Transaction.Of_signal.onehot_select opcodes_with_valid in
       Transaction.Of_signal.reg reg_spec_with_clear result
     in
     { O.valid
@@ -395,7 +388,7 @@ struct
           reg_spec_with_clear
           i.instruction
     ; transaction
-    ; error = reg ~enable:i.valid reg_spec_with_clear i.error |: transaction.error
+    ; error = transaction.error
     ; is_ecall =
         i.valid
         &: Decoded_opcode.valid i.instruction.opcode System

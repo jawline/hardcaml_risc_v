@@ -16,7 +16,6 @@ module Make
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; error : 'a
       }
     [@@deriving hardcaml]
   end
@@ -25,7 +24,6 @@ module Make
     type 'a t =
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
-      ; error : 'a
       }
     [@@deriving hardcaml]
   end

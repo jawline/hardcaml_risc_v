@@ -170,11 +170,7 @@ struct
                 when_
                   memory_response.valid
                   [ (* Memory read can fail, if they do return zero. *)
-                    read_data
-                    <-- mux2
-                          memory_response.value.error
-                          (zero (width memory_response.value.read_data))
-                          memory_response.value.read_data
+                    read_data <-- memory_response.value.read_data
                   ; state.set_next Writing_data
                   ]
               ] )

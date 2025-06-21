@@ -15,14 +15,14 @@ struct
 
   module Read_arbitrator =
     Memory_channel_arbitrator.Make
-      (Memory_bus.Read_bus)
+      (Read_bus)
       (struct
         let num_channels = M.num_read_channels
       end)
 
   module Write_arbitrator =
     Memory_channel_arbitrator.Make
-      (Memory_bus.Write_bus)
+      (Write_bus)
       (struct
         let num_channels = M.num_write_channels
       end)
@@ -81,19 +81,20 @@ struct
         ; which_write_ch =
             pipeline ~n:request_delay reg_spec_no_clear write_arbitrator.which_ch
         ; selected_write_ch =
-            Memory_bus.Write_bus.Source.Of_signal.pipeline
+            Write_bus.Source.Of_signal.pipeline
               ~n:request_delay
               reg_spec_no_clear
               write_arbitrator.selected_ch
         ; which_read_ch =
             pipeline ~n:request_delay reg_spec_no_clear read_arbitrator.which_ch
         ; selected_read_ch =
-            Memory_bus.Read_bus.Source.Of_signal.pipeline
+            Read_bus.Source.Of_signal.pipeline
               ~n:request_delay
               reg_spec_no_clear
               read_arbitrator.selected_ch
         }
     in
+    (* TODO: Propagate errors *)
     { O.write_to_controller = write_arbitrator.acks
     ; read_to_controller = read_arbitrator.acks
     ; write_response = core.write_response

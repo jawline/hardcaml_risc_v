@@ -7,7 +7,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = false
+let debug = true
 let trials = 1
 
 module Make (M : sig
@@ -362,36 +362,43 @@ struct
   ;;
 
   let%expect_test "jalr" =
-    let sim = create_sim "jalr" in
+    let sim = create_sim "test_jalr" in
     let open Quickcheck.Generator in
-    Quickcheck.test
-      ~trials
-      (tuple4
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-2047) 2047))
-      ~f:(fun (rd, rs1, rs1_initial, offset) ->
-        let pc, registers =
-          M.test_and_registers
-            ~instructions:
-              [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:rs1 ~immediate:rs1_initial
-              ; jalr ~rd ~rs1 ~offset
-              ]
-            sim
-        in
-        let result = pc land 0xFFFFFFFF in
-        let expectation = (rs1_initial + offset) land 0xFFFFFFFE in
-        if result <> expectation
-        then
-          raise_s
-            [%message
-              "Failed"
-                (result : int)
-                (expectation : int)
-                (rd : int)
-                (rs1 : int)
-                (registers : int list)]);
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials
+          (tuple4
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl (-2047) 2047)
+             (Int.gen_incl (-2047) 2047))
+          ~f:(fun (rd, rs1, rs1_initial, offset) ->
+            let pc, registers =
+              M.test_and_registers
+                ~instructions:
+                  [ op_imm
+                      ~funct3:Funct3.Op.Add_or_sub
+                      ~rs1:0
+                      ~rd:rs1
+                      ~immediate:rs1_initial
+                  ; jalr ~rd ~rs1 ~offset
+                  ]
+                sim
+            in
+            let result = pc land 0xFFFFFFFF in
+            let expectation = (rs1_initial + offset) land 0xFFFFFFFE in
+            if result <> expectation
+            then
+              raise_s
+                [%message
+                  "Failed"
+                    (result : int)
+                    (expectation : int)
+                    (rd : int)
+                    (rs1 : int)
+                    (registers : int list)]));
     [%expect {| |}]
   ;;
 
@@ -772,14 +779,17 @@ struct
 
   let%expect_test "branch" =
     let sim = create_sim "branch" in
-    test
-      ~instructions:
-        [ branch ~funct3:Funct3.Branch.Bne ~rs1:0 ~rs2:0 ~offset:200
-        ; branch ~funct3:Funct3.Branch.Beq ~rs1:0 ~rs2:0 ~offset:500
-        ]
-      sim;
-    [%expect
-      {|
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        test
+          ~instructions:
+            [ branch ~funct3:Funct3.Branch.Bne ~rs1:0 ~rs2:0 ~offset:200
+            ; branch ~funct3:Funct3.Branch.Beq ~rs1:0 ~rs2:0 ~offset:500
+            ]
+          sim;
+        [%expect
+          {|
       ("PC: " 504 REG:
        (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  63 14 00 0c 63 0a 00 1e  00 00 00 00 00 00 00 00  |c...c...........|"
@@ -791,14 +801,14 @@ struct
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       |}];
-    test
-      ~instructions:
-        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
-        ; branch ~funct3:Funct3.Branch.Beq ~rs1:0 ~rs2:1 ~offset:500
-        ]
-      sim;
-    [%expect
-      {|
+        test
+          ~instructions:
+            [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
+            ; branch ~funct3:Funct3.Branch.Beq ~rs1:0 ~rs2:1 ~offset:500
+            ]
+          sim;
+        [%expect
+          {|
       ("PC: " 8 REG:
        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 63 0a 10 1e  00 00 00 00 00 00 00 00  |..`\"c...........|"
@@ -810,14 +820,14 @@ struct
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       |}];
-    test
-      ~instructions:
-        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
-        ; branch ~funct3:Funct3.Branch.Bne ~rs1:0 ~rs2:1 ~offset:500
-        ]
-      sim;
-    [%expect
-      {|
+        test
+          ~instructions:
+            [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
+            ; branch ~funct3:Funct3.Branch.Bne ~rs1:0 ~rs2:1 ~offset:500
+            ]
+          sim;
+        [%expect
+          {|
       ("PC: " 504 REG:
        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 63 1a 10 1e  00 00 00 00 00 00 00 00  |..`\"c...........|"
@@ -829,16 +839,16 @@ struct
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       |}];
-    (* Expect the second branch to be taken *)
-    test
-      ~instructions:
-        [ branch ~funct3:Funct3.Branch.Blt ~rs1:0 ~rs2:1 ~offset:50
-        ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:100
-        ; branch ~funct3:Funct3.Branch.Blt ~rs1:0 ~rs2:1 ~offset:250
-        ]
-      sim;
-    [%expect
-      {|
+        (* Expect the second branch to be taken *)
+        test
+          ~instructions:
+            [ branch ~funct3:Funct3.Branch.Blt ~rs1:0 ~rs2:1 ~offset:50
+            ; op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:100
+            ; branch ~funct3:Funct3.Branch.Blt ~rs1:0 ~rs2:1 ~offset:250
+            ]
+          sim;
+        [%expect
+          {|
       ("PC: " 258 REG:
        (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  63 49 10 02 93 00 40 06  63 4d 10 0e 00 00 00 00  |cI....@.cM......|"
@@ -850,16 +860,16 @@ struct
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       |}];
-    (* Expect the second branch to be taken *)
-    test
-      ~instructions:
-        [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:100
-        ; branch ~funct3:Funct3.Branch.Bge ~rs1:0 ~rs2:1 ~offset:50
-        ; branch ~funct3:Funct3.Branch.Bge ~rs1:1 ~rs2:0 ~offset:250
-        ]
-      sim;
-    [%expect
-      {|
+        (* Expect the second branch to be taken *)
+        test
+          ~instructions:
+            [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:100
+            ; branch ~funct3:Funct3.Branch.Bge ~rs1:0 ~rs2:1 ~offset:50
+            ; branch ~funct3:Funct3.Branch.Bge ~rs1:1 ~rs2:0 ~offset:250
+            ]
+          sim;
+        [%expect
+          {|
       ("PC: " 258 REG:
        (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 40 06 63 59 10 02  63 dd 00 0e 00 00 00 00  |..@.cY..c.......|"
@@ -871,9 +881,8 @@ struct
        "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
       |}];
-    (* TODO: Test unsigned variants and negative numbers. *)
-    M.finalize_sim sim;
-    [%expect {| |}]
+        (* TODO: Test unsigned variants and negative numbers. *)
+        ())
   ;;
 end
 

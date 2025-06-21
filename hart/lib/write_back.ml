@@ -23,7 +23,6 @@ struct
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
-      ; error : 'a [@rtlprefix "input_"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -32,7 +31,6 @@ struct
     type 'a t =
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
-      ; error : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -57,7 +55,6 @@ struct
              ~set_rd:i.transaction.set_rd
              ~new_rd:i.transaction.new_rd
              i.registers)
-    ; error = reg reg_spec_with_clear ~enable:i.valid i.error
     }
   ;;
 

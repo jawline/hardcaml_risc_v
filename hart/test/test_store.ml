@@ -154,106 +154,96 @@ let%expect_test "store" =
       sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 00000000000000000000000000000000)))))))
-    deadbeef ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
+      deadbeef ffffffff ffffffff ffffffff
+      |}];
     (* Unaligned store, we expect no change *)
     test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
     [%expect
       {|
-    (outputs
-     ((error 1) (finished 1)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 00000000000000000000000000000000)))))))
-    ffffffff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 1) (finished 1)
+        (read_response
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
+      ffffffff ffffffff ffffffff ffffffff
+      |}];
     (* Aligned store half, we expect these to succeed. *)
     test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    ffffabab ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      ffffabab ffffffff ffffffff ffffffff
+      |}];
     test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    edabffff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      edabffff ffffffff ffffffff ffffffff
+      |}];
     (* Test unaligned Sh, we expect these to fail *)
     test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
       {|
-    (outputs
-     ((error 1) (finished 1)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    ffffffff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 1) (finished 1)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      ffffffff ffffffff ffffffff ffffffff
+      |}];
     test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
       {|
-    (outputs
-     ((error 1) (finished 1)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    ffffffff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 1) (finished 1)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      ffffffff ffffffff ffffffff ffffffff
+      |}];
     (* Test SB, these cannot be unaligned. *)
     test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    ffffffaa ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      ffffffaa ffffffff ffffffff ffffffff
+      |}];
     test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    ffffaaff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      ffffaaff ffffffff ffffffff ffffffff
+      |}];
     test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    ffaaffff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      ffaaffff ffffffff ffffffff ffffffff
+      |}];
     test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
       {|
-    (outputs
-     ((error 0) (finished 0)
-      (read_response
-       ((valid 0)
-        (value ((error 0) (read_data 11111111111111111111111111111111)))))))
-    aaffffff ffffffff ffffffff ffffffff
-    |}];
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+      aaffffff ffffffff ffffffff ffffffff
+      |}];
     [%expect {| |}])
 ;;

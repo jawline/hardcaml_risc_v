@@ -23,10 +23,7 @@ struct
 
   module Read_response = struct
     module T = struct
-      type 'a t =
-        { error : 'a
-        ; read_data : 'a [@bits M.data_bus_width]
-        }
+      type 'a t = { read_data : 'a [@bits M.data_bus_width] }
       [@@deriving hardcaml ~rtlmangle:"$"]
     end
 
@@ -36,7 +33,7 @@ struct
 
   module Write_response = struct
     module T = struct
-      type 'a t = { error : 'a } [@@deriving hardcaml ~rtlmangle:"$"]
+      type 'a t = { dummy : 'a } [@@deriving hardcaml ~rtlmangle:"$"]
     end
 
     include T
