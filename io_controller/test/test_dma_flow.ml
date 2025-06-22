@@ -9,7 +9,7 @@ open! Bits
 
 let debug = true
 
-module Memory_controller = Memory_controller.Make (struct
+module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 128
     let num_read_channels = 1
     let num_write_channels = 1
@@ -149,6 +149,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       Signal.(dma_ready <-- dma.in_.tready);
       let controller =
         Memory_controller.hierarchical
+          ~build_mode:Simulation
           ~priority_mode:Priority_order
           ~request_delay:1
           ~read_latency:1

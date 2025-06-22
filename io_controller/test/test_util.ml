@@ -5,6 +5,14 @@ open! Bits
 let write_packet_to_memory ~packet sim =
   let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
   let packet = String.to_array packet in
+  Array.iteri
+    ~f:(fun i p -> Cyclesim.Memory.of_bits ~address:i ram (Bits.of_char p))
+    packet
+;;
+
+let write_packet_to_memory_32b ~packet sim =
+  let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
+  let packet = String.to_array packet in
   for ram_address = 0 to Array.length packet / 4 do
     let start = ram_address * 4 in
     let sel idx =

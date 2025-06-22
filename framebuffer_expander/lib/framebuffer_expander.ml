@@ -315,7 +315,7 @@ end
 
 let%expect_test "margins and scaling factor tests" =
   let module Memory_controller =
-    Memory_controller.Make (struct
+    Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
       let num_write_channels = 1
       let num_read_channels = 1
@@ -354,7 +354,7 @@ let%expect_test "margins and scaling factor tests" =
 
 let%expect_test "margins and scaling factor tests" =
   let module Memory_controller =
-    Memory_controller.Make (struct
+    Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
       let num_write_channels = 1
       let num_read_channels = 1

@@ -9,7 +9,7 @@ let debug = true
 
 let test ~load_memory ~dma_address ~dma_length =
   let module Memory_controller =
-    Memory_controller.Make (struct
+    Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
       let num_write_channels = 1
       let num_read_channels = 1
@@ -45,6 +45,7 @@ let test ~load_memory ~dma_address ~dma_length =
       let ch_to_controller = Read_bus.Source.Of_always.wire Signal.zero in
       let controller =
         Memory_controller.hierarchical
+          ~build_mode:Simulation
           ~request_delay:1
           ~read_latency:1
           ~priority_mode:Priority_order

@@ -57,14 +57,18 @@ struct
   module Report_command = Report_synth.Command.With_interface (Design.I) (Design.O)
 
   let report_command =
-    Report_command.command_basic ~name:"Generate_top" Design.hierarchical
+    Report_command.command_basic
+      ~name:"Generate_top"
+      (Design.hierarchical ~build_mode:Synthesis)
   ;;
 
   module Rtl = struct
     let emit () =
       let module M = Circuit.With_interface (Design.I) (Design.O) in
       let scope = Scope.create ~flatten_design:false () in
-      let circuit = M.create_exn ~name:"top" (Design.hierarchical scope) in
+      let circuit =
+        M.create_exn ~name:"top" (Design.hierarchical ~build_mode:Synthesis scope)
+      in
       Rtl.print ~database:(Scope.circuit_database scope) Verilog circuit
     ;;
   end

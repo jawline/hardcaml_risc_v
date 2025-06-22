@@ -10,7 +10,8 @@ module Make
        val num_write_channels : int
        val data_bus_width : int
      end)
-    (Config : Axi4_config_intf.Config) =
+    (Config : Axi4_config_intf.Config)
+    (Axi4 : Axi4_intf.M(Config).S) =
 struct
   open Memory_bus
 
@@ -42,8 +43,6 @@ struct
         [%message "BUG: currently bus widths different to axi width are not supported"]
   ;;
 
-  module Axi4 = Axi4.Make (Config)
-
   let () =
     if Config.id_width < M.num_read_channels
     then
@@ -68,7 +67,7 @@ struct
       ; selected_read_ch : 'a Memory_bus.Read_bus.Source.t
       ; which_write_ch : 'a [@bits address_bits_for M.num_write_channels]
       ; selected_write_ch : 'a Memory_bus.Write_bus.Source.t
-      ; ddr : 'a Axi4.I.t
+      ; axi : 'a Axi4.I.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -82,7 +81,7 @@ struct
             [@length M.num_write_channels]
       ; write_ready : 'a
       ; write_error : 'a
-      ; ddr : 'a Axi4.O.t
+      ; axi : 'a Axi4.O.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -106,7 +105,7 @@ struct
          ; selected_read_ch
          ; which_write_ch
          ; selected_write_ch
-         ; ddr
+         ; axi
          } :
           _ I.t)
     =
@@ -115,42 +114,44 @@ struct
     { O.read_response =
         List.init
           ~f:(fun channel ->
-            let is_channel = ddr.s_axi_rid ==:. channel in
-            { With_valid.valid = ddr.s_axi_rvalid &: is_channel
-            ; value = { Read_response.read_data = ddr.s_axi_rdata }
+            let is_channel = axi.rid ==:. channel in
+            { With_valid.valid = axi.rvalid &: is_channel
+            ; value = { Read_response.read_data = axi.rdata }
             })
           M.num_read_channels
-    ; read_ready = ddr.s_axi_rready
+    ; read_ready = axi.rready
     ; read_error = selected_read_ch.valid &: read_invalid
     ; write_response =
         List.init
           ~f:(fun channel ->
-            let is_channel = ddr.s_axi_bid ==:. channel in
-            { With_valid.valid = ddr.s_axi_bvalid &: is_channel
+            let is_channel = axi.bid ==:. channel in
+            { With_valid.valid = axi.bvalid &: is_channel
             ; value = { Write_response.dummy = gnd }
             })
-          M.num_read_channels
-    ; write_ready = ddr.s_axi_wready
+          M.num_write_channels
+    ; write_ready = axi.wready
     ; write_error = selected_write_ch.valid
-    ; ddr =
-        { s_axi_awvalid = selected_write_ch.valid &: ~:write_invalid
-        ; s_axi_awid = which_write_ch
-        ; s_axi_awaddr =
+    ; axi =
+        { awvalid = selected_write_ch.valid &: ~:write_invalid
+        ; awid = uextend ~width:Axi4.O.port_widths.awid which_write_ch
+        ; awaddr =
             drop_bottom ~width:unaligned_bits_data_bus selected_write_ch.data.address
-        ; s_axi_awlena = one 8
-        ; s_axi_awsize = one 3
-        ; s_axi_awburst = zero 2
-        ; s_axi_wdata = selected_write_ch.data.write_data
-        ; s_axi_wstrb = selected_write_ch.data.wstrb
-        ; s_axi_wlast = vdd
-        ; s_axi_arvalid = selected_read_ch.valid &: ~:read_invalid
-        ; s_axi_arid = which_read_ch
-        ; s_axi_araddr =
+            |> sel_bottom ~width:Axi4.O.port_widths.awaddr
+        ; awlena = one 8
+        ; awsize = one 3
+        ; awburst = zero 2
+        ; wdata = selected_write_ch.data.write_data
+        ; wstrb = selected_write_ch.data.wstrb
+        ; wlast = vdd
+        ; arvalid = selected_read_ch.valid &: ~:read_invalid
+        ; arid = uextend ~width:Axi4.O.port_widths.arid which_read_ch
+        ; araddr =
             drop_bottom ~width:unaligned_bits_data_bus selected_read_ch.data.address
-        ; s_axi_arlen = one 8
-        ; s_axi_arsize = one 3
-        ; s_axi_arburst = zero 2
-        ; s_axi_rready = vdd
+            |> sel_bottom ~width:Axi4.O.port_widths.araddr
+        ; arlen = one 8
+        ; arsize = one 3
+        ; arburst = zero 2
+        ; rready = vdd
         }
     }
   ;;

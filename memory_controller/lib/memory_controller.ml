@@ -2,15 +2,21 @@ open! Core
 open Hardcaml
 open Signal
 
-module Make (M : sig
-    val capacity_in_bytes : int
-    val num_read_channels : int
-    val num_write_channels : int
-    val address_width : int
-    val data_bus_width : int
-  end) =
+module Make
+    (M : sig
+       val data_bus_width : int
+       val capacity_in_bytes : int
+       val num_read_channels : int
+       val num_write_channels : int
+       val address_width : int
+     end)
+    (Axi_config : Axi4_config_intf.Config)
+    (Axi : Axi4_intf.M(Axi_config).S) =
 struct
-  module Memory_bus = Memory_bus.Make (M)
+  module Memory_bus = Memory_bus.Make (struct
+      include M
+    end)
+
   open Memory_bus
 
   module Read_arbitrator =
@@ -27,7 +33,7 @@ struct
         let num_channels = M.num_write_channels
       end)
 
-  module Core = Bram_memory_controller_core.Make (Memory_bus) (M)
+  module Core = Axi4_memory_controller_core.Make (Memory_bus) (M) (Axi_config) (Axi)
 
   module I = struct
     type 'a t =
@@ -35,6 +41,7 @@ struct
       ; clear : 'a
       ; write_to_controller : 'a Write_bus.Source.t list [@length M.num_write_channels]
       ; read_to_controller : 'a Read_bus.Source.t list [@length M.num_read_channels]
+      ; axi : 'a Axi.I.t [@rtlprefix "axi_i_"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -46,16 +53,16 @@ struct
       ; write_response : 'a Write_response.With_valid.t list
             [@length M.num_write_channels]
       ; read_response : 'a Read_response.With_valid.t list [@length M.num_read_channels]
+      ; axi : 'a Axi.O.t [@rtlprefix "axi_o_"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   let create
-        ~read_latency
         ~request_delay
         ~priority_mode
         scope
-        ({ clock; clear; write_to_controller; read_to_controller } : _ I.t)
+        ({ clock; clear; write_to_controller; read_to_controller; axi } : _ I.t)
     =
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let write_arbitrator =
@@ -74,7 +81,6 @@ struct
     in
     let core =
       Core.hierarchical
-        ~read_latency
         scope
         { Core.I.clock
         ; clear
@@ -92,28 +98,30 @@ struct
               ~n:request_delay
               reg_spec_no_clear
               read_arbitrator.selected_ch
+        ; axi
         }
     in
     (* TODO: Propagate errors *)
-    { O.write_to_controller = write_arbitrator.acks
-    ; read_to_controller = read_arbitrator.acks
+    { O.write_to_controller =
+        List.map
+          ~f:(fun t -> { Write_bus.Dest.ready = t.ready &: core.write_ready })
+          write_arbitrator.acks
+    ; read_to_controller =
+        List.map
+          ~f:(fun t -> { Read_bus.Dest.ready = t.ready &: core.read_ready })
+          read_arbitrator.acks
     ; write_response = core.write_response
     ; read_response = core.read_response
+    ; axi = core.axi
     }
   ;;
 
-  let hierarchical
-        ~read_latency
-        ~request_delay
-        ~priority_mode
-        (scope : Scope.t)
-        (input : Signal.t I.t)
-    =
+  let hierarchical ~request_delay ~priority_mode (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
     H.hierarchical
       ~scope
       ~name:"memory_controller"
-      (create ~priority_mode ~request_delay ~read_latency)
+      (create ~priority_mode ~request_delay)
       input
   ;;
 end

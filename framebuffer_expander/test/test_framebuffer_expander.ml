@@ -12,7 +12,7 @@ module FBC = struct
   let output_height = 32
 end
 
-module Memory_controller = Memory_controller.Make (struct
+module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 256
     let num_read_channels = 1
     let num_write_channels = 1
@@ -58,6 +58,7 @@ module Machine = struct
     in
     let controller =
       Memory_controller.hierarchical
+        ~build_mode:Simulation
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:1
@@ -80,7 +81,7 @@ let debug = true
 
 let program_ram sim bits =
   let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
-  Array.iteri ~f:(fun i m -> Cyclesim.Memory.of_bits ~address:i ram m) bits
+  List.iteri ~f:(fun i m -> Cyclesim.Memory.of_bits ~address:i ram m) bits
 ;;
 
 let test ~framebuffers =
@@ -165,13 +166,16 @@ let%expect_test "test" =
     |> List.concat
     |> Bits.concat_msb
   in
-  let framebuffer_0 : t array =
+  let framebuffer_0 : t list =
     List.init
       ~f:(fun _ -> [| default_half_row; empty_half_row; empty_half_row; rev_half_row |])
       16
     |> Array.concat
+    |> Array.to_list
+    |> Bits.concat_lsb
+    |> Bits.split_lsb ~part_width:8
   in
-  let framebuffer_1 : t array =
+  let framebuffer_1 : t list =
     let first_half =
       List.init ~f:(fun _ -> [| default_half_row; rev_half_row |]) 16 |> Array.concat
     in
@@ -179,8 +183,11 @@ let%expect_test "test" =
       List.init ~f:(fun _ -> [| empty_half_row; empty_half_row |]) 16 |> Array.concat
     in
     Array.concat [ first_half; second_half ]
+    |> Array.to_list
+    |> Bits.concat_lsb
+    |> Bits.split_lsb ~part_width:8
   in
-  let framebuffer_2 : t array =
+  let framebuffer_2 : t list =
     let first_half =
       List.init ~f:(fun _ -> [| empty_half_row; full_half_row |]) 16 |> Array.concat
     in
@@ -188,6 +195,9 @@ let%expect_test "test" =
       List.init ~f:(fun _ -> [| full_half_row; empty_half_row |]) 16 |> Array.concat
     in
     Array.concat [ first_half; second_half ]
+    |> Array.to_list
+    |> Bits.concat_lsb
+    |> Bits.split_lsb ~part_width:8
   in
   test ~framebuffers:[| framebuffer_0; framebuffer_1; framebuffer_2 |];
   [%expect

@@ -32,7 +32,7 @@ struct
     | Uart_controller _ -> 1
   ;;
 
-  module Memory_controller = Memory_controller.Make (struct
+  module Memory_controller = Bram_memory_controller.Make (struct
       let capacity_in_bytes = Memory_config.num_bytes
 
       let num_read_channels =
@@ -298,7 +298,7 @@ struct
     harts
   ;;
 
-  let create scope (i : _ I.t) =
+  let create ~build_mode scope (i : _ I.t) =
     (* If the design has requested a video out then initialize it. *)
     let maybe_video_out = maybe_video_out scope i in
     (* If the design has requested a DMA controller then initialize it with a
@@ -350,6 +350,7 @@ struct
     in
     let controller =
       Memory_controller.hierarchical
+        ~build_mode
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:1
@@ -418,8 +419,8 @@ struct
     }
   ;;
 
-  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~build_mode (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"system" create input
+    H.hierarchical ~scope ~name:"system" (create ~build_mode) input
   ;;
 end

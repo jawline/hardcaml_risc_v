@@ -36,5 +36,5 @@ module Make
     [@@deriving hardcaml]
   end
 
-  val hierarchical : Scope.t -> Signal.t I.t -> Signal.t O.t
+  val hierarchical : build_mode:Build_mode.t -> Scope.t -> Signal.t I.t -> Signal.t O.t
 end

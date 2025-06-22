@@ -93,7 +93,10 @@ module With_transmitter = struct
       Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
-      Cpu_with_dma_memory.hierarchical scope { clock; clear; uart_rx = Some uart_tx }
+      Cpu_with_dma_memory.hierarchical
+        ~build_mode:Simulation
+        scope
+        { clock; clear; uart_rx = Some uart_tx }
     in
     let { Uart_rx.O.data_out_valid; data_out; _ } =
       Uart_rx.hierarchical
@@ -184,7 +187,11 @@ let test ~print_frames ~cycles ~data sim =
     Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn
   in
   Sequence.range 0 (Cyclesim.Memory.size_in_words initial_ram)
-  |> Sequence.iter ~f:(fun i -> Cyclesim.Memory.of_bits ~address:i initial_ram (zero 32));
+  |> Sequence.iter ~f:(fun i ->
+    Cyclesim.Memory.of_bits
+      ~address:i
+      initial_ram
+      (zero (Cyclesim.Memory.width_in_bits initial_ram)));
   (* Send a clear signal to initialize any CPU IO controller state back to
      default so we're ready to receive. *)
   clear_registers ~inputs sim;

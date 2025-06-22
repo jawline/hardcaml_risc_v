@@ -14,7 +14,7 @@ module Hart_config = struct
   let design_frequency = 50_000_000_000
 end
 
-module Memory_controller = Memory_controller.Make (struct
+module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 16
     let num_read_channels = 1
     let num_write_channels = 1
@@ -77,6 +77,7 @@ module Test_machine = struct
     in
     let controller =
       Memory_controller.hierarchical
+        ~build_mode:Simulation
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:1
@@ -119,7 +120,7 @@ let create_sim f =
 
 let test ~destination ~value ~funct3 sim =
   (* Initialize the main memory to some known values for testing. *)
-  Test_util.program_ram sim (Array.init ~f:(Fn.const (ones 32)) 4);
+  Test_util.program_ram sim (Array.init ~f:(Fn.const (ones 8)) 16);
   (try
      let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
      let outputs_before : _ Test_machine.O.t =
@@ -158,7 +159,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
-      deadbeef ffffffff ffffffff ffffffff
+      ef be ad de ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     (* Unaligned store, we expect no change *)
     test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
@@ -168,7 +169,7 @@ let%expect_test "store" =
        ((error 1) (finished 1)
         (read_response
          ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
-      ffffffff ffffffff ffffffff ffffffff
+      ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     (* Aligned store half, we expect these to succeed. *)
     test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -178,7 +179,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      ffffabab ffffffff ffffffff ffffffff
+      ab ab ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
@@ -187,7 +188,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      edabffff ffffffff ffffffff ffffffff
+      ff ff ab ed ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     (* Test unaligned Sh, we expect these to fail *)
     test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -197,7 +198,7 @@ let%expect_test "store" =
        ((error 1) (finished 1)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      ffffffff ffffffff ffffffff ffffffff
+      ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
@@ -206,7 +207,7 @@ let%expect_test "store" =
        ((error 1) (finished 1)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      ffffffff ffffffff ffffffff ffffffff
+      ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     (* Test SB, these cannot be unaligned. *)
     test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -216,7 +217,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      ffffffaa ffffffff ffffffff ffffffff
+      aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
@@ -225,7 +226,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      ffffaaff ffffffff ffffffff ffffffff
+      ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
@@ -234,7 +235,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      ffaaffff ffffffff ffffffff ffffffff
+      ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
@@ -243,7 +244,7 @@ let%expect_test "store" =
        ((error 0) (finished 0)
         (read_response
          ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
-      aaffffff ffffffff ffffffff ffffffff
+      ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     [%expect {| |}])
 ;;

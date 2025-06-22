@@ -23,7 +23,7 @@ opam init -y
 opam switch create 5.2.0 --repos upstream=git+https://github.com/janestreet/opam-repository.git,default
 eval $(opam env --switch 5.2.0)
 opam update -y
-opam install -y dune core async hardcaml hardcaml_waveterm hardcaml_test_harness hardcaml_axi ppx_hardcaml ppx_deriving hardcaml_xilinx_reports
+opam install -y dune core async hardcaml hardcaml_waveterm hardcaml_test_harness hardcaml_axi ppx_hardcaml ppx_deriving hardcaml_xilinx_reports hardcaml_xilinx
 ```
 
 ### Setting up a GCC cross compiler
@@ -111,3 +111,8 @@ uses objcopy to produce a raw binary from an elf file. For linking the
 `link.ld` file is specified to make sure the program code starts at 0x0. As
 with the Rust program, a small assembly file `entry.s` puts the registers into
 a known state before jumping to our C entry point.
+
+# To Do
+
+- Better error handling
+    - The memory controllers can't indicate illegal errors, instead they just never respond. Instead fault.

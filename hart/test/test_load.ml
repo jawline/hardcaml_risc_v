@@ -12,7 +12,7 @@ module Hart_config = struct
   let design_frequency = 50_000_000_000
 end
 
-module Memory_controller = Memory_controller.Make (struct
+module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 128
     let num_write_channels = 1
     let num_read_channels = 1
@@ -66,6 +66,7 @@ module Test_machine = struct
     in
     let controller =
       Memory_controller.hierarchical
+        ~build_mode:Simulation
         ~priority_mode:Priority_order
         ~request_delay:1
         ~read_latency:1
@@ -120,49 +121,51 @@ let%expect_test "lw" =
     (* Initialize the main memory to some known values for testing. *)
     Test_util.program_ram
       sim
-      (Array.init ~f:(fun i -> Bits.of_unsigned_int ~width:32 (i + 1)) 32);
+      (Array.init
+         ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i / 4 else 0))
+         128);
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000000) (error 0) (finished 0))) |}];
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
     (try test ~address:8 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
     (try test ~address:12 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
     (* Unaligned loads, we expect these to fail *)
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
     (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
     (try test ~address:5 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
     (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
     (try test ~address:7 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}])
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}])
 ;;
 
 let%expect_test "lh" =
@@ -171,35 +174,30 @@ let%expect_test "lh" =
     Test_util.program_ram
       sim
       (Array.init
-         ~f:(fun i ->
-           let i = i * 2 in
-           Bits.concat_lsb
-             [ Bits.of_unsigned_int ~width:16 (i + 1)
-             ; Bits.of_unsigned_int ~width:16 (i + 2)
-             ])
-         32);
+         ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 2 = 0 then i / 2 else 0))
+         128);
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000000) (error 0) (finished 0))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
     (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
     (* Unaligned loads, we expect these to fail *)
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 1) (finished 1))) |}])
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}])
 ;;
 
 let%expect_test "lb" =
@@ -207,37 +205,28 @@ let%expect_test "lb" =
     (* Initialize the main memory to some known values for testing. *)
     Test_util.program_ram
       sim
-      (Array.init
-         ~f:(fun i ->
-           let i = i * 4 in
-           Bits.concat_lsb
-             [ Bits.of_unsigned_int ~width:8 (i + 1)
-             ; Bits.of_unsigned_int ~width:8 (i + 2)
-             ; Bits.of_unsigned_int ~width:8 (i + 3)
-             ; Bits.of_unsigned_int ~width:8 (i + 4)
-             ])
-         32);
+      (Array.init ~f:(fun i -> Bits.of_unsigned_int ~width:8 i) 128);
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000000) (error 0) (finished 0))) |}];
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
     (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 0) (finished 0))) |}];
+      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000101) (error 0) (finished 0))) |}])
+      {| (outputs ((new_rd 00000000000000000000000000000100) (error 0) (finished 0))) |}])
 ;;
 
 (* TODO: Sign extension tests *)

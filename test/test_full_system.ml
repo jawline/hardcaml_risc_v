@@ -920,6 +920,7 @@ module With_manually_programmed_ram = Make (struct
         Sim.create
           ~config:Cyclesim.Config.trace_all
           (Cpu_with_no_io_controller.hierarchical
+             ~build_mode:Simulation
              (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
       in
       let waveform, sim = Waveform.create sim in
@@ -1022,7 +1023,10 @@ module With_transmitter = struct
       Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; _ } =
-      Cpu_with_dma_memory.hierarchical scope { clock; clear; uart_rx = Some uart_tx }
+      Cpu_with_dma_memory.hierarchical
+        ~build_mode:Simulation
+        scope
+        { clock; clear; uart_rx = Some uart_tx }
     in
     { O.registers; ready_for_next_input }
   ;;
