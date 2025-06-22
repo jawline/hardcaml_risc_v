@@ -18,12 +18,6 @@
  (depends ocaml dune)
  )
 (package
- (name hardcaml_memory_controller)
- (synopsis "A memory controller")
- (description "A memory controller")
- (depends ocaml dune)
- )
-(package
  (name hardcaml_framebuffer_expander)
  (synopsis "A framebuffer expander")
  (description "A framebuffer expander")

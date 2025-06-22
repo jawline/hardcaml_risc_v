@@ -7,3 +7,6 @@
 [submodule "hardcaml_custom_handshake"]
 	path = hardcaml_custom_handshake
 	url = git@github.com:jawline/hardcaml_custom_handshake.git
+[submodule "hardcaml_memory_controller"]
+	path = hardcaml_memory_controller
+	url = git@github.com:jawline/hardcaml_memory_controller.git
