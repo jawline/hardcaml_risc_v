@@ -887,14 +887,15 @@ struct
 end
 
 module Cpu_with_no_io_controller =
-  System.Make
+  System_with_bram.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
       let design_frequency = 1000
     end)
     (struct
-      let num_bytes = 128
+      let capacity_in_bytes = 128
+      let request_delay = 1
     end)
     (struct
       let num_harts = 1
@@ -920,6 +921,7 @@ module With_manually_programmed_ram = Make (struct
         Sim.create
           ~config:Cyclesim.Config.trace_all
           (Cpu_with_no_io_controller.hierarchical
+             ~read_latency:1
              ~build_mode:Simulation
              (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
       in
@@ -984,14 +986,15 @@ module Uart_tx = Uart_tx.Make (struct
   end)
 
 module Cpu_with_dma_memory =
-  System.Make
+  System_with_bram.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
       let design_frequency = 1000
     end)
     (struct
-      let num_bytes = 128
+      let capacity_in_bytes = 128
+      let request_delay = 1
     end)
     (struct
       let num_harts = 1
@@ -1024,6 +1027,7 @@ module With_transmitter = struct
     in
     let { Cpu_with_dma_memory.O.registers; _ } =
       Cpu_with_dma_memory.hierarchical
+        ~read_latency:1
         ~build_mode:Simulation
         scope
         { clock; clear; uart_rx = Some uart_tx }

@@ -8,7 +8,9 @@ open Signal
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory_config : System_intf.Memory_config)
-    (General_config : System_intf.Config) =
+    (General_config : System_intf.Config)
+    (Axi_config : Axi4_config_intf.Config)
+    (Axi4 : Axi4_intf.M(Axi_config).S) =
 struct
   module Registers = Registers.Make (Hart_config)
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
@@ -32,22 +34,26 @@ struct
     | Uart_controller _ -> 1
   ;;
 
-  module Memory_controller = Bram_memory_controller.Make (struct
-      let capacity_in_bytes = Memory_config.num_bytes
+  module Memory_controller =
+    Memory_controller.Make
+      (struct
+        let capacity_in_bytes = Memory_config.capacity_in_bytes
 
-      let num_read_channels =
-        system_non_hart_read_memory_channels
-        + (General_config.num_harts * Hart.required_read_channels)
-      ;;
+        let num_read_channels =
+          system_non_hart_read_memory_channels
+          + (General_config.num_harts * Hart.required_read_channels)
+        ;;
 
-      let num_write_channels =
-        system_non_hart_write_memory_channels
-        + (General_config.num_harts * Hart.required_write_channels)
-      ;;
+        let num_write_channels =
+          system_non_hart_write_memory_channels
+          + (General_config.num_harts * Hart.required_write_channels)
+        ;;
 
-      let address_width = Register_width.bits Hart_config.register_width
-      let data_bus_width = 32
-    end)
+        let address_width = Register_width.bits Hart_config.register_width
+        let data_bus_width = Axi_config.data_width
+      end)
+      (Axi_config)
+      (Axi4)
 
   module Memory_bus = Memory_controller.Memory_bus
   include Memory_bus
@@ -113,6 +119,7 @@ struct
       { clock : 'a
       ; clear : 'a
       ; uart_rx : 'a option [@exists include_uart_wires]
+      ; memory : 'a Axi4.I.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -123,6 +130,7 @@ struct
       ; uart_tx : 'a option [@exists include_uart_wires]
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
       ; video_out : 'a Video_out_with_memory.O.t option [@exists include_video_out]
+      ; memory : 'a Axi4.O.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -298,7 +306,7 @@ struct
     harts
   ;;
 
-  let create ~build_mode scope (i : _ I.t) =
+  let create ~build_mode:_ scope (i : _ I.t) =
     (* If the design has requested a video out then initialize it. *)
     let maybe_video_out = maybe_video_out scope i in
     (* If the design has requested a DMA controller then initialize it with a
@@ -350,10 +358,8 @@ struct
     in
     let controller =
       Memory_controller.hierarchical
-        ~build_mode
         ~priority_mode:Priority_order
-        ~request_delay:1
-        ~read_latency:1
+        ~request_delay:Memory_config.request_delay
         scope
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear
@@ -364,6 +370,7 @@ struct
         ; write_to_controller =
             (of_dma ~f:(fun dma -> [ dma.write_request ]) |> Option.value ~default:[])
             @ List.concat write_bus_per_hart
+        ; axi = i.memory
         }
     in
     let hart_ecall_transactions =
@@ -416,6 +423,7 @@ struct
     ; uart_tx = of_dma ~f:Dma.O.uart_tx
     ; uart_rx_valid = of_dma ~f:Dma.O.uart_rx_valid
     ; video_out = of_video_out ~f:Video_data.video_data
+    ; memory = controller.axi
     }
   ;;
 

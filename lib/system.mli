@@ -1,18 +1,21 @@
-open! Core
-open Hardcaml
-open Hardcaml_memory_controller
-open Hardcaml_risc_v_hart
-
 (** This module constructs an entire system, including harts, a memory
     controller, and optionally an IO controller and a video signal generator
     that generates a framebuffer by expanding pixels in memory. The system is
     defined by three parts, a general config which decides what features to
     enable, a memory config that describes the shape of the memory controller,
     and a hart config which configures each hart. All harts must be homogeneous. *)
+open! Core
+
+open Hardcaml
+open Hardcaml_memory_controller
+open Hardcaml_risc_v_hart
+
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory_config : System_intf.Memory_config)
-    (General_config : System_intf.Config) : sig
+    (General_config : System_intf.Config)
+    (Axi_config : Axi4_config_intf.Config)
+    (Axi4 : Axi4_intf.M(Axi_config).S) : sig
   module Registers : Registers_intf.S
   module Memory_bus : Memory_bus_intf.S
   module Video_out_with_memory : Video_out_intf.M(Memory_bus).S
@@ -22,6 +25,7 @@ module Make
       { clock : 'a
       ; clear : 'a
       ; uart_rx : 'a option
+      ; memory : 'a Axi4.I.t
       }
     [@@deriving hardcaml]
   end
@@ -32,9 +36,12 @@ module Make
       ; uart_tx : 'a option
       ; uart_rx_valid : 'a option
       ; video_out : 'a Video_out_with_memory.O.t option
+      ; memory : 'a Axi4.O.t
       }
     [@@deriving hardcaml]
   end
 
+  val include_uart_wires : bool
+  val include_video_out : bool
   val hierarchical : build_mode:Build_mode.t -> Scope.t -> Signal.t I.t -> Signal.t O.t
 end

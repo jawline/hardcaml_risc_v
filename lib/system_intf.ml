@@ -5,5 +5,8 @@ module type Config = sig
 end
 
 module type Memory_config = sig
-  val num_bytes : int
+  val capacity_in_bytes : int
+
+  (** The number of cycles of delay before a request is actually sent to the memory core. *)
+  val request_delay : int
 end

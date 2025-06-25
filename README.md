@@ -62,7 +62,7 @@ dune runtest
 Once that is set up, you can generate the RTL for a CPU with Uart at an assumed
 100Mhz clock using:
 ```
-dune exec ./bin/generate_cpu.exe -- generate-rtl -include-video-out false  -hart-frequency 100_000_000
+dune exec ./bin/generate_cpu.exe -- generate-rtl-with-bram -capacity-in-bytes 65536 -include-video-out false  -hart-frequency 100_000_000
 ```
 
 From there, you will need to generate a top file for your board and then
