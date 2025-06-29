@@ -371,6 +371,5 @@ let%expect_test "fuzz" =
       ~stop_bits:1
       ~packets:[ 0, test_str; 48, test_str ]
       ~verbose:false);
-  [%expect
-    {| |}]
+  [%expect {| |}]
 ;;

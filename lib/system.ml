@@ -164,7 +164,7 @@ struct
         (harts : _ Hart.O.t list)
         hart_ecall_transactions
         ~tx_input
-        ~tx_busy
+        ~tx_ready
         scope
     =
     (* For now we only allow Hart0 to do IO. This isn't
@@ -189,10 +189,9 @@ struct
     let%hw is_dma_write = hart0.is_ecall &: delayed_r5 in
     let%hw next_pc = reg reg_spec_no_clear (hart0.registers.pc +:. 4) in
     (* TODO: I think this can race. *)
-    let not_busy = ~:tx_busy in
     Memory_to_packet8.Input.With_valid.Of_signal.(
       tx_input
-      <-- { valid = is_dma_write &: not_busy
+      <-- { valid = is_dma_write &: tx_ready
           ; value = { address = delayed_r6; length = delayed_r7 }
           });
     (* Assign the Hart0 transaction. *)
@@ -201,7 +200,7 @@ struct
       <-- { With_valid.valid = vdd
           ; value =
               { Transaction.set_rd = vdd
-              ; new_rd = uresize ~width:register_width (is_dma_write &: not_busy)
+              ; new_rd = uextend ~width:register_width (is_dma_write &: tx_ready)
               ; new_pc = next_pc
               ; error = gnd
               }
@@ -212,12 +211,12 @@ struct
     |> List.iter ~f:assign_non_io_ecall
   ;;
 
-  let assign_ecalls ~clock ~tx_input_and_busy harts hart_ecall_transactions scope =
+  let assign_ecalls ~clock ~tx_input_and_ready harts hart_ecall_transactions scope =
     (* If a DMA controller is in the design then wire up DMA related ecalls
        otherwise do not include any ecalls *)
-    match tx_input_and_busy with
-    | Some (tx_input, tx_busy) ->
-      assign_dma_io_ecall ~clock ~tx_input ~tx_busy harts hart_ecall_transactions scope
+    match tx_input_and_ready with
+    | Some (tx_input, tx_ready) ->
+      assign_dma_io_ecall ~clock ~tx_input ~tx_ready harts hart_ecall_transactions scope
     | None -> assign_empty_ecalls harts hart_ecall_transactions
   ;;
 
@@ -392,9 +391,9 @@ struct
     in
     assign_ecalls
       ~clock:i.clock
-      ~tx_input_and_busy:
+      ~tx_input_and_ready:
         (match maybe_dma_controller with
-         | Some dma -> Some (tx_input, dma.tx_busy)
+         | Some dma -> Some (tx_input, dma.dma_tx_ready)
          | None -> None)
       harts
       hart_ecall_transactions

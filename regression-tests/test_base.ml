@@ -13,9 +13,9 @@ let output_width = 64
 let output_height = 35
 
 let uart_config =
-  { Hardcaml_uart.Config.clock_frequency = 200
-  ; baud_rate = 50
-  ; include_parity_bit = true
+  { Hardcaml_uart.Config.clock_frequency = 40
+  ; baud_rate = 10
+  ; include_parity_bit = false
   ; stop_bits = 1
   }
 ;;
@@ -95,7 +95,7 @@ module With_transmitter = struct
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
       Cpu_with_dma_memory.hierarchical
-        ~read_latency:1
+        ~read_latency:2
         ~build_mode:Simulation
         scope
         { clock; clear; uart_rx = Some uart_tx }

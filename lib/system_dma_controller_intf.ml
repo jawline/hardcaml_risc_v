@@ -29,7 +29,7 @@ struct
       type 'a t =
         { uart_rx_valid : 'a
         ; uart_tx : 'a
-        ; tx_busy : 'a
+        ; dma_tx_ready : 'a
         ; read_request : 'a Memory.Read_bus.Source.t
         ; write_request : 'a Memory.Write_bus.Source.t
         ; clear_message : 'a

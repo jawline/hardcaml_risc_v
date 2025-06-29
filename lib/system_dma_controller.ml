@@ -34,7 +34,7 @@ struct
     type 'a t =
       { uart_rx_valid : 'a
       ; uart_tx : 'a
-      ; tx_busy : 'a
+      ; dma_tx_ready : 'a
       ; read_request : 'a Memory.Read_bus.Source.t
       ; write_request : 'a Memory.Write_bus.Source.t
       ; clear_message : 'a
@@ -51,7 +51,7 @@ struct
     ; read_bus : Signal.t Memory.Read_bus.Dest.t
     ; uart_rx_valid : 'a
     ; tx_input : Signal.t Memory_to_packet8.Input.With_valid.t
-    ; tx_busy : 'a
+    ; dma_tx_ready : 'a
     ; uart_tx : Signal.t
     ; parity_error : 'a
     ; serial_to_packet_valid : 'a
@@ -215,7 +215,7 @@ struct
     ; uart_tx = dma_out_uart_tx.uart_tx
     ; uart_rx_valid
     ; clear_message = pulse.signal
-    ; tx_busy = dma_out.busy
+    ; dma_tx_ready = dma_out.ready
     }
   ;;
 

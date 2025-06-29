@@ -5,6 +5,8 @@ char* string_in_the_middle = "In the middle!";
 char* goodbye = "Goodbye";
 
 void c_start() {
+
+  send_dma_l((char*) 0 , 32);
   send_dma(hello_world);
   framebuffer_set(0, 0, 1);
   framebuffer_set(1, 0, 1);

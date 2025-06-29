@@ -54,12 +54,13 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     if Memory.data_bus_width % Axi.Source.port_widths.tdata <> 0
     then raise_s [%message "BUG: Memory width must be a multiple of DMA stream input"];
     let current_address = Variable.reg ~width:address_width reg_spec in
+    let reset_buffers = Variable.wire ~default:gnd in
     let address_buffer =
       Address_buffer.hierarchical
         scope
         { Address_buffer.I.clock
-        ; clear = clear |: ~:(state.is Reading_memory_address)
-        ; in_valid = in_.tvalid
+        ; clear = clear |: reset_buffers.value
+        ; in_valid = in_.tvalid &: state.is Reading_memory_address
         ; in_data = in_.tdata
         ; out_ready = vdd
         }
@@ -68,14 +69,13 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
       Word_buffer.hierarchical
         scope
         { Word_buffer.I.clock
-        ; clear = clear |: state.is Reading_memory_address
-        ; in_valid =
-            in_.tvalid &: (state.is Transferring |: state.is Reading_memory_address)
+        ; clear = clear |: reset_buffers.value
+        ; in_valid = in_.tvalid &: state.is Transferring
         ; in_data = in_.tdata
-        ; out_ready = state.is Transferring &: out.ready
+        ; out_ready = out.ready
         }
     in
-    let reset = proc [ state.set_next Reading_memory_address ] in
+    let reset = proc [ state.set_next Reading_memory_address; reset_buffers <-- vdd ] in
     let address_aligned = Memory.byte_address_to_memory_address address_buffer.out_data in
     compile
       [ state.switch

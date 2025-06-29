@@ -11,10 +11,8 @@ module hardware_top(
         output led4
 );
 wire cpu_clock;
-
-clk_wiz_0 ( .board_clock(board_clock), .cpu_clock(cpu_clock), .reset(~rst_n) );
-
-top cpu ( .clock(cpu_clock), .clear(~rst_n), .uart_rx(uart_rx));
+    
+top cpu ( .clock(board_clock), .clear(~rst_n), .uart_rx(uart_rx));
 
 assign uart_tx = cpu.uart_tx;
 assign led1 = rst_n;

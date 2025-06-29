@@ -4,7 +4,7 @@ open Opcode_helper
 
 let read_byte ~in_channel () =
   let byte = In_channel.input_byte in_channel |> Option.value_exn in
-  print_s [%message "read byte" (byte : int)];
+  printf "%02x " (byte);
   byte
 ;;
 
@@ -31,7 +31,6 @@ let read_packet t =
 let do_write ~ch data =
   List.iter ~f:(fun byte -> Out_channel.output_byte ch byte) data;
   Out_channel.flush ch;
-  let _ = Core_unix.nanosleep 1. in
   ()
 ;;
 
@@ -122,7 +121,7 @@ let command =
        let program = In_channel.read_all program_filename in
        print_s [%message "Progam length: " ~_:(String.length program : int)];
        (* Split our program into 1024 byte chunks and send it. *)
-       let chunk_sz = 65536 in
+       let chunk_sz = 1024 in
        String.to_list program
        |> List.chunks_of ~length:chunk_sz
        |> List.map ~f:String.of_char_list

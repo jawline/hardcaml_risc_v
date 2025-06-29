@@ -8,8 +8,6 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Registers : Registers_intf.S) =
 struct
-  let data_width = Memory.data_bus_width
-
   module I = struct
     type 'a t =
       { clock : 'a
@@ -48,10 +46,8 @@ struct
         i.registers
     in
     let aligned_address =
-      drop_bottom
-        ~width:(address_bits_for (data_width / 8))
-        (mux2 i.valid i.registers.pc registers.pc)
-      |> uextend ~width:Memory.Read_bus.Source.port_widths.data.address
+      (Memory.byte_address_to_memory_address (mux2 i.valid i.registers.pc registers.pc))
+        .value
     in
     { O.read_bus =
         { Memory.Read_bus.Source.valid = fetching; data = { address = aligned_address } }

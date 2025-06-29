@@ -41,7 +41,7 @@ struct
 
   module O = struct
     type 'a t =
-      { busy : 'a
+      { ready : 'a
       ; output_packet : 'a Axi.Source.t [@rtlprefix "output$"]
       ; memory : 'a Memory.Read_bus.Source.t [@rtlprefix "memory$"]
       }
@@ -77,6 +77,7 @@ struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
+    let%hw_var do_read = Variable.reg ~width:1 reg_spec in
     let%hw_var length = Variable.reg ~width:(width input_length) reg_spec_no_clear in
     let%hw_var address = Variable.reg ~width:(width input_address) reg_spec_no_clear in
     let%hw_var which_step =
@@ -85,10 +86,11 @@ struct
     let%hw_var read_data =
       Variable.reg ~width:(width memory_response.value.read_data) reg_spec_no_clear
     in
-    let%hw_var do_read = Variable.reg ~width:1 reg_spec_no_clear in
     let enter_reading_data = proc [ state.set_next Reading_data; do_read <-- vdd ] in
     let reset = proc [ do_read <-- gnd; state.set_next Idle ] in
-    let aligned_address = (Memory.byte_address_to_memory_address input_address).value in
+    let%hw aligned_address =
+      (Memory.byte_address_to_memory_address input_address).value
+    in
     let%hw unaligned_bits =
       reg
         ~enable:(state.is Idle)
@@ -162,7 +164,7 @@ struct
               ] )
           ]
       ];
-    { O.busy = ~:(state.is State.Idle)
+    { O.ready = state.is State.Idle
     ; output_packet =
         { tvalid =
             state.is Writing_header |: state.is Writing_length |: state.is Writing_data

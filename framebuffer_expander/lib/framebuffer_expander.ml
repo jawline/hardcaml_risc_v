@@ -172,8 +172,7 @@ struct
         |> proc
       in
       let aligned_address =
-        drop_bottom ~width:(address_bits_for (data_width / 8)) i.start_address
-        |> uextend ~width:(width next_address.value)
+        (Memory.byte_address_to_memory_address i.start_address).value
       in
       proc
         [ reg_x <--. 0
