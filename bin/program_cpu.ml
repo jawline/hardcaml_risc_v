@@ -4,7 +4,7 @@ open Opcode_helper
 
 let read_byte ~in_channel () =
   let byte = In_channel.input_byte in_channel |> Option.value_exn in
-  printf "%02x " (byte);
+  printf "%02x " byte;
   byte
 ;;
 

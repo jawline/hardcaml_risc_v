@@ -133,7 +133,8 @@ let%expect_test "test" =
       ; { Packet.contents = test_str; dma_address = 11; dma_length = 1 }
       ; { Packet.contents = test_str; dma_address = 6; dma_length = 12 }
       ];
-  [%expect {|
+  [%expect
+    {|
     ("00000000  5a 00 09 20 71 75 69 63  6b 20 62 72              |Z.. quick br|")
     Cycles: 20
     ("00000000  5a 00 2b 54 68 65 20 71  75 69 63 6b 20 62 72 6f  |Z.+The quick bro|"
