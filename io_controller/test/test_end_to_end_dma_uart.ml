@@ -7,7 +7,7 @@ open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 128
@@ -19,30 +19,7 @@ module Memory_controller = Bram_memory_controller.Make (struct
 
 open Memory_controller.Memory_bus
 
-let test
-      ~verbose
-      ~clock_frequency
-      ~baud_rate
-      ~include_parity_bit
-      ~stop_bits
-      ~address
-      ~packet
-  =
-  let all_inputs =
-    (* We add the header and then the packet length before the packet *)
-    let packet = String.to_list packet in
-    let packet_len_parts =
-      of_unsigned_int ~width:16 (List.length packet + 4)
-      |> split_msb ~part_width:8
-      |> List.map ~f:to_int_trunc
-    in
-    let address =
-      of_unsigned_int ~width:32 address
-      |> split_msb ~part_width:8
-      |> List.map ~f:to_int_trunc
-    in
-    [ Char.to_int 'Q' ] @ packet_len_parts @ address @ List.map ~f:Char.to_int packet
-  in
+let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packets =
   let module Config = struct
     (* This should trigger a switch every other cycle. *)
     let config =
@@ -205,76 +182,95 @@ let test
   Harness.run
     ~create:Machine.create
     ~trace:`All_named
-    ~waves_config:Waves_config.No_waves
+    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
     (fun ~inputs ~outputs sim ->
        (* The fifo needs a clear cycle to initialize *)
        inputs.clear := vdd;
        Cyclesim.cycle sim;
        inputs.clear := gnd;
-       Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-       let rec loop_until_ready_for_next_input () =
-         Cyclesim.cycle sim;
-         if Bits.to_bool !(outputs.ready_for_next_input)
-         then ()
-         else loop_until_ready_for_next_input ()
-       in
+       Cyclesim.cycle sim;
        List.iter
-         ~f:(fun input ->
-           inputs.data_in_valid := vdd;
-           inputs.data_in := of_unsigned_int ~width:8 input;
-           Cyclesim.cycle sim;
-           inputs.data_in_valid := gnd;
-           loop_until_ready_for_next_input ())
-         all_inputs;
-       (* Wait for any writes to flush. *)
-       Cyclesim.cycle ~n:50 sim;
-       if verbose
-       then (
-         printf "Printing ram (not DMA response):\n";
-         Test_util.print_ram sim;
-         printf "Doing a DMA read:\n");
-       let issue_read ~address ~length =
-         inputs.dma_out_enable := vdd;
-         inputs.dma_out_address := of_unsigned_int ~width:32 address;
-         inputs.dma_out_length := of_unsigned_int ~width:16 length;
-         Cyclesim.cycle sim;
-         inputs.dma_out_enable := gnd;
-         let data = ref "" in
-         let store_outputs () =
-           if to_bool !(outputs.out_valid)
-           then
-             data
-             := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
-           else ()
-         in
-         let count = ref 0 in
-         while !count <> 1500 do
-           Cyclesim.cycle sim;
-           store_outputs ();
-           incr count
-         done;
-         let data = !data in
-         let without_length = String.subo ~pos:3 ~len:(String.length data - 3) data in
-         (* TODO: assert without length is the length of the two words. *)
-         if String.(without_length <> packet)
-         then raise_s [%message "BUG: Packet differs" ~received:without_length ~packet];
-         if verbose
-         then (
-           print_s [%message "" ~_:(data : String.Hexdump.t)];
-           printf "%i\n" !count)
-         else ()
-       in
-       issue_read ~address ~length:(String.length packet))
+         ~f:(fun (address, packet) ->
+           let all_inputs =
+             (* We add the header and then the packet length before the packet *)
+             let packet = String.to_list packet in
+             let packet_len_parts =
+               of_unsigned_int ~width:16 (List.length packet + 4)
+               |> split_msb ~part_width:8
+               |> List.map ~f:to_int_trunc
+             in
+             let address =
+               of_unsigned_int ~width:32 address
+               |> split_msb ~part_width:8
+               |> List.map ~f:to_int_trunc
+             in
+             [ Char.to_int 'Q' ]
+             @ packet_len_parts
+             @ address
+             @ List.map ~f:Char.to_int packet
+           in
+           let rec loop_until_ready_for_next_input () =
+             Cyclesim.cycle sim;
+             if Bits.to_bool !(outputs.ready_for_next_input)
+             then ()
+             else loop_until_ready_for_next_input ()
+           in
+           List.iter
+             ~f:(fun input ->
+               inputs.data_in_valid := vdd;
+               inputs.data_in := of_unsigned_int ~width:8 input;
+               Cyclesim.cycle sim;
+               inputs.data_in_valid := gnd;
+               loop_until_ready_for_next_input ())
+             all_inputs;
+           if verbose
+           then (
+             printf "Printing ram (not DMA response):\n";
+             Test_util.print_ram sim;
+             printf "Doing a DMA read:\n");
+           let issue_read ~address ~length =
+             inputs.dma_out_enable := vdd;
+             inputs.dma_out_address := of_unsigned_int ~width:32 address;
+             inputs.dma_out_length := of_unsigned_int ~width:16 length;
+             Cyclesim.cycle sim;
+             inputs.dma_out_enable := gnd;
+             let data = ref "" in
+             let store_outputs () =
+               if to_bool !(outputs.out_valid)
+               then
+                 data
+                 := String.concat [ !data; to_char !(outputs.out_data) |> Char.to_string ]
+               else ()
+             in
+             let count = ref 0 in
+             while !count <> 10_000 && String.length !data < String.length packet + 3 do
+               Cyclesim.cycle sim;
+               store_outputs ();
+               incr count
+             done;
+             let data = !data in
+             let without_length = String.subo ~pos:3 ~len:(String.length data - 3) data in
+             (* TODO: assert without length is the length of the two words. *)
+             if String.(without_length <> packet)
+             then
+               raise_s [%message "BUG: Packet differs" ~received:without_length ~packet];
+             if verbose
+             then (
+               print_s [%message "" ~_:(data : String.Hexdump.t)];
+               printf "%i\n" !count)
+             else ()
+           in
+           issue_read ~address ~length:(String.length packet))
+         packets)
 ;;
 
 let%expect_test "test" =
   test
-    ~clock_frequency:200
+    ~clock_frequency:1000
     ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
-    ~address:0
-    ~packet:"Hio"
+    ~packets:[ 0, "Hio"; 8, "Goodbye" ]
     ~verbose:true;
   (* The additional o is a side effect of the DMA modules inability to not write dw aligned. *)
   (* TODO: Use byte enables to only write the bytes the packet to memory module has buffered. *)
@@ -291,20 +287,9 @@ let%expect_test "test" =
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
     Doing a DMA read:
     ("00000000  51 00 03 48 69 6f                                 |Q..Hio|")
-    1500
-    |}];
-  test
-    ~clock_frequency:200
-    ~baud_rate:50
-    ~include_parity_bit:false
-    ~stop_bits:1
-    ~address:0
-    ~packet:"Hello world!"
-    ~verbose:true;
-  [%expect
-    {|
+    1198
     Printing ram (not DMA response):
-    ("00000000  48 65 6c 6c 6f 20 77 6f  72 6c 64 21 00 00 00 00  |Hello world!....|"
+    ("00000000  48 69 6f 6f 00 00 00 00  47 6f 6f 64 62 79 65 65  |Hioo....Goodbyee|"
      "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -313,20 +298,79 @@ let%expect_test "test" =
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
     Doing a DMA read:
+    ("00000000  51 00 07 47 6f 6f 64 62  79 65                    |Q..Goodbye|")
+    2002
+    |}];
+  test
+    ~clock_frequency:1000
+    ~baud_rate:50
+    ~include_parity_bit:false
+    ~stop_bits:1
+    ~packets:[ 8, "Hello world!"; 16, "What's going on!"; 0, "Goodbye world"; 8, ":(" ]
+    ~verbose:true;
+  [%expect
+    {|
+    Printing ram (not DMA response):
+    ("00000000  00 00 00 00 00 00 00 00  48 65 6c 6c 6f 20 77 6f  |........Hello wo|"
+     "00000010  72 6c 64 21 00 00 00 00  00 00 00 00 00 00 00 00  |rld!............|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Doing a DMA read:
     ("00000000  51 00 0c 48 65 6c 6c 6f  20 77 6f 72 6c 64 21     |Q..Hello world!|")
-    1500
+    3007
+    Printing ram (not DMA response):
+    ("00000000  00 00 00 00 00 00 00 00  48 65 6c 6c 6f 20 77 6f  |........Hello wo|"
+     "00000010  57 68 61 74 27 73 20 67  6f 69 6e 67 20 6f 6e 21  |What's going on!|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Doing a DMA read:
+    ("00000000  51 00 10 57 68 61 74 27  73 20 67 6f 69 6e 67 20  |Q..What's going |"
+     "00000010  6f 6e 21                                          |on!|")
+    3811
+    Printing ram (not DMA response):
+    ("00000000  47 6f 6f 64 62 79 65 20  77 6f 72 6c 64 6f 72 64  |Goodbye worldord|"
+     "00000010  57 68 61 74 27 73 20 67  6f 69 6e 67 20 6f 6e 21  |What's going on!|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Doing a DMA read:
+    ("00000000  51 00 0d 47 6f 6f 64 62  79 65 20 77 6f 72 6c 64  |Q..Goodbye world|")
+    3208
+    Printing ram (not DMA response):
+    ("00000000  47 6f 6f 64 62 79 65 20  3a 28 00 28 64 6f 72 64  |Goodbye :(.(dord|"
+     "00000010  57 68 61 74 27 73 20 67  6f 69 6e 67 20 6f 6e 21  |What's going on!|"
+     "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Doing a DMA read:
+    ("00000000  51 00 02 3a 28                                    |Q..:(|")
+    997
     |}]
 ;;
 
 let%expect_test "fuzz" =
   Quickcheck.test ~trials:50 String.gen_nonempty ~f:(fun test_str ->
     test
-      ~clock_frequency:200
+      ~clock_frequency:1000
       ~baud_rate:50
       ~include_parity_bit:false
       ~stop_bits:1
-      ~address:0
-      ~packet:test_str
+      ~packets:[ 0, test_str; 48, test_str ]
       ~verbose:false);
-  [%expect {| |}]
+  [%expect
+    {| |}]
 ;;

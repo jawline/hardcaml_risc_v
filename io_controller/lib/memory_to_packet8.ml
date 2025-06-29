@@ -77,19 +77,19 @@ struct
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
-    let length = Variable.reg ~width:(width input_length) reg_spec_no_clear in
-    let address = Variable.reg ~width:(width input_address) reg_spec_no_clear in
-    let which_step =
+    let%hw_var length = Variable.reg ~width:(width input_length) reg_spec_no_clear in
+    let%hw_var address = Variable.reg ~width:(width input_address) reg_spec_no_clear in
+    let%hw_var which_step =
       Variable.reg ~width:(address_bits_for bytes_per_beat) reg_spec_no_clear
     in
-    let read_data =
+    let%hw_var read_data =
       Variable.reg ~width:(width memory_response.value.read_data) reg_spec_no_clear
     in
-    let do_read = Variable.reg ~width:1 reg_spec_no_clear in
+    let%hw_var do_read = Variable.reg ~width:1 reg_spec_no_clear in
     let enter_reading_data = proc [ state.set_next Reading_data; do_read <-- vdd ] in
     let reset = proc [ do_read <-- gnd; state.set_next Idle ] in
     let aligned_address = (Memory.byte_address_to_memory_address input_address).value in
-    let unaligned_bits =
+    let%hw unaligned_bits =
       reg
         ~enable:(state.is Idle)
         reg_spec_no_clear
@@ -167,16 +167,13 @@ struct
         { tvalid =
             state.is Writing_header |: state.is Writing_length |: state.is Writing_data
         ; tdata =
-            (
-
-let%hw which_data_byte = (mux which_step.value (split_lsb ~part_width:8 read_data.value)) in 
-    let%hw which_length_byte = mux which_step.value (split_msb ~part_width:8 length.value) in
-let base =
-               mux2
-                 (state.is Writing_data)
-                 which_data_byte
-                 which_length_byte
+            (let%hw which_data_byte =
+               mux which_step.value (split_lsb ~part_width:8 read_data.value)
              in
+             let%hw which_length_byte =
+               mux which_step.value (split_msb ~part_width:8 length.value)
+             in
+             let base = mux2 (state.is Writing_data) which_data_byte which_length_byte in
              match Config.header with
              | Some header -> mux2 (state.is Writing_header) (Signal.of_char header) base
              | None -> base)

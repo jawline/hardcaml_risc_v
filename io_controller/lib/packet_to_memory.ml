@@ -99,7 +99,13 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
           ; Ignoring_illegal_address, [ when_ (in_.tvalid &: in_.tlast) [ reset ] ]
           ]
       ];
-    { O.in_ = { tready = word_buffer.ready |: state.is Ignoring_illegal_address }
+    { O.in_ =
+        { tready =
+            state.is Reading_memory_address
+            &: address_buffer.ready
+            |: (state.is Transferring &: word_buffer.ready)
+            |: state.is Ignoring_illegal_address
+        }
     ; out =
         { valid =
             state.is Transferring

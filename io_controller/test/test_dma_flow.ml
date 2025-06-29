@@ -7,7 +7,7 @@ open Hardcaml_io_controller
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 128
@@ -226,7 +226,6 @@ let%expect_test "test" =
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    Saved waves to /home/blake/waves//_test.hardcamlwaveform
     |}];
   test
     ~clock_frequency:200
@@ -245,6 +244,5 @@ let%expect_test "test" =
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    Saved waves to /home/blake/waves//_test_1.hardcamlwaveform
     |}]
 ;;
