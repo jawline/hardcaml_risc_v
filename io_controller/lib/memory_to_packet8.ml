@@ -162,17 +162,20 @@ struct
               ] )
           ]
       ];
-    let%hw length_byte = mux which_step.value (split_msb ~part_width:8 length.value) in
     { O.busy = ~:(state.is State.Idle)
     ; output_packet =
         { tvalid =
             state.is Writing_header |: state.is Writing_length |: state.is Writing_data
         ; tdata =
-            (let base =
+            (
+
+let%hw which_data_byte = (mux which_step.value (split_lsb ~part_width:8 read_data.value)) in 
+    let%hw which_length_byte = mux which_step.value (split_msb ~part_width:8 length.value) in
+let base =
                mux2
                  (state.is Writing_data)
-                 (mux which_step.value (split_lsb ~part_width:8 read_data.value))
-                 length_byte
+                 which_data_byte
+                 which_length_byte
              in
              match Config.header with
              | Some header -> mux2 (state.is Writing_header) (Signal.of_char header) base

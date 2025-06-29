@@ -12,6 +12,7 @@ let read_packet t =
   let length_msb = In_channel.input_byte t |> Option.value_exn in
   let length_lsb = In_channel.input_byte t |> Option.value_exn in
   let length = (length_msb lsl 8) lor length_lsb in
+print_s [%message (length : int) (length_msb : int) (length_lsb : int)];
   let bytes_ =
     List.init ~f:(fun _ -> In_channel.input_char t |> Option.value_exn) length
     |> List.rev
