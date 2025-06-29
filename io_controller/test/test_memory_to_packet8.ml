@@ -124,7 +124,7 @@ let%expect_test "test" =
     {|
     ("00000000  51 00 09 20 71 75 69 63  6b 20 62 72              |Q.. quick br|")
     Cycles: 20
-    Saved waves to /home/ubuntu/waves//_test.hardcamlwaveform
+    Saved waves to /home/blake/waves//_test.hardcamlwaveform
     |}];
   test
     ~load_memory:"The quick brown fox jumps over the lazy dog"
@@ -136,7 +136,7 @@ let%expect_test "test" =
      "00000010  77 6e 20 66 6f 78 20 6a  75 6d 70 73 20 6f 76 65  |wn fox jumps ove|"
      "00000020  72 20 74 68 65 20 6c 61  7a 79 20 64 6f 67        |r the lazy dog|")
     Cycles: 78
-    Saved waves to /home/ubuntu/waves//_test_1.hardcamlwaveform
+    Saved waves to /home/blake/waves//_test_1.hardcamlwaveform
     |}];
   test
     ~load_memory:"The quick brown fox jumps over the lazy dog"
@@ -146,6 +146,6 @@ let%expect_test "test" =
     {|
     ("00000000  51 00 01 6b                                       |Q..k|")
     Cycles: 6
-    Saved waves to /home/ubuntu/waves//_test_2.hardcamlwaveform
+    Saved waves to /home/blake/waves//_test_2.hardcamlwaveform
     |}]
 ;;

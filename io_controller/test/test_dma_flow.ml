@@ -226,7 +226,7 @@ let%expect_test "test" =
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    Saved waves to /home/ubuntu/waves//_test.hardcamlwaveform
+    Saved waves to /home/blake/waves//_test.hardcamlwaveform
     |}];
   test
     ~clock_frequency:200
@@ -245,6 +245,6 @@ let%expect_test "test" =
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-    Saved waves to /home/ubuntu/waves//_test_1.hardcamlwaveform
+    Saved waves to /home/blake/waves//_test_1.hardcamlwaveform
     |}]
 ;;

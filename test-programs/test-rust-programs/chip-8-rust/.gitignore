@@ -10,5 +10,5 @@
 # command-line tool or an application, or a system library with crate-type of staticlib or cdylib, check
 # Cargo.lock into git.
 # ~ The Cargo Book, Juni 2022
-Cargo.lock
+#Cargo.lock
 #Cargo.toml

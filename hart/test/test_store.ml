@@ -221,7 +221,7 @@ let%expect_test "store" =
              00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}]);
-  [%expect {| Saved waves to /home/ubuntu/waves//_store.hardcamlwaveform |}]
+  [%expect {| Saved waves to /home/blake/waves//_store.hardcamlwaveform |}]
 ;;
 
 let%expect_test "store halves" =
@@ -312,7 +312,7 @@ let%expect_test "store halves" =
              00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}]);
-  [%expect {| Saved waves to /home/ubuntu/waves//_store_halves.hardcamlwaveform |}]
+  [%expect {| Saved waves to /home/blake/waves//_store_halves.hardcamlwaveform |}]
 ;;
 
 let%expect_test "store_byte" =
@@ -416,5 +416,5 @@ let%expect_test "store_byte" =
       ff ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff
       |}];
     [%expect {| |}]);
-  [%expect {| Saved waves to /home/ubuntu/waves//_store_byte.hardcamlwaveform |}]
+  [%expect {| Saved waves to /home/blake/waves//_store_byte.hardcamlwaveform |}]
 ;;

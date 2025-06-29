@@ -33,11 +33,50 @@ let do_write ~ch data =
 let open_with_stty_settings ~baud_rate ~stop_bits ~parity_bit ~device_filename =
   let file_descr = Core_unix.openfile ~mode:[ O_RDWR ] device_filename in
   let tio_attr = Core_unix.Terminal_io.tcgetattr file_descr in
-  tio_attr.c_obaud <- baud_rate;
-  tio_attr.c_ibaud <- baud_rate;
-  tio_attr.c_csize <- 8;
-  tio_attr.c_cstopb <- stop_bits;
-  tio_attr.c_parenb <- parity_bit;
+
+  let _new_attrs : Core_unix.Terminal_io.t = {
+
+  c_brkint= false;
+  c_istrip= false;
+  c_obaud= baud_rate;
+  c_ibaud= baud_rate;
+  c_csize= 8 ;
+  c_cstopb=  stop_bits;
+  c_parenb= parity_bit;
+  c_icanon= false;
+  c_isig= false;
+  c_echo = false;
+  c_echoe = false;
+  c_echok = false;
+  c_echonl = false;
+  c_noflsh = true;
+  c_veof = tio_attr.c_veof;
+  c_opost = false;
+  c_ignbrk = true 
+  ; c_ignpar = false
+  ; c_parmrk = false 
+  ; c_inpck = parity_bit
+  ; c_inlcr = false
+  ; c_igncr = true
+  ; c_icrnl = false 
+  ; c_ixon = false 
+  ; c_ixoff = false
+  ; c_cread = true
+  ; c_parodd = false
+  ; c_hupcl = false
+  ; c_clocal = false
+  ; c_vintr = tio_attr.c_vintr
+  ; c_vquit = tio_attr.c_vquit
+  ; c_verase = tio_attr.c_verase 
+  ; c_vkill = tio_attr.c_vkill
+  ; c_veol = tio_attr.c_veol
+  ; c_vmin = tio_attr.c_vmin
+  ; c_vtime = tio_attr.c_vtime
+  ; c_vstart = tio_attr.c_vstart
+  ; c_vstop = tio_attr.c_vstop
+  }  in
+
+  Core_unix.Terminal_io.tcsetattr new_attrs file_descr ~mode:TCSANOW; 
   Core_unix.out_channel_of_descr file_descr, Core_unix.in_channel_of_descr file_descr
 ;;
 
@@ -77,7 +116,7 @@ let command =
        let program = In_channel.read_all program_filename in
        print_s [%message "Progam length: " ~_:(String.length program : int)];
        (* Split our program into 1024 byte chunks and send it. *)
-       let chunk_sz = 1024 in
+       let chunk_sz = 65536 in
        String.to_list program
        |> List.chunks_of ~length:chunk_sz
        |> List.map ~f:String.of_char_list
