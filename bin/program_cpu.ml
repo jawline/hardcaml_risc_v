@@ -34,7 +34,7 @@ let open_with_stty_settings ~baud_rate ~stop_bits ~parity_bit ~device_filename =
   let file_descr = Core_unix.openfile ~mode:[ O_RDWR ] device_filename in
   let tio_attr = Core_unix.Terminal_io.tcgetattr file_descr in
 
-  let _new_attrs : Core_unix.Terminal_io.t = {
+  let new_attrs : Core_unix.Terminal_io.t = {
 
   c_brkint= false;
   c_istrip= false;
