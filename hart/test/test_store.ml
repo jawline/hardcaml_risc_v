@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -19,7 +19,7 @@ module Memory_controller = Bram_memory_controller.Make (struct
     let num_read_channels = 1
     let num_write_channels = 1
     let address_width = 32
-    let data_bus_width = 32
+    let data_bus_width = 128
   end)
 
 open Memory_controller.Memory_bus
@@ -45,7 +45,7 @@ module Test_machine = struct
     type 'a t =
       { error : 'a
       ; finished : 'a
-      ; read_response : 'a Read_response.With_valid.t
+      ; read_response : 'a Read_response.With_valid.t [@sexp.opaque]
       }
     [@@deriving hardcaml]
   end
@@ -54,8 +54,6 @@ module Test_machine = struct
         (scope : Scope.t)
         ({ I.clock; clear; enable; funct3; destination; value } : _ I.t)
     =
-    let read_bus = Read_bus.Dest.Of_always.wire zero in
-    let read_response = Read_response.With_valid.Of_always.wire zero in
     let write_bus = Write_bus.Dest.Of_always.wire zero in
     let write_response = Write_response.With_valid.Of_always.wire zero in
     let store =
@@ -69,8 +67,6 @@ module Test_machine = struct
              Funct3.Store.Onehot.construct_onehot ~f:test_funct3)
         ; destination
         ; value
-        ; read_bus = Read_bus.Dest.Of_always.value read_bus
-        ; read_response = Read_response.With_valid.Of_always.value read_response
         ; write_bus = Write_bus.Dest.Of_always.value write_bus
         ; write_response = Write_response.With_valid.Of_always.value write_response
         }
@@ -85,17 +81,14 @@ module Test_machine = struct
         { Memory_controller.I.clock
         ; clear
         ; write_to_controller = [ store.write_bus ]
-        ; read_to_controller = [ store.read_bus ]
+        ; read_to_controller =
+            [ (* Hardcaml doesn't like having a RAM that never gets read, so we add a dummy channel. *)
+              Read_bus.Source.Of_signal.of_int_trunc 0
+            ]
         }
     in
     compile
-      [ Read_bus.Dest.Of_always.assign
-          read_bus
-          (List.nth_exn controller.read_to_controller 0)
-      ; Read_response.With_valid.Of_always.assign
-          read_response
-          (List.nth_exn controller.read_response 0)
-      ; Write_bus.Dest.Of_always.assign
+      [ Write_bus.Dest.Of_always.assign
           write_bus
           (List.nth_exn controller.write_to_controller 0)
       ; Write_response.With_valid.Of_always.assign
@@ -111,10 +104,13 @@ end
 
 module Harness = Cyclesim_harness.Make (Test_machine.I) (Test_machine.O)
 
+let waves_config = if debug then Waves_config.to_home_subdirectory () else No_waves
+
 let create_sim f =
   Harness.run
     ~trace:`All_named
     ~create:Test_machine.create
+    ~waves_config
     (fun ~inputs:_ ~outputs:_ sim -> f sim)
 ;;
 
@@ -158,8 +154,59 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ef be ad de ff ff ff ff ff ff ff ff ff ff ff ff
+      |}];
+    test
+      ~destination:4
+      ~value:0xDEADBEEF
+      ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
+      sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ef be ad de ff ff ff ff ff ff ff ff
+      |}];
+    test
+      ~destination:8
+      ~value:0xDEADBEEF
+      ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
+      sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ef be ad de ff ff ff ff
+      |}];
+    test
+      ~destination:12
+      ~value:0xDEADBEEF
+      ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
+      sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ff ff ff ff ef be ad de
       |}];
     (* Unaligned store, we expect no change *)
     test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
@@ -168,9 +215,17 @@ let%expect_test "store" =
       (outputs
        ((error 1) (finished 1)
         (read_response
-         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-      |}];
+      |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_store.hardcamlwaveform |}]
+;;
+
+let%expect_test "store halves" =
+  create_sim (fun sim ->
     (* Aligned store half, we expect these to succeed. *)
     test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
@@ -178,7 +233,10 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ab ab ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -187,8 +245,47 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ab ed ff ff ff ff ff ff ff ff ff ff ff ff
+      |}];
+    test ~destination:4 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ab ed ff ff ff ff ff ff ff ff ff ff
+      |}];
+    test ~destination:6 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ab ed ff ff ff ff ff ff ff ff
+      |}];
+    test ~destination:8 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ab ed ff ff ff ff ff ff
       |}];
     (* Test unaligned Sh, we expect these to fail *)
     test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -197,7 +294,10 @@ let%expect_test "store" =
       (outputs
        ((error 1) (finished 1)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -206,9 +306,17 @@ let%expect_test "store" =
       (outputs
        ((error 1) (finished 1)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-      |}];
+      |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_store_halves.hardcamlwaveform |}]
+;;
+
+let%expect_test "store_byte" =
+  create_sim (fun sim ->
     (* Test SB, these cannot be unaligned. *)
     test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
@@ -216,7 +324,10 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -225,7 +336,10 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -234,7 +348,10 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
     test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -243,8 +360,61 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0) (value ((read_data 11111111111111111111111111111111)))))))
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
       ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff
       |}];
-    [%expect {| |}])
+    [%expect {| |}];
+    test ~destination:4 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff
+      |}];
+    test ~destination:5 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff
+      |}];
+    test ~destination:6 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff
+      |}];
+    test ~destination:7 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
+    [%expect
+      {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff
+      |}];
+    [%expect {| |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_store_byte.hardcamlwaveform |}]
 ;;

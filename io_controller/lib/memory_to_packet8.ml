@@ -10,11 +10,15 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Axi : Stream.S) =
 struct
+  let address_width = Memory.address_width
+  let data_width = Memory.data_bus_width
+  let bytes_per_beat = data_width / 8
+
   module Input = struct
     module T = struct
       type 'a t =
         { length : 'a [@bits 16]
-        ; address : 'a [@bits Memory.data_bus_width]
+        ; address : 'a [@bits address_width]
         }
       [@@deriving hardcaml ~rtlmangle:"$"]
     end
@@ -38,7 +42,6 @@ struct
   module O = struct
     type 'a t =
       { busy : 'a
-      ; done_ : 'a
       ; output_packet : 'a Axi.Source.t [@rtlprefix "output$"]
       ; memory : 'a Memory.Read_bus.Source.t [@rtlprefix "memory$"]
       }
@@ -71,27 +74,26 @@ struct
          } :
           _ I.t)
     =
-    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let state = State_machine.create (module State) reg_spec in
-    let done_ = Variable.wire ~default:gnd in
+    let%hw.State_machine state = State_machine.create (module State) reg_spec in
     let length = Variable.reg ~width:(width input_length) reg_spec_no_clear in
     let address = Variable.reg ~width:(width input_address) reg_spec_no_clear in
-    let which_step = Variable.reg ~width:2 reg_spec_no_clear in
-    ignore (state.current -- "current_state" : Signal.t);
-    let output_packet = Axi.Source.Of_always.wire zero in
-    let address_stride = width memory_response.value.read_data / 8 in
+    let which_step =
+      Variable.reg ~width:(address_bits_for bytes_per_beat) reg_spec_no_clear
+    in
     let read_data =
       Variable.reg ~width:(width memory_response.value.read_data) reg_spec_no_clear
     in
-    let alignment_mask =
-      width memory_response.value.read_data / 8 |> Int.floor_log2 |> ones
-    in
     let do_read = Variable.reg ~width:1 reg_spec_no_clear in
     let enter_reading_data = proc [ state.set_next Reading_data; do_read <-- vdd ] in
-    let reset =
-      proc [ done_ <-- vdd; which_step <--. 0; do_read <-- gnd; state.set_next Idle ]
+    let reset = proc [ do_read <-- gnd; state.set_next Idle ] in
+    let aligned_address = (Memory.byte_address_to_memory_address input_address).value in
+    let unaligned_bits =
+      reg
+        ~enable:(state.is Idle)
+        reg_spec_no_clear
+        (sel_bottom ~width:(address_bits_for (data_width / 8)) input_address)
     in
     compile
       [ state.switch
@@ -104,7 +106,7 @@ struct
               ; when_
                   (input_enable &: (input_length <>:. 0))
                   [ length <-- input_length
-                  ; address <-- input_address
+                  ; address <-- aligned_address
                   ; which_step <--. 0
                   ; (match Config.header with
                      | Some _ -> Writing_header
@@ -114,49 +116,18 @@ struct
               ] )
           ; ( Writing_header
             , match Config.header with
-              | Some header ->
-                [ Axi.Source.Of_always.assign
-                    output_packet
-                    { tvalid = vdd
-                    ; tdata = Signal.of_char header
-                    ; tlast = gnd
-                    ; tstrb = ones 1
-                    ; tkeep = ones 1
-                    ; tuser = zero Axi.Source.port_widths.tuser
-                    }
-                ; when_ output_packet_ready [ state.set_next Writing_length ]
-                ]
+              | Some _header ->
+                [ when_ output_packet_ready [ state.set_next Writing_length ] ]
               | None -> [] )
           ; ( Writing_length
-            , let length_byte =
-                mux
-                  (which_step.value -- "which_step")
-                  (split_msb ~part_width:8 length.value)
-              in
-              [ Axi.Source.Of_always.assign
-                  output_packet
-                  { tvalid = vdd
-                  ; tdata = length_byte
-                  ; tlast = gnd
-                  ; tkeep = ones 1
-                  ; tstrb = ones 1
-                  ; tuser = zero Axi.Source.port_widths.tuser
-                  }
-              ; when_
+            , [ when_
                   output_packet_ready
                   [ incr which_step
                   ; when_
                       (which_step.value ==:. 1)
                       [ (* If the address was unaligned, set which_step to the
                            offset here to align it. *)
-                        which_step
-                        <-- (uresize ~width:(width alignment_mask) address.value
-                             &: alignment_mask)
-                      ; (* Align the address we read. Which step will
-                           make sure we do not write the lower bytes. *)
-                        address
-                        <-- (address.value
-                             &: ~:(uresize ~width:(width address.value) alignment_mask))
+                        which_step <-- unaligned_bits
                       ; enter_reading_data
                       ]
                   ]
@@ -175,16 +146,7 @@ struct
                   ]
               ] )
           ; ( Writing_data
-            , [ Axi.Source.Of_always.assign
-                  output_packet
-                  { tvalid = vdd
-                  ; tdata = mux which_step.value (split_lsb ~part_width:8 read_data.value)
-                  ; tlast = length.value ==:. 1
-                  ; tkeep = ones 1
-                  ; tstrb = ones 1
-                  ; tuser = zero Axi.Source.port_widths.tuser
-                  }
-              ; when_
+            , [ when_
                   output_packet_ready
                   [ decr length
                   ; incr which_step
@@ -192,20 +154,34 @@ struct
                        to reading data. We could prefetch here to speed this
                        up and avoid the stall. *)
                     when_
-                      (which_step.value ==:. address_stride - 1)
-                      [ which_step <--. 0
-                      ; incr ~by:address_stride address
-                      ; enter_reading_data
-                      ]
+                      (which_step.value ==:. bytes_per_beat - 1)
+                      [ which_step <--. 0; incr address; enter_reading_data ]
                   ; (* If this was the last write, reset the entire state machine to idle. *)
                     when_ (length.value ==:. 1) [ reset ]
                   ]
               ] )
           ]
       ];
+    let%hw length_byte = mux which_step.value (split_msb ~part_width:8 length.value) in
     { O.busy = ~:(state.is State.Idle)
-    ; done_ = done_.value
-    ; output_packet = Axi.Source.Of_always.value output_packet
+    ; output_packet =
+        { tvalid =
+            state.is Writing_header |: state.is Writing_length |: state.is Writing_data
+        ; tdata =
+            (let base =
+               mux2
+                 (state.is Writing_data)
+                 (mux which_step.value (split_lsb ~part_width:8 read_data.value))
+                 length_byte
+             in
+             match Config.header with
+             | Some header -> mux2 (state.is Writing_header) (Signal.of_char header) base
+             | None -> base)
+        ; tlast = state.is Writing_data &: (length.value ==:. 1)
+        ; tkeep = ones 1
+        ; tstrb = ones 1
+        ; tuser = zero Axi.Source.port_widths.tuser
+        }
     ; memory = { valid = do_read.value; data = { address = address.value } }
     }
   ;;

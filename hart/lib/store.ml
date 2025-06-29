@@ -1,21 +1,17 @@
-(** Store implements SW, SH and SB. It implements
-    a state machine that first collects the current state of the word around
-    and address, then writes the new desired word at the align address to a
-    register, then waits for the memory controller to write that word out.
+(** Store implements SW, SH and SB. It writes using byte enables.
 
     We do not support unaligned writes. *)
 open! Core
 
 open Hardcaml
 open Hardcaml_memory_controller
-open! Signal
+open Signal
 open Always
 
 (* TODO: Move the actual memory write to the write back step in the pipeline so we can terminate it. *)
-(* TODO: Memory controller could take a byte enable when writing and manage any
-   read before write behaviour itself. *)
 
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
+  let data_width = Memory.data_bus_width
   let register_width = Register_width.bits Hart_config.register_width
 
   module I = struct
@@ -27,9 +23,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       ; destination : 'a [@bits register_width]
       ; value : 'a [@bits register_width]
       ; write_bus : 'a Memory.Write_bus.Dest.t
-      ; read_bus : 'a Memory.Read_bus.Dest.t
       ; write_response : 'a Memory.Write_response.With_valid.t
-      ; read_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -39,7 +33,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       { error : 'a
       ; finished : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t
-      ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -47,61 +40,14 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
   module State = struct
     type t =
       | Idle
-      | Preparing_load
-      | Waiting_for_load
       | Preparing_store
       | Waiting_for_store
     [@@deriving sexp, enumerate, compare]
   end
 
-  let combine_old_and_new_word ~op ~destination ~old_word ~new_word _scope =
-    mux_init
-      ~f:(fun alignment ->
-        Funct3.Store.Onehot.switch
-          ~f:(function
-            | Funct3.Store.Sw ->
-              (* In practice, this isn't possible as we do not do the load step
-                 with aligned words and do not support unaligned words. *)
-              zero register_width
-            | Sh ->
-              (* We do not support stores for half words that
-                 aren't aligned against the memory bus. The error flag would
-                 have already been set so we would never use these signals
-                 anyway. *)
-              if alignment % 2 <> 0
-              then zero register_width
-              else (
-                let alignment = alignment / 2 in
-                let write_word = sel_bottom ~width:16 new_word in
-                let parts = split_lsb ~part_width:16 old_word in
-                concat_lsb
-                  (List.take parts alignment
-                   @ [ write_word ]
-                   @ List.drop parts (alignment + 1)))
-            | Sb ->
-              (* We don't have any alignment requirements for byte writes. *)
-              let byte = sel_bottom ~width:8 new_word in
-              let parts = split_lsb ~part_width:8 old_word in
-              concat_lsb
-                (List.take parts alignment @ [ byte ] @ List.drop parts (alignment + 1)))
-          op)
-      (uresize ~width:(Int.floor_log2 (register_width / 8)) destination)
-      (register_width / 8)
-  ;;
-
   let create
         (scope : Scope.t)
-        ({ I.clock
-         ; clear
-         ; enable
-         ; op
-         ; destination
-         ; value
-         ; write_bus
-         ; read_bus
-         ; write_response
-         ; read_response
-         } :
+        ({ I.clock; clear; enable; op; destination; value; write_bus; write_response } :
           _ I.t)
     =
     (* TODO: There is an awful lot of overlap with load. Particularly
@@ -109,30 +55,91 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
-    let current_state = State_machine.create (module State) reg_spec in
-    ignore (current_state.current -- "current_state" : Signal.t);
-    let aligned_address =
-      (* Mask the read address to a 4-byte alignment. *)
-      destination &: ~:(of_unsigned_int ~width:register_width 0b11)
+    let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
+    let%hw aligned_address =
+      reg
+        ~enable:(current_state.is Idle)
+        reg_spec_no_clear
+        (Memory.byte_address_to_memory_address destination).value
     in
-    let unaligned_bits =
+    let%hw unaligned_bits =
       Funct3.Store.Onehot.switch
         ~f:(function
-          | Funct3.Store.Sw -> uresize ~width:2 destination &:. 0b11
-          | Sh -> uresize ~width:2 destination &:. 0b1
+          | Funct3.Store.Sw -> sel_bottom ~width:2 destination &:. 0b11
+          | Sh -> sel_bottom ~width:2 destination &:. 0b1
           | Sb -> zero 2)
         op
       -- "unaligned_bits"
     in
-    let is_load_word = Funct3.Store.Onehot.valid op Funct3.Store.Sw in
     let is_unaligned = unaligned_bits <>:. 0 in
     let inputs_are_error = is_unaligned in
-    let word_to_write =
+    let slot_address ~width ~data_width scope =
+      let slots = data_width / width in
+      let bytes_per_slot = width / 8 in
+      let%hw slot_address =
+        (* address_bits_for has a min value of one. *)
+        if bytes_per_slot = 1
+        then destination
+        else drop_bottom ~width:(address_bits_for (bytes_per_slot - 1)) destination
+      in
+      let%hw slot_address_trunc =
+        sel_bottom ~width:(address_bits_for slots) slot_address
+      in
+      slots, slot_address_trunc
+    in
+    let%hw word_to_write =
       (* The word to write back to memory during
          Waiting_for_store.  If we are writing a full word, this is set on cycle 0,
          otherwise we need to do a load from the memory controller and concat it
          with the desire write to produce the word to write back. *)
-      Variable.reg ~width:register_width reg_spec_no_clear
+      reg
+        ~enable:(current_state.is Idle)
+        reg_spec_no_clear
+        (let build_shift ~width ~data_width scope =
+           let bytes_per_slot = width / 8 in
+           let slots, slot_address = slot_address ~width ~data_width scope in
+           mux_init
+             ~f:(fun t -> of_unsigned_int ~width:(data_width / 8) (bytes_per_slot * t))
+             slot_address
+             slots
+         in
+         let%hw shift_amount =
+           Funct3.Store.Onehot.switch
+             ~f:(function
+               | Funct3.Store.Sw ->
+                 build_shift ~width:32 ~data_width (Scope.sub_scope scope "sw")
+               | Sh -> build_shift ~width:16 ~data_width (Scope.sub_scope scope "sh")
+               | Sb -> build_shift ~width:8 ~data_width (Scope.sub_scope scope "sb"))
+             op
+         in
+         let%hw data_to_write = uextend ~width:data_width value in
+         log_shift
+           ~by:shift_amount
+           ~f:(fun t ~by:bytes_ -> sll ~by:(bytes_ * 8) t)
+           data_to_write)
+    in
+    let%hw write_mask =
+      reg
+        ~enable:(current_state.is Idle)
+        reg_spec_no_clear
+        (let build_mask ~width ~data_width scope =
+           let slots, slot_address = slot_address ~width ~data_width scope in
+           mux_init
+             ~f:(fun t ->
+               With_zero_width.(
+                 concat_lsb [ zero (width / 8 * t); repeat ~count:(width / 8) (Some vdd) ])
+               |> Option.value_exn
+               |> uextend ~width:(data_width / 8))
+             slot_address
+             slots
+         in
+         Funct3.Store.Onehot.switch
+           ~f:(function
+             | Funct3.Store.Sw ->
+               build_mask ~width:32 ~data_width (Scope.sub_scope scope "mask_sw")
+             | Sh -> build_mask ~width:16 ~data_width (Scope.sub_scope scope "mask_sh")
+             | Sb -> build_mask ~width:8 ~data_width (Scope.sub_scope scope "mask_sb"))
+           op)
     in
     let store_finished = Variable.wire ~default:gnd in
     (* TODO: Error signal is not correctly propagated here. *)
@@ -144,34 +151,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
                   [ if_
                       inputs_are_error
                       [ store_finished <-- vdd ]
-                      [ if_
-                          is_load_word
-                          [ word_to_write <-- value
-                          ; current_state.set_next Preparing_store
-                          ]
-                          [ (* To ease timings, we don't issue a load thsi cycle. *)
-                            current_state.set_next Preparing_load
-                          ]
-                      ]
-                  ]
-              ] )
-          ; ( Preparing_load
-            , [ when_ read_bus.ready [ current_state.set_next Waiting_for_load ] ] )
-          ; ( Waiting_for_load
-            , [ when_
-                  read_response.valid
-                  [ word_to_write
-                    <-- combine_old_and_new_word
-                        (* Here we supply the
-                           unaligned destination as it is used to decide how to
-                           rewrite the word. *)
-                          ~op
-                          ~destination:
-                            (reg ~enable:(current_state.is Idle) reg_spec destination)
-                          ~old_word:read_response.value.read_data
-                          ~new_word:value
-                          scope
-                  ; current_state.set_next Preparing_store
+                      [ current_state.set_next Preparing_store ]
                   ]
               ] )
           ; ( Preparing_store
@@ -192,16 +172,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     ; write_bus =
         { valid = current_state.is Preparing_store
         ; data =
-            { address = reg ~enable:(current_state.is Idle) reg_spec aligned_address
-            ; write_data = word_to_write.value
-            ; wstrb =
-                ones (width word_to_write.value / 8) (* TODO: Use byte enables here: *)
-            }
-        }
-    ; read_bus =
-        { valid = current_state.is Preparing_load
-        ; data =
-            { address = reg ~enable:(current_state.is Idle) reg_spec aligned_address }
+            { address = aligned_address; write_data = word_to_write; wstrb = write_mask }
         }
     }
   ;;

@@ -179,29 +179,33 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
   end
   in
   let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
-  Harness.run ~trace:`All_named ~create:Machine.create (fun ~inputs ~outputs sim ->
-    (* The fifo needs a clear cycle to initialize *)
-    inputs.clear := vdd;
-    Cyclesim.cycle sim;
-    inputs.clear := gnd;
-    Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
-    let rec loop_until_ready_for_next_input () =
-      Cyclesim.cycle sim;
-      if Bits.to_bool !(outputs.ready_for_next_input)
-      then ()
-      else loop_until_ready_for_next_input ()
-    in
-    List.iter
-      ~f:(fun input ->
-        inputs.data_in_valid := vdd;
-        inputs.data_in := of_unsigned_int ~width:8 input;
-        Cyclesim.cycle sim;
-        inputs.data_in_valid := gnd;
-        loop_until_ready_for_next_input ())
-      all_inputs;
-    (* Wait some cycles for the writes to all finalize. *)
-    Cyclesim.cycle ~n:100 sim;
-    print_ram sim)
+  Harness.run
+    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
+    ~trace:`All_named
+    ~create:Machine.create
+    (fun ~inputs ~outputs sim ->
+       (* The fifo needs a clear cycle to initialize *)
+       inputs.clear := vdd;
+       Cyclesim.cycle sim;
+       inputs.clear := gnd;
+       Sequence.range 0 50 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+       let rec loop_until_ready_for_next_input () =
+         Cyclesim.cycle sim;
+         if Bits.to_bool !(outputs.ready_for_next_input)
+         then ()
+         else loop_until_ready_for_next_input ()
+       in
+       List.iter
+         ~f:(fun input ->
+           inputs.data_in_valid := vdd;
+           inputs.data_in := of_unsigned_int ~width:8 input;
+           Cyclesim.cycle sim;
+           inputs.data_in_valid := gnd;
+           loop_until_ready_for_next_input ())
+         all_inputs;
+       (* Wait some cycles for the writes to all finalize. *)
+       Cyclesim.cycle ~n:100 sim;
+       print_ram sim)
 ;;
 
 let%expect_test "test" =
@@ -222,6 +226,7 @@ let%expect_test "test" =
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Saved waves to /home/ubuntu/waves//_test.hardcamlwaveform
     |}];
   test
     ~clock_frequency:200
@@ -240,5 +245,6 @@ let%expect_test "test" =
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+    Saved waves to /home/ubuntu/waves//_test_1.hardcamlwaveform
     |}]
 ;;

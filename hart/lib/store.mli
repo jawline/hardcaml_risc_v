@@ -19,9 +19,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) : si
       ; destination : 'a [@bits register_width]
       ; value : 'a [@bits register_width]
       ; write_bus : 'a Memory.Write_bus.Dest.t
-      ; read_bus : 'a Memory.Read_bus.Dest.t
       ; write_response : 'a Memory.Write_response.With_valid.t
-      ; read_response : 'a Memory.Read_response.With_valid.t
       }
     [@@deriving hardcaml]
   end
@@ -31,7 +29,6 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) : si
       { error : 'a
       ; finished : 'a
       ; write_bus : 'a Memory.Write_bus.Source.t
-      ; read_bus : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml]
   end

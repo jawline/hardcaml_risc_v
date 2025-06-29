@@ -6,6 +6,8 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
+let debug = true
+
 module Hart_config = struct
   let register_width = Register_width.B32
   let num_registers = 32
@@ -17,7 +19,7 @@ module Memory_controller = Bram_memory_controller.Make (struct
     let num_write_channels = 1
     let num_read_channels = 1
     let address_width = 32
-    let data_bus_width = 32
+    let data_bus_width = 128
   end)
 
 open Memory_controller.Memory_bus
@@ -91,10 +93,13 @@ end
 
 module Harness = Cyclesim_harness.Make (Test_machine.I) (Test_machine.O)
 
+let waves_config = if debug then Waves_config.to_home_subdirectory () else No_waves
+
 let create_sim f =
   Harness.run
     ~trace:`All_named
     ~create:Test_machine.create
+    ~waves_config
     (fun ~inputs:_ ~outputs:_ sim -> f sim)
 ;;
 
@@ -113,7 +118,8 @@ let test ~address ~funct3 sim =
     if Bits.to_bool !(outputs_before.finished) then () else loop_until_finished (max - 1)
   in
   loop_until_finished 50;
-  print_s [%message (outputs : Bits.t ref Test_machine.O.t)]
+  let outputs = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs in
+  print_s [%message (outputs : int Test_machine.O.t)]
 ;;
 
 let%expect_test "lw" =
@@ -127,45 +133,48 @@ let%expect_test "lw" =
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000000) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 0) (error 0) (finished 0))) |}];
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 1) (error 0) (finished 0))) |}];
     (try test ~address:8 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 2) (error 0) (finished 0))) |}];
     (try test ~address:12 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 3) (error 0) (finished 0))) |}];
+    (try test ~address:16 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+     | _ -> print_s [%message "BUG: Timed out or exception"]);
+    [%expect {| (outputs ((new_rd 4) (error 0) (finished 0))) |}];
+    (try test ~address:20 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+     | _ -> print_s [%message "BUG: Timed out or exception"]);
+    [%expect {| (outputs ((new_rd 5) (error 0) (finished 0))) |}];
+    (try test ~address:24 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+     | _ -> print_s [%message "BUG: Timed out or exception"]);
+    [%expect {| (outputs ((new_rd 6) (error 0) (finished 0))) |}];
+    (try test ~address:28 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
+     | _ -> print_s [%message "BUG: Timed out or exception"]);
+    [%expect {| (outputs ((new_rd 7) (error 0) (finished 0))) |}];
     (* Unaligned loads, we expect these to fail *)
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 4) (error 1) (finished 1))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 4) (error 1) (finished 1))) |}];
     (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 4) (error 1) (finished 1))) |}];
     (try test ~address:5 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}];
     (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}];
     (try test ~address:7 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}])
+    [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_lw.hardcamlwaveform |}]
 ;;
 
 let%expect_test "lh" =
@@ -179,25 +188,21 @@ let%expect_test "lh" =
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000000) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 0) (error 0) (finished 0))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 1) (error 0) (finished 0))) |}];
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 2) (error 0) (finished 0))) |}];
     (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 3) (error 0) (finished 0))) |}];
     (* Unaligned loads, we expect these to fail *)
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 1) (finished 1))) |}])
+    [%expect {| (outputs ((new_rd 0) (error 1) (finished 1))) |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_lh.hardcamlwaveform |}]
 ;;
 
 let%expect_test "lb" =
@@ -209,24 +214,20 @@ let%expect_test "lb" =
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000000) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 0) (error 0) (finished 0))) |}];
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000001) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 1) (error 0) (finished 0))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000010) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 2) (error 0) (finished 0))) |}];
     (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000011) (error 0) (finished 0))) |}];
+    [%expect {| (outputs ((new_rd 3) (error 0) (finished 0))) |}];
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect
-      {| (outputs ((new_rd 00000000000000000000000000000100) (error 0) (finished 0))) |}])
+    [%expect {| (outputs ((new_rd 4) (error 0) (finished 0))) |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_lb.hardcamlwaveform |}]
 ;;
 
 (* TODO: Sign extension tests *)

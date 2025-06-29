@@ -168,15 +168,13 @@ struct
         ~clock
         ~clear
         ~valid
-        ~read_bus
-        ~read_response
         ~write_bus
         ~write_response
         ~(registers : _ Registers.t)
         (decoded_instruction : _ Decoded_instruction.t)
         scope
     =
-    let { Store.O.finished; error; read_bus; write_bus } =
+    let { Store.O.finished; error; write_bus } =
       Store.hierarchical
         scope
         { Store.I.clock
@@ -188,8 +186,6 @@ struct
         ; op = decoded_instruction.store_onehot
         ; destination = decoded_instruction.argument_1 +: decoded_instruction.argument_3
         ; value = decoded_instruction.argument_2
-        ; read_bus
-        ; read_response
         ; write_bus
         ; write_response
         }
@@ -201,7 +197,7 @@ struct
         ; error
         ; new_pc = registers.pc +:. 4
         }
-    ; read_bus = Some read_bus
+    ; read_bus = None
     ; write_bus = Some write_bus
     }
   ;;
@@ -295,8 +291,6 @@ struct
            ~clock
            ~clear
            ~valid
-           ~read_bus
-           ~read_response
            ~write_bus
            ~write_response
            ~registers

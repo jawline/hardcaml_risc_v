@@ -60,17 +60,21 @@ struct
   end
 
   let create ~build_mode ~read_latency scope { I.clock; clear; uart_rx } =
-    let axi = Axi4.O.Of_signal.wires () in
+    let memory = Axi4.O.Of_signal.wires () in
     let mem =
-      Memory.hierarchical ~build_mode ~read_latency scope { Memory.I.clock; clear; axi }
+      Memory.hierarchical
+        ~build_mode
+        ~read_latency
+        scope
+        { Memory.I.clock; clear; memory }
     in
     let core =
       System.hierarchical
         ~build_mode
         scope
-        { System.I.clock; clear; uart_rx; memory = mem.axi }
+        { System.I.clock; clear; uart_rx; memory = mem.memory }
     in
-    Axi4.O.Of_signal.assign axi core.memory;
+    Axi4.O.Of_signal.assign memory core.memory;
     { O.registers = core.registers
     ; uart_tx = core.uart_tx
     ; uart_rx_valid = core.uart_rx_valid

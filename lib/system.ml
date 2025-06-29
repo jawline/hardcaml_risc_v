@@ -119,7 +119,7 @@ struct
       { clock : 'a
       ; clear : 'a
       ; uart_rx : 'a option [@exists include_uart_wires]
-      ; memory : 'a Axi4.I.t
+      ; memory : 'a Axi4.I.t [@rtlprefix "axi_i$"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -130,7 +130,7 @@ struct
       ; uart_tx : 'a option [@exists include_uart_wires]
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
       ; video_out : 'a Video_out_with_memory.O.t option [@exists include_video_out]
-      ; memory : 'a Axi4.O.t
+      ; memory : 'a Axi4.O.t [@rtlprefix "axi_o$"]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -370,7 +370,7 @@ struct
         ; write_to_controller =
             (of_dma ~f:(fun dma -> [ dma.write_request ]) |> Option.value ~default:[])
             @ List.concat write_bus_per_hart
-        ; axi = i.memory
+        ; memory = i.memory
         }
     in
     let hart_ecall_transactions =
@@ -423,7 +423,7 @@ struct
     ; uart_tx = of_dma ~f:Dma.O.uart_tx
     ; uart_rx_valid = of_dma ~f:Dma.O.uart_rx_valid
     ; video_out = of_video_out ~f:Video_data.video_data
-    ; memory = controller.axi
+    ; memory = controller.memory
     }
   ;;
 

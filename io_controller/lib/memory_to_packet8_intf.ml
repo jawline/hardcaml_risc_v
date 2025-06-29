@@ -34,7 +34,6 @@ module M (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     module O : sig
       type 'a t =
         { busy : 'a
-        ; done_ : 'a
         ; output_packet : 'a Axi.Source.t [@rtlprefix "output$"]
         ; memory : 'a Memory.Read_bus.Source.t [@rtlprefix "memory$"]
         }

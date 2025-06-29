@@ -181,7 +181,7 @@ let send_dma_message ~address ~packet sim =
     whole_packet
 ;;
 
-let test ~print_frames ~cycles ~data sim =
+let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
   let sim, _, _ = sim in
   let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
   (* Initialize the main memory to some known values for testing. *)
@@ -230,14 +230,16 @@ let test ~print_frames ~cycles ~data sim =
   then
     List.iteri
       ~f:(fun idx frame ->
-        printf "Framebuffer %i\n" idx;
-        Sequence.range 0 output_height
-        |> Sequence.iter ~f:(fun y ->
-          Sequence.range 0 output_width
-          |> Sequence.iter ~f:(fun x ->
-            let px = Array.get frame ((y * output_width) + x) <> 0 in
-            printf "%s" (if px then "*" else "-"));
-          printf "\n"))
+        if idx >= skip_first_n_frames
+        then (
+          printf "Framebuffer %i\n" idx;
+          Sequence.range 0 output_height
+          |> Sequence.iter ~f:(fun y ->
+            Sequence.range 0 output_width
+            |> Sequence.iter ~f:(fun x ->
+              let px = Array.get frame ((y * output_width) + x) <> 0 in
+              printf "%s" (if px then "*" else "-"));
+            printf "\n")))
       (* Frames are in reverse order because we're prepending. *)
       (List.rev video_emulator.frames);
   match outputs.registers with

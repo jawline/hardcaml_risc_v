@@ -5,6 +5,7 @@ open Signal
 open Always
 
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = struct
+  let data_width = Memory.data_bus_width
   let register_width = Register_width.bits Hart_config.register_width
 
   module I = struct
@@ -42,20 +43,15 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         (scope : Scope.t)
         ({ I.clock; clear; enable; op; address; read_bus; read_response } : _ I.t)
     =
-    (* TODO: We currently disallow loads that are not aligned on a {load width}
-       boundary. We could support this by loading a second word and muxing the
-       result at the cost of an extra load cycle.  *)
-    (* TODO: Alignment is currently decided by hardcoded bit numbers but it is
-       computable from our word size which would make this module generic over
-       64 and 32 bit harts. *)
-    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
-    let current_state = State_machine.create (module State) reg_spec in
-    ignore (current_state.current -- "current_state" : Signal.t);
-    let load_valid = Variable.wire ~default:gnd in
+    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
+    let%hw_var load_valid = Variable.wire ~default:gnd in
     let%hw aligned_address =
-      (* Mask the read address to a 4-byte alignment. *)
-      concat_msb [ drop_bottom address ~width:2; zero 2 ]
+      reg
+        ~enable:(current_state.is Idle)
+        reg_spec_no_clear
+        (Memory.byte_address_to_memory_address address).value
     in
     let%hw is_unaligned =
       Funct3.Load.Onehot.switch
@@ -73,6 +69,57 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         ]
     in
     let finished = Variable.wire ~default:gnd in
+    let slot_address ~width ~data_width scope =
+      let slots = data_width / width in
+      let bytes_per_slot = width / 8 in
+      let%hw slot_address =
+        (* address_bits_for has a min value of one. *)
+        if bytes_per_slot = 1
+        then address
+        else drop_bottom ~width:(address_bits_for (bytes_per_slot - 1)) address
+      in
+      let%hw slot_address_trunc =
+        sel_bottom ~width:(address_bits_for slots) slot_address
+      in
+      slots, slot_address_trunc
+    in
+    let how_many_bytes_to_shift ~width ~data_width scope =
+      let slots, slot_address = slot_address ~width ~data_width scope in
+      mux_init
+        ~f:(fun t ->
+          of_unsigned_int ~width:(address_bits_for (data_width / 8)) (t * width / 8))
+        slot_address
+        slots
+    in
+    let%hw shift_amt_in_bytes =
+      reg
+        ~enable:(current_state.is Idle)
+        reg_spec_no_clear
+        (Funct3.Load.Onehot.switch
+           ~f:(function
+             | Funct3.Load.Lw ->
+               how_many_bytes_to_shift
+                 ~width:32
+                 ~data_width
+                 (Scope.sub_scope scope "shift_lw")
+             | Lh | Lhu ->
+               how_many_bytes_to_shift
+                 ~width:16
+                 ~data_width
+                 (Scope.sub_scope scope "shift_lh")
+             | Lb | Lbu ->
+               how_many_bytes_to_shift
+                 ~width:8
+                 ~data_width
+                 (Scope.sub_scope scope "shift_lb"))
+           op)
+    in
+    let cached_op =
+      Funct3.Load.Onehot.Of_signal.reg
+        ~enable:(current_state.is Idle)
+        reg_spec_no_clear
+        op
+    in
     compile
       [ current_state.switch
           [ ( State.Idle
@@ -93,12 +140,15 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
           ]
       ];
     { O.new_rd =
-        (let%hw alignment_bits = address &:. 0b11 in
-         let%hw full_word = read_response.value.read_data in
-         let%hw half_word =
-           mux (alignment_bits <>:. 0) (split_lsb ~part_width:16 full_word)
+        (let%hw shifted_result =
+           log_shift
+             ~by:shift_amt_in_bytes
+             ~f:(fun t ~by -> srl ~by:(by * 8) t)
+             read_response.value.read_data
          in
-         let%hw byte = mux alignment_bits (split_lsb ~part_width:8 full_word) in
+         let%hw full_word = sel_bottom ~width:register_width shifted_result in
+         let%hw half_word = sel_bottom ~width:16 shifted_result in
+         let%hw byte = sel_bottom ~width:8 shifted_result in
          Funct3.Load.Onehot.switch
            ~f:(function
              | Funct3.Load.Lw -> full_word
@@ -106,11 +156,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              | Lhu -> uresize ~width:register_width half_word
              | Lb -> Util.sign_extend ~width:register_width byte
              | Lbu -> uresize ~width:register_width byte)
-           op)
+           cached_op)
     ; error = read_response.valid |: inputs_are_error
     ; finished = finished.value
-    ; read_bus =
-        { valid = load_valid.value; data = { address = reg reg_spec aligned_address } }
+    ; read_bus = { valid = load_valid.value; data = { address = aligned_address } }
     }
   ;;
 

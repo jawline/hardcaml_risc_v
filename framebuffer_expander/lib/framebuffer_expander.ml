@@ -28,6 +28,8 @@ module Make
 struct
   open Config
 
+  let data_width = Memory.data_bus_width
+
   module I = struct
     type 'a t =
       { clock : 'a
@@ -103,8 +105,6 @@ struct
     whole_component + if ratio_component <> 0 then 1 else 0
   ;;
 
-  let row_offset_in_bytes = row_offset_in_words * word_in_bytes
-
   let create scope (i : _ I.t) =
     let open Always in
     let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
@@ -149,9 +149,7 @@ struct
     (* When not fetched we will prefetch the next data byte of the body. *)
     let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data_valid = Variable.reg ~width:1 reg_spec_no_clear in
-    let%hw_var data =
-      Variable.reg ~width:I.port_widths.memory_response.value.read_data reg_spec_no_clear
-    in
+    let%hw_var data = Variable.reg ~width:data_width reg_spec_no_clear in
     let current_state = State_machine.create (module State) reg_spec in
     ignore (current_state.current -- "current_state" : Signal.t);
     let%hw which_bit =
@@ -173,14 +171,18 @@ struct
          else [ current_state.set_next Y_margin_start ])
         |> proc
       in
+      let aligned_address =
+        drop_bottom ~width:(address_bits_for (data_width / 8)) i.start_address
+        |> uextend ~width:(width next_address.value)
+      in
       proc
         [ reg_x <--. 0
         ; reg_y <--. 0
         ; x_px_ctr <--. 0
         ; y_line_ctr <--. 0
         ; y_px_ctr <--. 0
-        ; next_address <-- i.start_address
-        ; row_start_address <-- i.start_address
+        ; next_address <-- aligned_address
+        ; row_start_address <-- aligned_address
         ; clear_fetched
         ; enter_state
         ]
@@ -206,7 +208,7 @@ struct
     in
     let move_on_to_next_y_row =
       let next_row_address =
-        reg reg_spec_no_clear (row_start_address.value +:. row_offset_in_bytes)
+        reg reg_spec_no_clear (row_start_address.value +:. row_offset_in_words)
       in
       let at_y_row_limit = reg_y.value ==:. input_height - 1 in
       [ y_px_ctr <--. 0
@@ -248,9 +250,7 @@ struct
             ; incr reg_x
             ; when_
                 (which_bit ==: ones (width which_bit))
-                [ next_address <-- reg reg_spec_no_clear (next_address.value +:. 4)
-                ; clear_fetched
-                ]
+                [ incr next_address; clear_fetched ]
             ; when_
                 (reg_x.value ==:. input_width - 1)
                 [ reg_x <--. 0; move_on_to_next_part ]
@@ -342,13 +342,12 @@ let%expect_test "margins and scaling factor tests" =
         (M.margin_y_start : int)
         (M.margin_y_end : int)
         (M.word_in_bytes : int)
-        (M.row_offset_in_bytes : int)
         (M.row_offset_in_words : int)];
   [%expect
     {|
     ((M.scaling_factor_x 44) (M.scaling_factor_y 11) (M.margin_x_start 1)
      (M.margin_x_end 0) (M.margin_y_start 1) (M.margin_y_end 1)
-     (M.word_in_bytes 4) (M.row_offset_in_bytes 4) (M.row_offset_in_words 1))
+     (M.word_in_bytes 4) (M.row_offset_in_words 1))
     |}]
 ;;
 
@@ -381,12 +380,11 @@ let%expect_test "margins and scaling factor tests" =
         (M.margin_y_start : int)
         (M.margin_y_end : int)
         (M.word_in_bytes : int)
-        (M.row_offset_in_bytes : int)
         (M.row_offset_in_words : int)];
   [%expect
     {|
     ((M.scaling_factor_x 20) (M.scaling_factor_y 22) (M.margin_x_start 0)
      (M.margin_x_end 0) (M.margin_y_start 8) (M.margin_y_end 8)
-     (M.word_in_bytes 4) (M.row_offset_in_bytes 8) (M.row_offset_in_words 2))
+     (M.word_in_bytes 4) (M.row_offset_in_words 2))
     |}]
 ;;
