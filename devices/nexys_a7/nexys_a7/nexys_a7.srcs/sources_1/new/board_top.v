@@ -49,6 +49,13 @@ wire[1:0] bresp;
 wire[7:0] bid;
 wire wready;
 wire bvalid;
+
+wire[24:0] axi_o$memory$awaddr;
+wire[24:0] axi_o$memory$araddr;
+wire [7:0] axi_o$memory$awid;
+wire [7:0] axi_o$memory$arid;
+wire [31:0] axi_o$memory$wdata;
+wire [3:0] axi_o$memory$wstrb;
     
 // TODO: Async fifo the memory to cross into the CPU clock domain rather than tethering the CPU to the memory ui clock
 board_clocks clocks(.reset(~rst_n), .board_clock(board_clock), .io_delay_ref_clock(io_delay_ref_clock), .memory_clock(memory_clock));
@@ -60,41 +67,41 @@ top cpu (
 .clear(cpu_rst),
 .uart_rx(uart_rx),
 .uart_tx(uart_tx),
-.uart_rx_valid(uart_rx_valid)//,
+.uart_rx_valid(uart_rx_valid),
 
 //// Read response assignments
-//.axi_i$memory$rready(rready),
-//.axi_i$memory$rlast(rlast),
-//.axi_i$memory$rresp(rresp),
-//.axi_i$memory$rdata(rdata),
-//.axi_i$memory$rid(rid),
-//.axi_i$memory$rvalid(rvalid),
-//
-//// Write Response Assignments
-//.axi_i$memory$bresp(bresp),
-//.axi_i$memory$bid(bid),
-//.axi_i$memory$wready(wready),
-//.axi_i$memory$bvalid(bvalid),
-//
-// // Write requests
-//.axi_o$memory$awvalid(axi_o$memory$awvalid),
-//.axi_o$memory$awid(axi_o$memory$awid),
-//.axi_o$memory$awaddr(axi_o$memory$awaddr),
-//.axi_o$memory$wdata(axi_o$memory$wdata),
-//.axi_o$memory$wstrb(axi_o$memory$wstrb),
-//.axi_o$memory$wlast(axi_o$memory$wlast),
-//
-//// Read Requests
-//.axi_o$memory$arvalid(axi_o$memory$arvalid),
-//.axi_o$memory$arid(axi_o$memory$arid),
-//.axi_o$memory$araddr(axi_o$memory$araddr),
-//.axi_o$memory$rready(axi_o$memory$rready)
+.axi_i$memory$rready(rready),
+.axi_i$memory$rlast(rlast),
+.axi_i$memory$rresp(rresp),
+.axi_i$memory$rdata(rdata),
+.axi_i$memory$rid(rid),
+.axi_i$memory$rvalid(rvalid),
+
+// Write Response Assignments
+.axi_i$memory$bresp(bresp),
+.axi_i$memory$bid(bid),
+.axi_i$memory$wready(wready),
+.axi_i$memory$bvalid(bvalid),
+
+ // Write requests
+.axi_o$memory$awvalid(axi_o$memory$awvalid),
+.axi_o$memory$awid(axi_o$memory$awid),
+.axi_o$memory$awaddr(axi_o$memory$awaddr),
+.axi_o$memory$wdata(axi_o$memory$wdata),
+.axi_o$memory$wstrb(axi_o$memory$wstrb),
+.axi_o$memory$wlast(axi_o$memory$wlast),
+
+// Read Requests
+.axi_o$memory$arvalid(axi_o$memory$arvalid),
+.axi_o$memory$arid(axi_o$memory$arid),
+.axi_o$memory$araddr(axi_o$memory$araddr),
+.axi_o$memory$rready(axi_o$memory$rready)
 );
 
 // Write response assignments
 ddr_memory main_memory (
 .aresetn(rst_n),
-.sys_rst(~rst_n),
+.sys_rst(rst_n),
 .app_sr_req(1'b0),
 .app_ref_req(1'b0),
 .app_zq_req(1'b0),
@@ -102,6 +109,8 @@ ddr_memory main_memory (
 .clk_ref_i(io_delay_ref_clock),
 .ui_clk(cpu_clock),
 .ui_clk_sync_rst(cpu_rst),
+
+.init_calib_complete(init_calib_complete),
 
  // DDR2 interface
 .ddr2_addr(ddr2_addr),
@@ -123,10 +132,10 @@ ddr_memory main_memory (
 .s_axi_wvalid(axi_o$memory$awvalid),
 .s_axi_awvalid(axi_o$memory$awvalid),
 .s_axi_awid(axi_o$memory$awid),
-.s_axi_awaddr({axi_o$memory$awaddr, {2'b0}}),
+.s_axi_awaddr({axi_o$memory$awaddr, {2'b0}}),   
 .s_axi_wdata(axi_o$memory$wdata),
-.s_axi_awlen(7'b0000001),
-.s_axi_awsize(3'b010),
+.s_axi_awlen(7'b0000000),
+.s_axi_awsize(3'b0101),
 .s_axi_awburst(2'b00),
 .s_axi_awlock(1'b0),
 .s_axi_awcache(4'b0011),
@@ -140,8 +149,8 @@ ddr_memory main_memory (
 .s_axi_arvalid(axi_o$memory$arvalid),
 .s_axi_arid(axi_o$memory$arid),
 .s_axi_araddr({axi_o$memory$araddr, {2'b0}}),
-.s_axi_arlen(7'b0000001),
-.s_axi_arsize('b010),
+.s_axi_arlen(7'b0000000),
+.s_axi_arsize('b101),
 .s_axi_arburst(2'b00),
 .s_axi_arqos(4'b0000),
 .s_axi_arprot(4'b0000),
@@ -155,22 +164,25 @@ ddr_memory main_memory (
 .s_axi_rdata(rdata),
 .s_axi_rid(rid),
 .s_axi_rvalid(rvalid),
+.s_axi_arready(s_axi_arready),
 
 // Writes (Response)
 .s_axi_bresp(bresp),
 .s_axi_bid(bid),
-.s_axi_bvalid(bvalid)
+.s_axi_bvalid(bvalid),
+.s_axi_awready(s_axi_awready),
+.s_axi_wready(s_axi_wready)
 );
 
 // Read response assignments
-assign rready = 1'b1; //(main_memory.s_axi_arready & main_memory.s_axi_rready);
+assign rready = (s_axi_arready);
 
 // Write Response Assignments
-assign wready = 1'b1; // (main_memory.s_axi_awready & main_memory.s_axi_wready);
+assign wready = (s_axi_awready & s_axi_wready);
 
-assign led1 = rst_n;
-assign led2 = uart_rx;
-assign led3 = uart_tx;
-assign led4 = uart_rx_valid;
+assign led1 = init_calib_complete;
+assign led2 = axi_o$memory$awvalid;
+assign led3 = s_axi_awready;
+assign led4 = s_axi_wready;
 
 endmodule
