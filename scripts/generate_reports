@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-dune exec ./bin/top.exe -- report-novideo -dir ~/reports/ -clock "clock:200"   -part xc7a100tcsg324-1  -hier -reports -place -run

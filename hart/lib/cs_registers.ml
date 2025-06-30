@@ -35,10 +35,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       let ns_per_second = 1_000_000_000 in
       if ns_per_second % clock_frequency <> 0
       then
-        raise_s
+        eprint_s
           [%message
-            "BUG: The clock incrementer does not support non-integer ns per second \
-             values."
+            "WARNING: The clock incrementer does not support non-integer ns per second \
+             values. This will lead to a particularly unreliable ns clock on the device."
               (clock_frequency : int)
               (ns_per_second / clock_frequency : int)
               (ns_per_second % clock_frequency : int)];
