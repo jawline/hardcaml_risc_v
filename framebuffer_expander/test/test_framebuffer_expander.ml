@@ -60,7 +60,6 @@ module Machine = struct
       Memory_controller.hierarchical
         ~build_mode:Simulation
         ~priority_mode:Priority_order
-        ~request_delay:1
         ~read_latency:1
         scope
         { Memory_controller.I.clock
@@ -77,7 +76,7 @@ end
 
 module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O)
 
-let debug = true
+let debug = false
 
 let program_ram sim bits =
   let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in

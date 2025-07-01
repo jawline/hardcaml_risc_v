@@ -358,7 +358,6 @@ struct
     let controller =
       Memory_controller.hierarchical
         ~priority_mode:Priority_order
-        ~request_delay:Memory_config.request_delay
         scope
         { Memory_controller.I.clock = i.clock
         ; clear = i.clear

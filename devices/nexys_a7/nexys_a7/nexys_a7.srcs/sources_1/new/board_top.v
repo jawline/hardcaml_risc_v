@@ -48,6 +48,7 @@ wire rvalid;
 wire[1:0] bresp;
 wire[7:0] bid;
 wire wready;
+wire awready;
 wire bvalid;
 
 wire[24:0] axi_o$memory$awaddr;
@@ -67,7 +68,6 @@ top cpu (
 .clear(cpu_rst),
 .uart_rx(uart_rx),
 .uart_tx(uart_tx),
-.uart_rx_valid(uart_rx_valid),
 
 //// Read response assignments
 .axi_i$memory$rready(rready),
@@ -81,10 +81,12 @@ top cpu (
 .axi_i$memory$bresp(bresp),
 .axi_i$memory$bid(bid),
 .axi_i$memory$wready(wready),
+.axi_i$memory$awready(awready),
 .axi_i$memory$bvalid(bvalid),
 
  // Write requests
 .axi_o$memory$awvalid(axi_o$memory$awvalid),
+.axi_o$memory$wvalid(axi_o$memory$wvalid),
 .axi_o$memory$awid(axi_o$memory$awid),
 .axi_o$memory$awaddr(axi_o$memory$awaddr),
 .axi_o$memory$wdata(axi_o$memory$wdata),
@@ -95,7 +97,8 @@ top cpu (
 .axi_o$memory$arvalid(axi_o$memory$arvalid),
 .axi_o$memory$arid(axi_o$memory$arid),
 .axi_o$memory$araddr(axi_o$memory$araddr),
-.axi_o$memory$rready(axi_o$memory$rready)
+.axi_o$memory$rready(axi_o$memory$rready),
+.axi_o$memory$bready(axi_o$memory$bready)
 );
 
 // Write response assignments
@@ -129,10 +132,10 @@ ddr_memory main_memory (
 .ddr2_odt(ddr2_odt),
 
 // Writes (Request)
-.s_axi_wvalid(axi_o$memory$awvalid),
+.s_axi_wvalid(axi_o$memory$wvalid),
 .s_axi_awvalid(axi_o$memory$awvalid),
 .s_axi_awid(axi_o$memory$awid),
-.s_axi_awaddr({axi_o$memory$awaddr, {2'b0}}),   
+.s_axi_awaddr({axi_o$memory$awaddr, {2'b00}}),   
 .s_axi_wdata(axi_o$memory$wdata),
 .s_axi_awlen(7'b0000000),
 .s_axi_awsize(3'b0101),
@@ -143,12 +146,11 @@ ddr_memory main_memory (
 .s_axi_awqos(4'b0000),
 .s_axi_wstrb(axi_o$memory$wstrb),
 .s_axi_wlast(axi_o$memory$wlast),
-.s_axi_bready(axi_o$memory$rready),
+.s_axi_bready(axi_o$memory$bready),
 
- // Reads (Request) main_memory.s_axi_bid
 .s_axi_arvalid(axi_o$memory$arvalid),
 .s_axi_arid(axi_o$memory$arid),
-.s_axi_araddr({axi_o$memory$araddr, {2'b0}}),
+.s_axi_araddr({axi_o$memory$araddr, {2'b00}}),
 .s_axi_arlen(7'b0000000),
 .s_axi_arsize('b101),
 .s_axi_arburst(2'b00),
@@ -178,7 +180,8 @@ ddr_memory main_memory (
 assign rready = (s_axi_arready);
 
 // Write Response Assignments
-assign wready = (s_axi_awready & s_axi_wready);
+assign wready = s_axi_wready;
+assign awready = s_axi_awready;
 
 assign led1 = init_calib_complete;
 assign led2 = axi_o$memory$awvalid;

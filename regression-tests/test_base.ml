@@ -8,7 +8,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = true
+let debug = false
 let output_width = 64
 let output_height = 35
 
@@ -37,7 +37,6 @@ module Cpu_with_dma_memory =
     end)
     (struct
       let capacity_in_bytes = 65536
-      let request_delay = 1
     end)
     (struct
       let num_harts = 1

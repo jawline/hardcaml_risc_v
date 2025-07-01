@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -75,7 +75,6 @@ module Test_machine = struct
       Memory_controller.hierarchical
         ~build_mode:Simulation
         ~priority_mode:Priority_order
-        ~request_delay:1
         ~read_latency:1
         scope
         { Memory_controller.I.clock

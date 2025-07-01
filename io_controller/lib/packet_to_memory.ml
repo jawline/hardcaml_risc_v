@@ -120,8 +120,8 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"packet_to_memory" ~instance create input
+    H.hierarchical ~scope ~name:"packet_to_memory" create input
   ;;
 end

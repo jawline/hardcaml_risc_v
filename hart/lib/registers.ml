@@ -7,7 +7,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   type 'a t =
     { pc : 'a [@bits register_width]
-    ; general : 'a list [@bits register_width] [@length Hart_config.num_registers]
+    ; general : 'a list
+          [@bits register_width]
+          [@length Hart_config.num_registers]
+          [@rtlprefix "general$"]
     }
   [@@deriving hardcaml ~rtlmangle:"$"]
 
@@ -31,7 +34,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
     type 'a t =
       { pc : 'a [@bits register_width]
-      ; general : 'a list [@bits register_width] [@length Hart_config.num_registers - 1]
+      ; general : 'a list
+            [@bits register_width]
+            [@length Hart_config.num_registers - 1]
+            [@rtlprefix "general$"]
       }
     [@@deriving hardcaml]
 

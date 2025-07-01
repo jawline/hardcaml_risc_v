@@ -137,7 +137,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       let memory_controller_to_dma = Write_response.With_valid.Of_always.wire zero in
       let dma =
         Dma.hierarchical
-          ~instance:"dma"
           scope
           { Dma.I.clock
           ; clear
@@ -151,7 +150,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
         Memory_controller.hierarchical
           ~build_mode:Simulation
           ~priority_mode:Priority_order
-          ~request_delay:1
           ~read_latency:1
           scope
           { Memory_controller.I.clock

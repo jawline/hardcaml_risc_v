@@ -58,7 +58,6 @@ struct
 
   module Memory_config = struct
     let capacity_in_bytes = C.capacity_in_bytes
-    let request_delay = 1
   end
 
   let emit ~scope circuit =
@@ -83,7 +82,8 @@ struct
     let data_width = C.memory_width
     let addr_width = C.memory_address_width
   end
-  let () = Core.eprint_s [%message (C.memory_tag_width : int)];
+
+  let () = Core.eprint_s [%message (C.memory_tag_width : int)]
 
   module Axi4 = Axi4.Make (Axi_config)
 

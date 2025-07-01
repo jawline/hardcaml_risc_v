@@ -76,7 +76,7 @@ struct
       let config = uart_config
     end
     in
-    let module Dma = Packet_to_memory.Make (Memory) (Axi8) in
+    let module Packet_to_memory = Packet_to_memory.Make (Memory) (Axi8) in
     let module Uart_tx = Uart_tx.Make (Config) in
     let module Uart_rx = Uart_rx.Make (Config) in
     let module Serial_buffer =
@@ -110,7 +110,7 @@ struct
     let { Serial_buffer.O.out_valid = serial_buffer_valid; out_data = serial_buffer_data }
       =
       Serial_buffer.hierarchical
-        ~capacity:2048
+        ~capacity:8096
         scope
         { Serial_buffer.I.clock
         ; clear
@@ -168,10 +168,14 @@ struct
     dma_dpath_ready <-- dpath_ready'.tready;
     let dma_write_dpath_ready = wire 1 in
     let dma =
-      Dma.hierarchical
-        ~instance:"dma"
+      Packet_to_memory.hierarchical
         scope
-        { Dma.I.clock; clear; in_ = dma; out = write_request; out_ack = write_response }
+        { Packet_to_memory.I.clock
+        ; clear
+        ; in_ = dma
+        ; out = { ready = dma_write_dpath_ready }
+        ; out_ack = write_response
+        }
     in
     dma_ready <-- dma.in_.tready;
     let dma_write_dpath_reg =

@@ -54,7 +54,6 @@ let test ~packets =
       let controller =
         Memory_controller.hierarchical
           ~build_mode:Simulation
-          ~request_delay:1
           ~read_latency:1
           ~priority_mode:Priority_order
           scope
@@ -136,14 +135,14 @@ let%expect_test "test" =
   [%expect
     {|
     ("00000000  5a 00 09 20 71 75 69 63  6b 20 62 72              |Z.. quick br|")
-    Cycles: 20
+    Cycles: 17
     ("00000000  5a 00 2b 54 68 65 20 71  75 69 63 6b 20 62 72 6f  |Z.+The quick bro|"
      "00000010  77 6e 20 66 6f 78 20 6a  75 6d 70 73 20 6f 76 65  |wn fox jumps ove|"
      "00000020  72 20 74 68 65 20 6c 61  7a 79 20 64 6f 67        |r the lazy dog|")
-    Cycles: 78
+    Cycles: 67
     ("00000000  5a 00 01 72                                       |Z..r|")
-    Cycles: 6
+    Cycles: 5
     ("00000000  5a 00 0c 69 63 6b 20 62  72 6f 77 6e 20 66 6f     |Z..ick brown fo|")
-    Cycles: 26
+    Cycles: 22
     |}]
 ;;

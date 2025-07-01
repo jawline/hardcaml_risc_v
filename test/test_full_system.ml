@@ -7,8 +7,8 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = true
-let trials = 1
+let debug = false
+let trials = 4
 
 module Make (M : sig
     type sim
@@ -266,48 +266,55 @@ struct
   let branch_helper ~name ~f ~funct3 =
     let sim = create_sim name in
     let open Quickcheck.Generator in
-    Quickcheck.test
-      ~trials
-      (tuple4
-         (Int.gen_incl 1 31)
-         (Int.gen_incl 1 31)
-         (Int.gen_incl (-2047) 2047)
-         (Int.gen_incl (-2047) 2047))
-      ~f:(fun (rs1, rs2, rs1_initial, rs2_initial) ->
-        if rs1 <> rs2
-        then (
-          let pc, registers =
-            M.test_and_registers
-              ~instructions:
-                [ op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs1
-                    ~immediate:rs1_initial
-                ; op_imm
-                    ~funct3:Funct3.Op.Add_or_sub
-                    ~rs1:0
-                    ~rd:rs2
-                    ~immediate:rs2_initial
-                ; branch ~rs1 ~rs2 ~funct3 ~offset:250
-                ]
-              sim
-          in
-          let result = pc in
-          let expectation = if f rs1_initial rs2_initial then 250 + 8 else 12 in
-          if result <> expectation
-          then
-            raise_s
-              [%message
-                "Failed"
-                  (result : int)
-                  (expectation : int)
-                  (rs1 : int)
-                  (rs2 : int)
-                  (rs1_initial : int)
-                  (rs2_initial : int)
-                  (registers : int list)])
-        else ())
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials
+          (tuple4
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl (-2047) 2047)
+             (Int.gen_incl (-2047) 2047))
+          ~f:(fun (rs1, rs2, rs1_initial, rs2_initial) ->
+            if debug
+            then
+              print_s
+                [%message (rs1 : int) (rs2 : int) (rs1_initial : int) (rs2_initial : int)];
+            if rs1 <> rs2
+            then (
+              let pc, registers =
+                M.test_and_registers
+                  ~instructions:
+                    [ op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs1
+                        ~immediate:rs1_initial
+                    ; op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs2
+                        ~immediate:rs2_initial
+                    ; branch ~rs1 ~rs2 ~funct3 ~offset:250
+                    ]
+                  sim
+              in
+              let result = pc in
+              let expectation = if f rs1_initial rs2_initial then 250 + 8 else 12 in
+              if result <> expectation
+              then
+                raise_s
+                  [%message
+                    "Failed"
+                      (result : int)
+                      (expectation : int)
+                      (rs1 : int)
+                      (rs2 : int)
+                      (rs1_initial : int)
+                      (rs2_initial : int)
+                      (registers : int list)])
+            else ()))
   ;;
 
   let%expect_test "beq" =
@@ -849,17 +856,17 @@ struct
           sim;
         [%expect
           {|
-      ("PC: " 258 REG:
-       (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  63 49 10 02 93 00 40 06  63 4d 10 0e 00 00 00 00  |cI....@.cM......|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-      |}];
+          ("PC: " 258 REG:
+           (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+          ("00000000  63 49 10 02 93 00 40 06  63 4d 10 0e 00 00 00 00  |cI....@.cM......|"
+           "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+          |}];
         (* Expect the second branch to be taken *)
         test
           ~instructions:
@@ -870,17 +877,17 @@ struct
           sim;
         [%expect
           {|
-      ("PC: " 258 REG:
-       (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  93 00 40 06 63 59 10 02  63 dd 00 0e 00 00 00 00  |..@.cY..c.......|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-      |}];
+          ("PC: " 258 REG:
+           (0 100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+          ("00000000  93 00 40 06 63 59 10 02  63 dd 00 0e 00 00 00 00  |..@.cY..c.......|"
+           "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+          |}];
         (* TODO: Test unsigned variants and negative numbers. *)
         ())
   ;;
@@ -895,7 +902,6 @@ module Cpu_with_no_io_controller =
     end)
     (struct
       let capacity_in_bytes = 128
-      let request_delay = 1
     end)
     (struct
       let num_harts = 1
@@ -921,7 +927,7 @@ module With_manually_programmed_ram = Make (struct
         Sim.create
           ~config:Cyclesim.Config.trace_all
           (Cpu_with_no_io_controller.hierarchical
-             ~read_latency:1
+             ~read_latency:2
              ~build_mode:Simulation
              (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
       in
@@ -944,7 +950,7 @@ module With_manually_programmed_ram = Make (struct
       inputs.clear := Bits.gnd
     ;;
 
-    let test_and_registers ?(cycles = 25) ~instructions sim =
+    let test_and_registers ?(cycles = 50) ~instructions sim =
       let sim, _, _ = sim in
       (* Initialize the main memory to some known values for testing. *)
       Test_util.program_ram sim (Array.of_list instructions);
@@ -994,7 +1000,6 @@ module Cpu_with_dma_memory =
     end)
     (struct
       let capacity_in_bytes = 128
-      let request_delay = 1
     end)
     (struct
       let num_harts = 1
@@ -1101,7 +1106,7 @@ module With_dma_ram = struct
       send_bits sim whole_packet
     ;;
 
-    let test_and_registers ?(cycles = 25) ~instructions sim =
+    let test_and_registers ?(cycles = 50) ~instructions sim =
       let sim, _, _ = sim in
       let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
       (* Send a clear signal to initialize any CPU IO controller state back to
@@ -1191,8 +1196,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
-      ("PC: " 16 REG:
-       (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 24 REG:
+       (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000010  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1223,8 +1228,8 @@ module With_dma_ram = struct
     [%expect
       {|
       ("PC: " 24 REG:
-       (0 3 9000000 2 21 27000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-        0))
+       (0 5 12000000 2 26 33000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0))
       ("00000000  f3 20 00 c0 73 21 10 c0  f3 21 20 c0 73 22 00 c0  |. ..s!...! .s\"..|"
        "00000010  f3 22 10 c0 73 23 20 c0  00 00 00 00 00 00 00 00  |.\"..s# .........|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
