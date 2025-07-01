@@ -83,8 +83,6 @@ struct
     let addr_width = C.memory_address_width
   end
 
-  let () = Core.eprint_s [%message (C.memory_tag_width : int)]
-
   module Axi4 = Axi4.Make (Axi_config)
 
   module Design_with_bram =
