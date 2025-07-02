@@ -9,8 +9,7 @@ module Make
     (Hart_config : Hart_config_intf.S)
     (Memory_config : System_intf.Memory_config)
     (General_config : System_intf.Config)
-    (Axi_config : Axi4_config_intf.Config)
-    (Axi4 : Axi4_intf.M(Axi_config).S) =
+    (Axi4 : Axi4.S) =
 struct
   module Registers = Registers.Make (Hart_config)
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
@@ -50,9 +49,8 @@ struct
         ;;
 
         let address_width = Register_width.bits Hart_config.register_width
-        let data_bus_width = Axi_config.data_width
+        let data_bus_width = Axi4.data_width
       end)
-      (Axi_config)
       (Axi4)
 
   module Memory_bus = Memory_controller.Memory_bus

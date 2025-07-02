@@ -10,9 +10,10 @@ module Make
     (General_config : System_intf.Config) =
 struct
   module Axi_config = struct
-    let id_width = 8
-    let data_width = 32
-    let addr_width = address_bits_for (Memory_config.capacity_in_bytes / (data_width / 8))
+    let id_bits = 8
+    let data_bits = 32
+    let addr_bits = address_bits_for Memory_config.capacity_in_bytes
+    let burst_length_bits = 1
   end
 
   module Axi4 = Axi4.Make (Axi_config)
@@ -23,11 +24,9 @@ struct
         let capacity_in_bytes = Memory_config.capacity_in_bytes
         let synthetic_pushback = 0
       end)
-      (Axi_config)
       (Axi4)
 
-  module System =
-    System.Make (Hart_config) (Memory_config) (General_config) (Axi_config) (Axi4)
+  module System = System.Make (Hart_config) (Memory_config) (General_config) (Axi4)
 
   (* Re-exports *)
   include struct

@@ -76,17 +76,18 @@ end
 
 module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O)
 
-let debug = false
-
 let program_ram sim bits =
   let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
   List.iteri ~f:(fun i m -> Cyclesim.Memory.of_bits ~address:i ram m) bits
 ;;
 
+let debug = true
+
 let test ~framebuffers =
   Harness.run
     ~trace:`All_named (* Needed so the BRAM doesn't get optimized away. *)
     ~create:Machine.create
+    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
     (fun ~inputs ~outputs sim ->
        inputs.clear := vdd;
        Cyclesim.cycle sim;
@@ -95,6 +96,7 @@ let test ~framebuffers =
        inputs.clear := gnd;
        Array.iteri
          ~f:(fun idx framebuffer ->
+           print_s [%message "testing" ~length:(List.length framebuffer : int)];
            program_ram sim framebuffer;
            let wait_some_cycles_and_sample () =
              Sequence.range 0 10 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
@@ -201,6 +203,7 @@ let%expect_test "test" =
   test ~framebuffers:[| framebuffer_0; framebuffer_1; framebuffer_2 |];
   [%expect
     {|
+    (testing (length 256))
     Framebuffer 0
     *-*-*-*--*-*-*-**-*-*-*--*-*-*-*--------------------------------
     ---------------------------------*-*-*-**-*-*-*--*-*-*-**-*-*-*-
@@ -234,6 +237,7 @@ let%expect_test "test" =
     ---------------------------------*-*-*-**-*-*-*--*-*-*-**-*-*-*-
     *-*-*-*--*-*-*-**-*-*-*--*-*-*-*--------------------------------
     ---------------------------------*-*-*-**-*-*-*--*-*-*-**-*-*-*-
+    (testing (length 256))
     Framebuffer 1
     *-*-*-*--*-*-*-**-*-*-*--*-*-*-*-*-*-*-**-*-*-*--*-*-*-**-*-*-*-
     *-*-*-*--*-*-*-**-*-*-*--*-*-*-*-*-*-*-**-*-*-*--*-*-*-**-*-*-*-
@@ -267,6 +271,7 @@ let%expect_test "test" =
     ----------------------------------------------------------------
     ----------------------------------------------------------------
     ----------------------------------------------------------------
+    (testing (length 256))
     Framebuffer 2
     --------------------------------********************************
     --------------------------------********************************
@@ -300,5 +305,6 @@ let%expect_test "test" =
     ********************************--------------------------------
     ********************************--------------------------------
     ********************************--------------------------------
+    Saved waves to /home/ubuntu/waves//_test.hardcamlwaveform
     |}]
 ;;

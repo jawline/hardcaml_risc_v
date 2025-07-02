@@ -91,7 +91,7 @@ struct
      This greatly simplifies thinking about framebuffer row offsets since
      bitvectors are always word aligned. *)
 
-  let word_in_bytes = I.port_widths.start_address / 8
+  let word_in_bytes = I.port_widths.memory_response.value.read_data / 8
 
   let row_offset_in_words =
     (* Number of bytes in a row, aligned to the nearest byte (8 bits). *)
@@ -150,8 +150,7 @@ struct
     let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data_valid = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data = Variable.reg ~width:data_width reg_spec_no_clear in
-    let current_state = State_machine.create (module State) reg_spec in
-    ignore (current_state.current -- "current_state" : Signal.t);
+    let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
     let%hw which_bit =
       let num_bits = num_bits_to_represent (width data.value - 1) in
       if num_bits > width data.value

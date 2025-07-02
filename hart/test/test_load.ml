@@ -173,7 +173,7 @@ let%expect_test "lw" =
     (try test ~address:7 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}]);
-  [%expect {| Saved waves to /home/blake/waves//_lw.hardcamlwaveform |}]
+  [%expect {| |}]
 ;;
 
 let%expect_test "lh" =
@@ -201,7 +201,7 @@ let%expect_test "lh" =
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect {| (outputs ((new_rd 0) (error 1) (finished 1))) |}]);
-  [%expect {| Saved waves to /home/blake/waves//_lh.hardcamlwaveform |}]
+  [%expect {| |}]
 ;;
 
 let%expect_test "lb" =
@@ -226,7 +226,7 @@ let%expect_test "lb" =
     (try test ~address:4 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
     [%expect {| (outputs ((new_rd 4) (error 0) (finished 0))) |}]);
-  [%expect {| Saved waves to /home/blake/waves//_lb.hardcamlwaveform |}]
+  [%expect {| |}]
 ;;
 
 (* TODO: Sign extension tests *)

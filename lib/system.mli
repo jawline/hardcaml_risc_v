@@ -14,8 +14,7 @@ module Make
     (Hart_config : Hart_config_intf.S)
     (Memory_config : System_intf.Memory_config)
     (General_config : System_intf.Config)
-    (Axi_config : Axi4_config_intf.Config)
-    (Axi4 : Axi4_intf.M(Axi_config).S) : sig
+    (Axi4 : Axi4.S) : sig
   module Registers : Registers_intf.S
   module Memory_bus : Memory_bus_intf.S
   module Video_out_with_memory : Video_out_intf.M(Memory_bus).S

@@ -78,15 +78,16 @@ struct
   open Make_base (C)
 
   module Axi_config = struct
-    let id_width = C.memory_tag_width
-    let data_width = C.memory_width
-    let addr_width = C.memory_address_width
+    let id_bits = C.memory_tag_width
+    let data_bits = C.memory_width
+    let addr_bits = C.memory_address_width
+    let burst_length_bits = 7
   end
 
   module Axi4 = Axi4.Make (Axi_config)
 
   module Design_with_bram =
-    System.Make (Per_hart_config) (Memory_config) (General_config) (Axi_config) (Axi4)
+    System.Make (Per_hart_config) (Memory_config) (General_config) (Axi4)
 
   module Rtl = struct
     let emit () =
