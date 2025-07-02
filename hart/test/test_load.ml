@@ -132,7 +132,8 @@ let%expect_test "lw" =
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       (outputs ((new_rd 0) (error 0) (finished 0)))
@@ -191,7 +192,8 @@ let%expect_test "lh" =
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       (outputs ((new_rd 0) (error 0) (finished 0)))
@@ -221,7 +223,8 @@ let%expect_test "lb" =
     (* Aligned loads, we expect these to succeed. *)
     (try test ~address:0 ~funct3:(Funct3.Load.to_int Funct3.Load.Lb) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       (outputs ((new_rd 0) (error 0) (finished 0)))

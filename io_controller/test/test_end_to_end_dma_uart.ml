@@ -373,7 +373,8 @@ let%expect_test "fuzz" =
       ~stop_bits:1
       ~packets:[ 0, test_str; 48, test_str ]
       ~verbose:false);
-  [%expect {|
+  [%expect
+    {|
     ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
      (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
     ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)

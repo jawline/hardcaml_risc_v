@@ -71,7 +71,8 @@ struct
       ~funct3:Funct3.Op.Add_or_sub
       ~f:( + )
       ~small_imm_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -79,7 +80,8 @@ struct
 
   let%expect_test "and" =
     opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -87,7 +89,8 @@ struct
 
   let%expect_test "xor" =
     opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -95,7 +98,8 @@ struct
 
   let%expect_test "or" =
     opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -107,7 +111,8 @@ struct
       ~funct3:Funct3.Op.Slt
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -119,7 +124,8 @@ struct
       ~funct3:Funct3.Op.Sltu
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_imm_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -186,7 +192,8 @@ struct
       ~funct7:0
       ~f:( + )
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -199,7 +206,8 @@ struct
       ~funct7:0b0100_000
       ~f:( - )
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -212,7 +220,8 @@ struct
       ~funct7:0
       ~f:( land )
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -225,7 +234,8 @@ struct
       ~funct7:0
       ~f:( lxor )
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -238,7 +248,8 @@ struct
       ~funct7:0
       ~f:( lor )
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -251,7 +262,8 @@ struct
       ~funct7:0
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -264,7 +276,8 @@ struct
       ~funct7:0
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_rs2_range:false;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -277,7 +290,8 @@ struct
       ~funct7:0
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -290,7 +304,8 @@ struct
       ~funct7:0
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -305,7 +320,8 @@ struct
         let shift_right = Int32.shift_right (Int32.of_int_exn l) r in
         Int32.to_int_exn shift_right)
       ~small_rs2_range:true;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -367,7 +383,8 @@ struct
 
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -375,7 +392,8 @@ struct
 
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -383,7 +401,8 @@ struct
 
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -391,7 +410,8 @@ struct
 
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -425,7 +445,8 @@ struct
                     (rd : int)
                     (offset : int)
                     (registers : int list)]));
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -469,7 +490,8 @@ struct
                     (rd : int)
                     (rs1 : int)
                     (registers : int list)]));
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -529,7 +551,8 @@ struct
                       (offset : int)
                       (registers : int list)]))
             else ()));
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -588,7 +611,8 @@ struct
                   (offset : int)
                   (registers : int list)]))
         else ());
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]
@@ -651,7 +675,8 @@ struct
                       (offset : int)
                       (registers : int list)]))
             else ()));
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
        (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       |}]

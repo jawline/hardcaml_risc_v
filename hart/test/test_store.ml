@@ -148,7 +148,8 @@ let%expect_test "store" =
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
        (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
       (outputs
@@ -165,7 +166,8 @@ let%expect_test "store" =
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -180,7 +182,8 @@ let%expect_test "store" =
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -195,7 +198,8 @@ let%expect_test "store" =
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -207,7 +211,8 @@ let%expect_test "store" =
       |}];
     (* Unaligned store, we expect no change *)
     test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 1) (finished 1)
         (read_response
@@ -224,7 +229,8 @@ let%expect_test "store halves" =
   create_sim (fun sim ->
     (* Aligned store half, we expect these to succeed. *)
     test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
        (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
       (outputs
@@ -237,7 +243,8 @@ let%expect_test "store halves" =
       ab ab ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -248,7 +255,8 @@ let%expect_test "store halves" =
       ff ff ab ed ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:4 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -259,7 +267,8 @@ let%expect_test "store halves" =
       ff ff ff ff ab ed ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:6 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -270,7 +279,8 @@ let%expect_test "store halves" =
       ff ff ff ff ff ff ab ed ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:8 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -282,7 +292,8 @@ let%expect_test "store halves" =
       |}];
     (* Test unaligned Sh, we expect these to fail *)
     test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 1) (finished 1)
         (read_response
@@ -293,7 +304,8 @@ let%expect_test "store halves" =
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 1) (finished 1)
         (read_response
@@ -310,7 +322,8 @@ let%expect_test "store_byte" =
   create_sim (fun sim ->
     (* Test SB, these cannot be unaligned. *)
     test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
        (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
       (outputs
@@ -323,7 +336,8 @@ let%expect_test "store_byte" =
       aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -334,7 +348,8 @@ let%expect_test "store_byte" =
       ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -345,7 +360,8 @@ let%expect_test "store_byte" =
       ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -357,7 +373,8 @@ let%expect_test "store_byte" =
       |}];
     [%expect {| |}];
     test ~destination:4 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -368,7 +385,8 @@ let%expect_test "store_byte" =
       ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:5 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -379,7 +397,8 @@ let%expect_test "store_byte" =
       ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:6 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -390,7 +409,8 @@ let%expect_test "store_byte" =
       ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:7 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect {|
+    [%expect
+      {|
       (outputs
        ((error 0) (finished 0)
         (read_response
