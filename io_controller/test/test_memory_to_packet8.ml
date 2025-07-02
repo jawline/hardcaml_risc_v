@@ -134,6 +134,8 @@ let%expect_test "test" =
       ];
   [%expect
     {|
+    ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+     (M.capacity_in_bytes 256) ("address_bits_for M.capacity_in_bytes" 8))
     ("00000000  5a 00 09 20 71 75 69 63  6b 20 62 72              |Z.. quick br|")
     Cycles: 17
     ("00000000  5a 00 2b 54 68 65 20 71  75 69 63 6b 20 62 72 6f  |Z.+The quick bro|"

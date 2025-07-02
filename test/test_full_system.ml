@@ -71,22 +71,34 @@ struct
       ~funct3:Funct3.Op.Add_or_sub
       ~f:( + )
       ~small_imm_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "and" =
     opi_helper ~name:"and_qcheck" ~funct3:Funct3.Op.And ~f:( land ) ~small_imm_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "xor" =
     opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "or" =
     opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "slt" =
@@ -95,7 +107,10 @@ struct
       ~funct3:Funct3.Op.Slt
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sltu" =
@@ -104,7 +119,10 @@ struct
       ~funct3:Funct3.Op.Sltu
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_imm_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
@@ -168,7 +186,10 @@ struct
       ~funct7:0
       ~f:( + )
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sub" =
@@ -178,7 +199,10 @@ struct
       ~funct7:0b0100_000
       ~f:( - )
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "and" =
@@ -188,7 +212,10 @@ struct
       ~funct7:0
       ~f:( land )
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "xor" =
@@ -198,7 +225,10 @@ struct
       ~funct7:0
       ~f:( lxor )
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "or" =
@@ -208,7 +238,10 @@ struct
       ~funct7:0
       ~f:( lor )
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "slt" =
@@ -218,7 +251,10 @@ struct
       ~funct7:0
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sltu" =
@@ -228,7 +264,10 @@ struct
       ~funct7:0
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_rs2_range:false;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sll" =
@@ -238,7 +277,10 @@ struct
       ~funct7:0
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "srl" =
@@ -248,7 +290,10 @@ struct
       ~funct7:0
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sra" =
@@ -260,7 +305,10 @@ struct
         let shift_right = Int32.shift_right (Int32.of_int_exn l) r in
         Int32.to_int_exn shift_right)
       ~small_rs2_range:true;
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let branch_helper ~name ~f ~funct3 =
@@ -319,22 +367,34 @@ struct
 
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "jal" =
@@ -365,7 +425,10 @@ struct
                     (rd : int)
                     (offset : int)
                     (registers : int list)]));
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "jalr" =
@@ -406,7 +469,10 @@ struct
                     (rd : int)
                     (rs1 : int)
                     (registers : int list)]));
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sb/lb" =
@@ -463,7 +529,10 @@ struct
                       (offset : int)
                       (registers : int list)]))
             else ()));
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sh/lh" =
@@ -519,7 +588,10 @@ struct
                   (offset : int)
                   (registers : int list)]))
         else ());
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "sw/lw" =
@@ -579,7 +651,10 @@ struct
                       (offset : int)
                       (registers : int list)]))
             else ()));
-    [%expect {| |}]
+    [%expect {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+      |}]
   ;;
 
   let%expect_test "op_imm" =
@@ -589,6 +664,8 @@ struct
       sim;
     [%expect
       {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       ("PC: " 4 REG:
        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 00 00 00 00  00 00 00 00 00 00 00 00  |..`\"............|"
@@ -769,6 +846,8 @@ struct
       sim;
     [%expect
       {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       ("PC: " 12 REG:
        (0 500 300 0 800 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 40 1f 13 01 c0 12  33 82 20 00 00 00 00 00  |..@.....3. .....|"
@@ -797,17 +876,19 @@ struct
           sim;
         [%expect
           {|
-      ("PC: " 504 REG:
-       (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  63 14 00 0c 63 0a 00 1e  00 00 00 00 00 00 00 00  |c...c...........|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-      |}];
+          ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+           (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
+          ("PC: " 504 REG:
+           (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+          ("00000000  63 14 00 0c 63 0a 00 1e  00 00 00 00 00 00 00 00  |c...c...........|"
+           "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+           "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
+          |}];
         test
           ~instructions:
             [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:550
@@ -1165,6 +1246,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       ("PC: " 16 REG:
        (0 0 0 0 0 1 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
@@ -1196,6 +1279,8 @@ module With_dma_ram = struct
       sim;
     [%expect
       {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       ("PC: " 32 REG:
        (0 0 0 0 0 0 300 300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 02 00 00 13 03 c0 12  93 03 c0 12 73 00 00 00  |............s...|"
@@ -1227,6 +1312,8 @@ module With_dma_ram = struct
     M.finalize_sim sim;
     [%expect
       {|
+      ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
+       (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
       ("PC: " 24 REG:
        (0 2 7000000 2 17 22000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         0))

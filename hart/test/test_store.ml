@@ -15,7 +15,7 @@ module Hart_config = struct
 end
 
 module Memory_controller = Bram_memory_controller.Make (struct
-    let capacity_in_bytes = 16
+    let capacity_in_bytes = 32
     let num_read_channels = 1
     let num_write_channels = 1
     let address_width = 32
@@ -148,129 +148,258 @@ let%expect_test "store" =
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect.unreachable];
+    [%expect {|
+      ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
+       (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ef be ad de ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test
       ~destination:4
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ef be ad de ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test
       ~destination:8
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ef be ad de ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test
       ~destination:12
       ~value:0xDEADBEEF
       ~funct3:(Funct3.Store.to_int Funct3.Store.Sw)
       sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ff ff ff ff ef be ad de 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     (* Unaligned store, we expect no change *)
     test ~destination:1 ~value:0xCC ~funct3:(Funct3.Store.to_int Funct3.Store.Sw) sim;
-    [%expect.unreachable]);
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-     This is strongly discouraged as backtraces are fragile.
-     Please change this test to not include a backtrace. *)
-  ("[select] got [hi < lo]" (hi 3) (lo 4))
-  Raised at Base__Error.raise in file "src/error.ml", line 9, characters 21-37
-  Called from Hardcaml__Comb.Make.select in file "src/comb.ml", line 398, characters 20-44
-  Called from Hardcaml_memory_controller__Axi4_bram.Make.create in file "hardcaml_memory_controller/lib/axi4_bram.ml", line 59, characters 6-74
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 108, characters 18-40
-  Called from Hardcaml_memory_controller__Bram_memory_controller.Make.create in file "hardcaml_memory_controller/lib/bram_memory_controller.ml", lines 64-68, characters 6-41
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 108, characters 18-40
-  Called from Hardcaml_risc_v_hart_test__Test_store.Test_machine.create in file "hart/test/test_store.ml", lines 75-87, characters 6-9
-  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 436, characters 18-34
-  Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 148, characters 18-81
-  Called from Hardcaml_test_harness__Cyclesim_harness.Make.run_advanced.(fun) in file "src/cyclesim_harness.ml", line 29, characters 24-47
-  Called from Hardcaml_test_harness__Harness_base.run in file "src/harness_base.ml", lines 129-133, characters 4-11
-  Called from Hardcaml_risc_v_hart_test__Test_store.(fun) in file "hart/test/test_store.ml", lines 144-222, characters 2-10
-  Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 264, characters 10-25
-  |}]
+    [%expect {|
+      (outputs
+       ((error 1) (finished 1)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}]);
+  [%expect {| |}]
 ;;
 
 let%expect_test "store halves" =
   create_sim (fun sim ->
     (* Aligned store half, we expect these to succeed. *)
     test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable];
+    [%expect {|
+      ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
+       (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ab ab ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ab ed ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:4 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ab ed ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:6 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ab ed ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:8 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ab ed ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     (* Test unaligned Sh, we expect these to fail *)
     test ~destination:1 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 1) (finished 1)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
-    [%expect.unreachable]);
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-     This is strongly discouraged as backtraces are fragile.
-     Please change this test to not include a backtrace. *)
-  ("[select] got [hi < lo]" (hi 3) (lo 4))
-  Raised at Base__Error.raise in file "src/error.ml", line 9, characters 21-37
-  Called from Hardcaml__Comb.Make.select in file "src/comb.ml", line 398, characters 20-44
-  Called from Hardcaml_memory_controller__Axi4_bram.Make.create in file "hardcaml_memory_controller/lib/axi4_bram.ml", line 59, characters 6-74
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 108, characters 18-40
-  Called from Hardcaml_memory_controller__Bram_memory_controller.Make.create in file "hardcaml_memory_controller/lib/bram_memory_controller.ml", lines 64-68, characters 6-41
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 108, characters 18-40
-  Called from Hardcaml_risc_v_hart_test__Test_store.Test_machine.create in file "hart/test/test_store.ml", lines 75-87, characters 6-9
-  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 436, characters 18-34
-  Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 148, characters 18-81
-  Called from Hardcaml_test_harness__Cyclesim_harness.Make.run_advanced.(fun) in file "src/cyclesim_harness.ml", line 29, characters 24-47
-  Called from Hardcaml_test_harness__Harness_base.run in file "src/harness_base.ml", lines 129-133, characters 4-11
-  Called from Hardcaml_risc_v_hart_test__Test_store.(fun) in file "hart/test/test_store.ml", lines 227-313, characters 2-10
-  Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 264, characters 10-25
-  |}]
+    [%expect {|
+      (outputs
+       ((error 1) (finished 1)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}]);
+  [%expect {| |}]
 ;;
 
 let%expect_test "store_byte" =
   create_sim (fun sim ->
     (* Test SB, these cannot be unaligned. *)
     test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
+    [%expect {|
+      ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
+       (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
+    [%expect {| |}];
     test ~destination:4 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:5 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:6 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
     test ~destination:7 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
-    [%expect.unreachable];
-    [%expect.unreachable]);
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-     This is strongly discouraged as backtraces are fragile.
-     Please change this test to not include a backtrace. *)
-  ("[select] got [hi < lo]" (hi 3) (lo 4))
-  Raised at Base__Error.raise in file "src/error.ml", line 9, characters 21-37
-  Called from Hardcaml__Comb.Make.select in file "src/comb.ml", line 398, characters 20-44
-  Called from Hardcaml_memory_controller__Axi4_bram.Make.create in file "hardcaml_memory_controller/lib/axi4_bram.ml", line 59, characters 6-74
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 108, characters 18-40
-  Called from Hardcaml_memory_controller__Bram_memory_controller.Make.create in file "hardcaml_memory_controller/lib/bram_memory_controller.ml", lines 64-68, characters 6-41
-  Called from Hardcaml__Hierarchy.In_scope.create in file "src/hierarchy.ml", line 108, characters 18-40
-  Called from Hardcaml_risc_v_hart_test__Test_store.Test_machine.create in file "hart/test/test_store.ml", lines 75-87, characters 6-9
-  Called from Hardcaml__Circuit.With_interface.create_exn in file "src/circuit.ml", line 436, characters 18-34
-  Called from Hardcaml__Cyclesim.With_interface.create in file "src/cyclesim.ml", line 148, characters 18-81
-  Called from Hardcaml_test_harness__Cyclesim_harness.Make.run_advanced.(fun) in file "src/cyclesim_harness.ml", line 29, characters 24-47
-  Called from Hardcaml_test_harness__Harness_base.run in file "src/harness_base.ml", lines 129-133, characters 4-11
-  Called from Hardcaml_risc_v_hart_test__Test_store.(fun) in file "hart/test/test_store.ml", lines 318-417, characters 2-20
-  Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 264, characters 10-25
-  |}]
+    [%expect {|
+      (outputs
+       ((error 0) (finished 0)
+        (read_response
+         ((valid 0)
+          (value
+           ((read_data
+             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+      ff ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      |}];
+    [%expect {| |}]);
+  [%expect {| |}]
 ;;
