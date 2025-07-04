@@ -203,8 +203,6 @@ let%expect_test "test" =
   test ~framebuffers:[| framebuffer_0; framebuffer_1; framebuffer_2 |];
   [%expect
     {|
-    ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
-     (M.capacity_in_bytes 256) ("address_bits_for M.capacity_in_bytes" 8))
     (testing (length 256))
     Framebuffer 0
     *-*-*-*--*-*-*-**-*-*-*--*-*-*-*--------------------------------

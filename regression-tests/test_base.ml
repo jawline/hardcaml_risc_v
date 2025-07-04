@@ -180,6 +180,31 @@ let send_dma_message ~address ~packet sim =
     whole_packet
 ;;
 
+module Result_machine = struct
+  type t =
+    | Wait_header
+    | Wait_length_msb
+    | Wait_length_lsb of int
+    | Wait_data of int
+
+  let on_byte t c =
+    match t with
+    | Wait_header ->
+      if Char.(c = 'D')
+      then Wait_length_msb
+      else raise_s [%message "Unexpected header byte"]
+    | Wait_length_msb -> Wait_length_lsb (Char.to_int c)
+    | Wait_length_lsb msb -> Wait_data ((msb lsl 8) lor Char.to_int c)
+    | Wait_data remaining ->
+      printf "%c" c;
+      if remaining = 1
+      then (
+        printf "\n";
+        Wait_header)
+      else Wait_data (remaining - 1)
+  ;;
+end
+
 let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
   let sim, _, _ = sim in
   let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
@@ -207,6 +232,7 @@ let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
   (* Send a clear signal and then start the vsync logic *)
   clear_registers ~inputs sim;
   print_s [%message "Printing RAM before registers"];
+  let current_output_state = ref Result_machine.Wait_header in
   let rec loop_for cycles =
     if cycles = 0
     then ()
@@ -219,7 +245,10 @@ let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
           (Video_signals.Video_signals.map
              ~f:(fun t -> !t)
              outputs.video_out.video_signals);
-      if to_bool !(outputs.data_out_valid) then printf "%c" (to_char !(outputs.data_out));
+      if to_bool !(outputs.data_out_valid)
+      then
+        current_output_state
+        := Result_machine.on_byte !current_output_state (to_char !(outputs.data_out));
       loop_for (cycles - 1))
   in
   printf "RECEIVED FROM CPU VIA DMA: ";

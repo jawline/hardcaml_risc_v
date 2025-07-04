@@ -8,6 +8,8 @@ module Make
     (Memory : Memory_bus_intf.S)
     (Registers : Registers_intf.S) =
 struct
+  module Prefetcher = Prefetcher.Make (Memory)
+
   module I = struct
     type 'a t =
       { clock : 'a
@@ -30,30 +32,44 @@ struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create scope (i : _ I.t) =
-    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let%hw fetching =
-      i.valid
-      |: reg_fb
-           ~width:1
-           ~f:(fun t -> mux2 i.read_bus.ready gnd (t |: i.valid))
-           reg_spec_with_clear
-    in
-    let registers =
-      Registers.For_writeback.Of_signal.reg
-        ~enable:i.valid
-        reg_spec_with_clear
-        i.registers
+  let cut_through_latch ~enable reg_spec signal =
+    mux2 enable signal (reg ~enable reg_spec signal)
+  ;;
+
+  let create scope ({ clock; clear; valid; registers; read_bus; read_response } : _ I.t) =
+    let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
+    let%hw address = registers.pc in
+    let%hw prefetcher_ready = wire 1 in
+    let%hw want_to_issue_fetch =
+      valid |: reg_fb ~width:1 ~f:(fun t -> t &: ~:prefetcher_ready) reg_spec_with_clear
     in
     let aligned_address =
-      (Memory.byte_address_to_memory_address (mux2 i.valid i.registers.pc registers.pc))
-        .value
+      cut_through_latch
+        ~enable:valid
+        reg_spec_with_clear
+        (Memory.byte_address_to_memory_address address).value
     in
-    { O.read_bus =
-        { Memory.Read_bus.Source.valid = fetching; data = { address = aligned_address } }
-    ; valid = i.read_response.valid
+    let prefetcher =
+      Prefetcher.hierarchical
+        scope
+        { clock
+        ; clear
+        ; valid = want_to_issue_fetch
+        ; aligned_address
+        ; read_bus
+        ; read_response
+        }
+    in
+    prefetcher_ready <-- prefetcher.ready;
+    (* TODO: These can optionally be made cut through for zero cycles of
+       latency but a longer path. *)
+    let registers =
+      Registers.For_writeback.Of_signal.reg ~enable:valid reg_spec_with_clear registers
+    in
+    { O.read_bus = prefetcher.read_bus
+    ; valid = prefetcher.valid &: (prefetcher.aligned_address ==: aligned_address)
     ; registers
-    ; instruction = i.read_response.value.read_data
+    ; instruction = prefetcher.value
     }
   ;;
 

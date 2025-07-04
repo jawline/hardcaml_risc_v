@@ -216,8 +216,6 @@ let%expect_test "test" =
     ~packet:"Hio";
   [%expect
     {|
-    ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
-     (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
     ("00000000  48 69 6f 00 00 00 00 00  00 00 00 00 00 00 00 00  |Hio.............|"
      "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -236,8 +234,6 @@ let%expect_test "test" =
     ~packet:"Hello world!";
   [%expect
     {|
-    ((data_width_bytes 4) ("address_bits_for data_width_bytes" 2)
-     (M.capacity_in_bytes 128) ("address_bits_for M.capacity_in_bytes" 7))
     ("00000000  48 65 6c 6c 6f 20 77 6f  72 6c 64 21 00 00 00 00  |Hello world!....|"
      "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"

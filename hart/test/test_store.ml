@@ -150,8 +150,6 @@ let%expect_test "store" =
       sim;
     [%expect
       {|
-      ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
-       (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -231,8 +229,6 @@ let%expect_test "store halves" =
     test ~destination:0 ~value:0xABAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
     [%expect
       {|
-      ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
-       (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
       (outputs
        ((error 0) (finished 0)
         (read_response
@@ -324,8 +320,6 @@ let%expect_test "store_byte" =
     test ~destination:0 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
     [%expect
       {|
-      ((data_width_bytes 16) ("address_bits_for data_width_bytes" 4)
-       (M.capacity_in_bytes 32) ("address_bits_for M.capacity_in_bytes" 5))
       (outputs
        ((error 0) (finished 0)
         (read_response
