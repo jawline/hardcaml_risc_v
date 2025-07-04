@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -103,19 +103,27 @@ let issue_load ~address sim =
   let outputs_before : _ Test_machine.O.t =
     Cyclesim.outputs ~clock_edge:Side.Before sim
   in
-  let outputs : _ Test_machine.O.t = Cyclesim.outputs sim in
   inputs.valid := Bits.vdd;
   inputs.address := of_unsigned_int ~width:32 address;
   Cyclesim.cycle sim;
-  outputs.valid := Bits.gnd;
+inputs.valid := Bits.gnd;
   let rec loop_until_valid max =
     if max = 0 then raise_s [%message "BUG: Timed out"];
     Cyclesim.cycle sim;
     if Bits.to_bool !(outputs_before.valid) then () else loop_until_valid (max - 1)
   in
   loop_until_valid 50;
-  let outputs = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs in
-  print_s [%message (outputs : int Test_machine.O.t)]
+  let print ~msg = 
+  let outputs = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs_before in
+  print_s [%message (msg) (outputs : int Test_machine.O.t)] in
+
+    
+  print ~msg:"The cycle valid raised";
+  Cyclesim.cycle sim;
+  print ~msg:"The cycle after";
+  Cyclesim.cycle sim;
+  print ~msg:"The cycle that";
+  ()
 ;;
 
 let%expect_test "basic test" =
@@ -131,13 +139,34 @@ let%expect_test "basic test" =
          ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i / 4 else 0))
          128);
     issue 0;
-    [%expect {| (outputs ((valid 1) (address 0) (value 0) (ready 1))) |}];
+    [%expect {|
+      ("The cycle valid raised" (outputs ((valid 1) (value 0))))
+      ("The cycle after" (outputs ((valid 0) (value 0))))
+      ("The cycle that" (outputs ((valid 0) (value 0))))
+      |}];
     issue 4;
-    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 1))) |}];
+    [%expect {|
+      ("The cycle valid raised" (outputs ((valid 1) (value 1))))
+      ("The cycle after" (outputs ((valid 0) (value 1))))
+      ("The cycle that" (outputs ((valid 0) (value 1))))
+      |}];
     issue 8;
-    [%expect {| (outputs ((valid 1) (address 2) (value 2) (ready 1))) |}];
+    [%expect {|
+      ("The cycle valid raised" (outputs ((valid 1) (value 2))))
+      ("The cycle after" (outputs ((valid 0) (value 2))))
+      ("The cycle that" (outputs ((valid 0) (value 2))))
+      |}];
     issue 12;
-    [%expect {| (outputs ((valid 1) (address 3) (value 3) (ready 1))) |}];
+    [%expect {|
+      ("The cycle valid raised" (outputs ((valid 1) (value 3))))
+      ("The cycle after" (outputs ((valid 0) (value 3))))
+      ("The cycle that" (outputs ((valid 0) (value 3))))
+      |}];
     issue 0;
-    [%expect {| (outputs ((valid 1) (address 0) (value 0) (ready 1))) |}])
+    [%expect {|
+      ("The cycle valid raised" (outputs ((valid 1) (value 0))))
+      ("The cycle after" (outputs ((valid 0) (value 0))))
+      ("The cycle that" (outputs ((valid 0) (value 0))))
+      |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_basic_test.hardcamlwaveform |}]
 ;;
