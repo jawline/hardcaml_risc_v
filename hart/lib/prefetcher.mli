@@ -1,6 +1,8 @@
 (** 
- The prefetcher module allows us to schedule and cache a single memory read.
- This can be used by fetch to speculatively fetch the next instruction. 
+ The prefetcher module helps the fetcher by pre-loading the next instruction into
+ memory. On valid, the prefetcher will schedule a memory read and then immediately
+ schedule a read to the address the next instruction would be if the code does not
+ branch.
 
  It keeps an address fifo of the reads that are in flight and issues reads
  whenever valid is set. It will then emit the value and address when the

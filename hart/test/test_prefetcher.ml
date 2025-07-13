@@ -67,7 +67,7 @@ module Test_machine = struct
       Memory_controller.hierarchical
         ~build_mode:Simulation
         ~priority_mode:Priority_order
-        ~read_latency:1
+        ~read_latency:4
         scope
         { Memory_controller.I.clock
         ; clear
@@ -117,7 +117,7 @@ let issue_load ~address sim =
     if Bits.to_bool !(outputs_before.ready) then () else loop_until_ready (max - 1)
   in
   loop_until_ready 50;
-  outputs.valid := Bits.gnd;
+  inputs.valid := Bits.gnd;
   let rec loop_until_valid max =
     if max = 0 then raise_s [%message "BUG: Timed out"];
     Cyclesim.cycle sim;
@@ -132,7 +132,7 @@ let issue_load ~address sim =
   print_s [%message (outputs : int Test_machine.O.t)]
 ;;
 
-let%expect_test "basic test" =
+let%expect_test "prefetcher basic test" =
   create_sim (fun sim ->
     let issue address =
       try issue_load ~address sim with
@@ -145,13 +145,13 @@ let%expect_test "basic test" =
          ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i / 4 else 0))
          128);
     issue 0;
-    [%expect {| (outputs ((valid 1) (address 0) (value 0) (ready 1))) |}];
+    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 0))) |}];
     issue 1;
-    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 1))) |}];
+    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 0))) |}];
     issue 2;
-    [%expect {| (outputs ((valid 1) (address 2) (value 2) (ready 1))) |}];
+    [%expect {| (outputs ((valid 1) (address 2) (value 2) (ready 0))) |}];
     issue 3;
-    [%expect {| (outputs ((valid 1) (address 3) (value 3) (ready 1))) |}];
+    [%expect {| (outputs ((valid 1) (address 3) (value 3) (ready 0))) |}];
     issue 0;
-    [%expect {| (outputs ((valid 1) (address 0) (value 0) (ready 1))) |}])
+    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 0))) |}])
 ;;

@@ -34,14 +34,27 @@ module Make (Memory : Memory_bus_intf.S) = struct
     mux2 enable signal (reg ~enable reg_spec signal)
   ;;
 
+  module State = struct
+    type t =
+      | Idle
+      | Fetch
+      | Fetch_next_guess
+    [@@deriving enumerate, sexp, compare]
+  end
+
   let create
         scope
         ({ clock; clear; valid; aligned_address; read_bus; read_response } : _ I.t)
     =
     let reg_spec = Reg_spec.create ~clock ~clear () in
-    let%hw fetching =
-      valid |: reg_fb ~width:1 ~f:(fun t -> mux2 read_bus.ready gnd (t |: valid)) reg_spec
+    let aligned_address = cut_through_latch ~enable:valid reg_spec aligned_address in
+    let%hw.Always.State_machine sm =
+      Always.State_machine.create (module State) reg_spec
     in
+    let next_guess = reg ~enable:valid reg_spec (aligned_address +:. 1) in
+    let%hw fetching = valid |: sm.is Fetch |: sm.is Fetch_next_guess in
+    let address_fifo_full = wire 1 in
+    let will_fetch = fetching &: ~:address_fifo_full in
     (* We could end up with multiple reads in flight so we buffer them up  *)
     let address_fifo =
       Fifo.create
@@ -50,14 +63,30 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ~showahead:true
         ~read_latency:0
         ~capacity:8
-        ~wr:read_bus.ready
-        ~d:aligned_address
+        ~wr:(will_fetch &: read_bus.ready)
+        ~d:(mux2 (sm.is Fetch_next_guess) next_guess aligned_address)
         ~rd:read_response.valid
         ()
     in
+    address_fifo_full <-- address_fifo.full;
+    Always.(
+      compile
+        [ if_
+            valid
+            [ if_ read_bus.ready [ sm.set_next Fetch_next_guess ]
+              @@ else_ [ sm.set_next Fetch ]
+            ]
+          @@ else_
+               [ sm.switch
+                   [ Idle, []
+                   ; Fetch, [ when_ read_bus.ready [ sm.set_next Fetch_next_guess ] ]
+                   ; Fetch_next_guess, [ when_ read_bus.ready [ sm.set_next Idle ] ]
+                   ]
+               ]
+        ]);
     { O.read_bus =
-        { Memory.Read_bus.Source.valid = fetching &: ~:(address_fifo.full)
-        ; data = { address = cut_through_latch ~enable:valid reg_spec aligned_address }
+        { Memory.Read_bus.Source.valid = will_fetch
+        ; data = { address = mux2 (sm.is Fetch_next_guess) next_guess aligned_address }
         }
     ; valid = cut_through_latch ~enable:read_response.valid reg_spec read_response.valid
     ; aligned_address =
