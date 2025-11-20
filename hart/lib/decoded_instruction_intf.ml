@@ -26,6 +26,8 @@ module M (Registers : Registers_intf.S) = struct
       }
     [@@deriving hardcaml]
 
+    module With_valid : With_valid.Wrap.S with type 'a value = 'a t
+
     val of_instruction : Signal.t -> Signal.t Registers.t -> Scope.t -> Signal.t t
   end
 end
