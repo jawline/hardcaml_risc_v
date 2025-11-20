@@ -61,6 +61,8 @@ struct
         }
     in
     prefetcher_ready <-- prefetcher.ready;
+    (* TODO: These can optionally be made cut through for zero cycles of
+       latency but a longer path. *)
     let registers =
       Registers.For_writeback.Of_signal.reg ~enable:valid reg_spec_with_clear registers
     in

@@ -56,8 +56,7 @@ module Test_machine = struct
       Prefetcher.hierarchical
         scope
         { Prefetcher.I.clock
-        ; board_clear = clear
-        ; hart_clear = clear
+        ; clear
         ; valid
         ; aligned_address = address
         ; read_bus = Read_bus.Dest.Of_always.value read_bus

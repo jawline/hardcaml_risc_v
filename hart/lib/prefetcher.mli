@@ -1,4 +1,3 @@
-(* TODO: Pre load a few memory addresses rather than the next memory address. *)
 (** 
  The prefetcher module helps the fetcher by pre-loading the next instruction into
  memory. On valid, the prefetcher will schedule a memory read and then immediately
@@ -19,8 +18,7 @@ module Make (Memory : Memory_bus_intf.S) : sig
   module I : sig
     type 'a t =
       { clock : 'a
-      ; board_clear : 'a
-      ; hart_clear : 'a
+      ; clear : 'a
       ; valid : 'a [@rtlprefix "input_"]
       ; aligned_address : 'a [@bits address_width]
       ; read_bus : 'a Memory.Read_bus.Dest.t
