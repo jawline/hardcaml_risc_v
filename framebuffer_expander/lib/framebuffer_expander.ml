@@ -82,7 +82,7 @@ struct
       | X_margin_start
       | X_body
       | X_margin_end
-    [@@deriving compare, enumerate, sexp_of]
+    [@@deriving compare ~localize, enumerate, sexp_of]
   end
 
   (* We require that row memory be word aligned (e.g, even if row width % 4 <>

@@ -81,13 +81,13 @@ let program_ram sim bits =
   List.iteri ~f:(fun i m -> Cyclesim.Memory.of_bits ~address:i ram m) bits
 ;;
 
-let debug = true
+let debug = false
 
 let test ~framebuffers =
   Harness.run
     ~trace:`All_named (* Needed so the BRAM doesn't get optimized away. *)
     ~create:Machine.create
-    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
+    ~waves_config:(Waves_config.to_home_subdirectory_when debug)
     (fun ~inputs ~outputs sim ->
        inputs.clear := vdd;
        Cyclesim.cycle sim;
