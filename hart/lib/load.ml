@@ -36,7 +36,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       | Idle
       | Waiting_for_memory_controller
       | Waiting_for_load
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create
@@ -46,7 +46,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
     let reg_spec = Reg_spec.create ~clock ~clear () in
     let reg_spec_no_clear = Reg_spec.create ~clock () in
     let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
-    let%hw_var load_valid = Variable.wire ~default:gnd in
+    let%hw_var load_valid = Variable.wire ~default:gnd () in
     let%hw aligned_address =
       reg
         ~enable:(current_state.is Idle)
@@ -68,7 +68,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
         ; when_ read_bus.ready [ current_state.set_next Waiting_for_load ]
         ]
     in
-    let finished = Variable.wire ~default:gnd in
+    let finished = Variable.wire ~default:gnd () in
     let slot_address ~width ~data_width scope =
       let slots = data_width / width in
       let bytes_per_slot = width / 8 in

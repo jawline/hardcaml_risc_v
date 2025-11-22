@@ -42,7 +42,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
       | Idle
       | Preparing_store
       | Waiting_for_store
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create
@@ -141,7 +141,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
              | Sb -> build_mask ~width:8 ~data_width (Scope.sub_scope scope "mask_sb"))
            op)
     in
-    let store_finished = Variable.wire ~default:gnd in
+    let store_finished = Variable.wire ~default:gnd () in
     (* TODO: Error signal is not correctly propagated here. *)
     compile
       [ current_state.switch

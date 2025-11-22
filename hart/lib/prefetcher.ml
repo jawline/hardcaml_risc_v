@@ -39,7 +39,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
       | Idle
       | Fetch
       | Fetch_next_guess
-    [@@deriving enumerate, sexp, compare]
+    [@@deriving enumerate, sexp, compare ~localize]
   end
 
   let create
