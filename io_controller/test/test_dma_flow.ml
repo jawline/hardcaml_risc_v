@@ -178,7 +178,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
   in
   let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
   Harness.run
-    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
+    ~waves_config:(Waves_config.to_home_subdirectory_when debug)
     ~trace:`All_named
     ~create:Machine.create
     (fun ~inputs ~outputs sim ->

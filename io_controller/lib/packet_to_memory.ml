@@ -45,7 +45,7 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
       | Transferring
       | Transfer_final_beat
       | Ignoring_illegal_address
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack = _ } : _ I.t) =
@@ -53,8 +53,8 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
     if Memory.data_bus_width % Axi.Source.port_widths.tdata <> 0
     then raise_s [%message "BUG: Memory width must be a multiple of DMA stream input"];
-    let current_address = Variable.reg ~width:address_width reg_spec in
-    let reset_buffers = Variable.wire ~default:gnd in
+    let%hw_var current_address = Variable.reg ~width:address_width reg_spec in
+    let%hw_var reset_buffers = Variable.wire ~default:gnd () in
     let address_buffer =
       Address_buffer.hierarchical
         scope

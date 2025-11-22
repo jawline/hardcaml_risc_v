@@ -57,7 +57,7 @@ struct
       | Writing_length
       | Reading_data
       | Writing_data
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create

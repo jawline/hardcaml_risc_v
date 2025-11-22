@@ -83,7 +83,7 @@ let test ~packets =
   Harness.run
     ~create:Machine.create
     ~trace:`All_named
-    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
+    ~waves_config:(Waves_config.to_home_subdirectory_when debug)
     (fun ~inputs ~outputs sim ->
        List.iter
          ~f:(fun { Packet.contents = load_memory; dma_address; dma_length } ->
@@ -108,7 +108,7 @@ let test ~packets =
              while !count <> 1000 && not (to_bool !(outputs.output_packet.tlast)) do
                Cyclesim.cycle sim;
                store_outputs ();
-               incr count
+               Core.incr count
              done;
              print_s [%message "" ~_:(!data : String.Hexdump.t)];
              printf "Cycles: %i\n" !count

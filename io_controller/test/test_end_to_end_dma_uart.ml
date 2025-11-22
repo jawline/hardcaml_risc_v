@@ -180,7 +180,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
   Harness.run
     ~create:Machine.create
     ~trace:`All_named
-    ~waves_config:(if debug then Waves_config.to_home_subdirectory () else No_waves)
+    ~waves_config:(Waves_config.to_home_subdirectory_when debug)
     (fun ~inputs ~outputs sim ->
        (* The fifo needs a clear cycle to initialize *)
        inputs.clear := vdd;
@@ -244,7 +244,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
              while !count <> 10_000 && String.length !data < String.length packet + 3 do
                Cyclesim.cycle sim;
                store_outputs ();
-               incr count
+               Core.incr count
              done;
              let data = !data in
              let without_length = String.subo ~pos:3 ~len:(String.length data - 3) data in
