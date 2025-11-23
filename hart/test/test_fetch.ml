@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -171,5 +171,5 @@ let%expect_test "fetch basic test" =
       ("The cycle after" (outputs ((valid 0) (value 1))))
       ("The cycle that" (outputs ((valid 0) (value 1))))
       |}]);
-  [%expect {| Saved waves to /home/ubuntu/waves//_fetch_basic_test.hardcamlwaveform |}]
+  [%expect {| |}]
 ;;
