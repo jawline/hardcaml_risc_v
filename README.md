@@ -34,6 +34,7 @@ To build some of the test programs you will need a rv32i cross compiler. You can
 git clone git@github.com:riscv-collab/riscv-gnu-toolchain.git
 cd riscv-gnu-toolchain
 ./configure --prefix="$HOME/gcc-riscv/" -with-arch=rv32i -with-abi=rv32i
+make
 export PATH=$PATH:$HOME/gcc-riscv/bin/
 ```
 
