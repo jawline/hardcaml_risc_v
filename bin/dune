@@ -1,5 +1,5 @@
 (executables
- (names generate_cpu program_cpu uart_loopback)
+ (names generate_cpu program_cpu uart_loopback simulate_cpu)
  (preprocess
   (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect))
  (libraries
@@ -9,4 +9,5 @@
   hardcaml_risc_v
   hardcaml_risc_v_hart
   hardcaml_xilinx_reports
-  hardcaml_risc_v_test))
+  hardcaml_risc_v_test
+  hardcaml_risc_v_regression_tests))

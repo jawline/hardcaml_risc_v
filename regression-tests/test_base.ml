@@ -10,7 +10,7 @@ open! Bits
 
 let debug = false
 let output_width = 64
-let output_height = 35
+let output_height = 34
 
 let uart_config =
   { Hardcaml_uart.Config.clock_frequency = 40
@@ -46,8 +46,8 @@ module Cpu_with_dma_memory =
         Video_config.Video_out
           ( (module struct
               let output_width = output_width
-              let output_height = output_width
-              let input_width = 32
+              let output_height = output_height
+              let input_width = 64
               let input_height = 32
               let framebuffer_address = 0x8000
             end : Video_out_intf.Config)
@@ -118,13 +118,17 @@ type sim =
   * Waveform.t
   * string
 
-let create_sim name : sim =
-  let module Sim = Cyclesim.With_interface (With_transmitter.I) (With_transmitter.O) in
-  let sim =
+module Sim = Cyclesim.With_interface (With_transmitter.I) (With_transmitter.O)
+
+let base_sim ~trace =
     Sim.create
-      ~config:Cyclesim.Config.trace_all
+      ~config:(if trace then Cyclesim.Config.trace_all else Cyclesim.Config.default)
       (With_transmitter.create
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
+
+let create_sim name : sim =
+  let sim =
+    base_sim ~trace:true
   in
   let waveform, sim = Waveform.create sim in
   sim, waveform, name
@@ -180,6 +184,9 @@ let send_dma_message ~address ~packet sim =
     whole_packet
 ;;
 
+let flush () = 
+        Core.Out_channel.flush Stdio.stdout;;
+
 module Result_machine = struct
   type t =
     | Wait_header
@@ -200,28 +207,32 @@ module Result_machine = struct
       if remaining = 1
       then (
         printf "\n";
+        flush ();
         Wait_header)
       else Wait_data (remaining - 1)
   ;;
 end
 
-let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
-  let sim, _, _ = sim in
+let test ?(before_printing_frame = (fun () -> ())) ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
   let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
-  (* Initialize the main memory to some known values for testing. *)
-  let initial_ram =
-    Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn
-  in
-  Sequence.range 0 (Cyclesim.Memory.size_in_words initial_ram)
-  |> Sequence.iter ~f:(fun i ->
-    Cyclesim.Memory.of_bits
-      ~address:i
-      initial_ram
-      (zero (Cyclesim.Memory.width_in_bits initial_ram)));
   (* Send a clear signal to initialize any CPU IO controller state back to
      default so we're ready to receive. *)
   clear_registers ~inputs sim;
-  let video_emulator = Video_emulator.create ~width:output_width ~height:output_height in
+  let video_emulator = Video_emulator.create ~width:output_width ~height:output_height ~on_frame:(fun ~which_frame ~frame ->
+          
+  if print_frames && which_frame >= skip_first_n_frames then 
+          (before_printing_frame ();
+          printf "Framebuffer %i\n" which_frame;
+          Sequence.range 0 output_height
+          |> Sequence.iter ~f:(fun y ->
+            Sequence.range 0 output_width
+            |> Sequence.iter ~f:(fun x ->
+              let px = Array.get frame ((y * output_width) + x) <> 0 in
+              printf "%s" (if px then "*" else "-"));
+            printf "\n";
+  flush ();          
+            )))
+          in
   send_dma_message ~address:0 ~packet:data sim;
   let _outputs_before : _ With_transmitter.O.t =
     Cyclesim.outputs ~clock_edge:Side.Before sim
@@ -231,7 +242,6 @@ let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
   Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
   (* Send a clear signal and then start the vsync logic *)
   clear_registers ~inputs sim;
-  print_s [%message "Printing RAM before registers"];
   let current_output_state = ref Result_machine.Wait_header in
   let rec loop_for cycles =
     if cycles = 0
@@ -251,25 +261,9 @@ let test ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
         := Result_machine.on_byte !current_output_state (to_char !(outputs.data_out));
       loop_for (cycles - 1))
   in
-  printf "RECEIVED FROM CPU VIA DMA: ";
+  printf "RECEIVED FROM CPU VIA DMA: \n";
   loop_for cycles;
   printf "\n";
-  if print_frames
-  then
-    List.iteri
-      ~f:(fun idx frame ->
-        if idx >= skip_first_n_frames
-        then (
-          printf "Framebuffer %i\n" idx;
-          Sequence.range 0 output_height
-          |> Sequence.iter ~f:(fun y ->
-            Sequence.range 0 output_width
-            |> Sequence.iter ~f:(fun x ->
-              let px = Array.get frame ((y * output_width) + x) <> 0 in
-              printf "%s" (if px then "*" else "-"));
-            printf "\n")))
-      (* Frames are in reverse order because we're prepending. *)
-      (List.rev video_emulator.frames);
   match outputs.registers with
   | [ outputs ] ->
     let outputs =

@@ -7,7 +7,7 @@ let%expect_test "Hello world (Rust)" =
       "../test-programs/test-rust-programs/hello-world-rust/hello-world-rust.bin"
   in
   let sim = create_sim "test_hello_world_rust" in
-  test ~print_frames:false ~cycles:5000 ~data:program sim;
+  test ~print_frames:false ~cycles:5000 ~data:program (fst3 sim);
   finalize_sim sim;
   [%expect
     {|
@@ -284,7 +284,7 @@ let%expect_test "Chip-8 (Rust)" =
     In_channel.read_all "../test-programs/test-rust-programs/chip-8-rust/chip-8-rust.bin"
   in
   let sim = create_sim "test_chip_8_rust" in
-  test ~skip_first_n_frames:8 ~print_frames:true ~cycles:30_000 ~data:program sim;
+  test ~skip_first_n_frames:8 ~print_frames:true ~cycles:30_000 ~data:program (fst3 sim);
   finalize_sim sim;
   [%expect
     {|

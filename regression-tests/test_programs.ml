@@ -6,7 +6,7 @@ let%expect_test "Hello world" =
     In_channel.read_all "../test-programs/test-c-programs/hello_world_c/hello_world.bin"
   in
   let sim = create_sim "test_dma_hello_world" in
-  test ~skip_first_n_frames:3 ~print_frames:true ~cycles:10_000 ~data:program sim;
+  test ~skip_first_n_frames:3 ~print_frames:true ~cycles:10_000 ~data:program (fst3 sim);
   finalize_sim sim;
   [%expect
     {|
@@ -320,7 +320,7 @@ let%expect_test "Scan line" =
     In_channel.read_all "../test-programs/test-c-programs/scan_line/scan_line.bin"
   in
   let sim = create_sim "test_dma_scan_line" in
-  test ~skip_first_n_frames:3 ~print_frames:true ~cycles:15_000 ~data:program sim;
+  test ~skip_first_n_frames:3 ~print_frames:true ~cycles:15_000 ~data:program (fst3 sim);
   finalize_sim sim;
   [%expect
     {|

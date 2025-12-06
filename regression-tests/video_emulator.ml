@@ -11,22 +11,26 @@ type t =
   ; mutable which_cycle : int
   ; mutable which_px : int
   ; mutable current_frame : frame
-  ; mutable frames : frame list
   ; mutable was_blanking : bool
+  ; mutable which_frame : int
+  ; on_frame : (which_frame:int -> frame:frame -> unit)
   }
 
-let create ~width ~height =
+let create ~on_frame ~width ~height =
   { width
   ; height
   ; which_cycle = 0
   ; which_px = 0
   ; current_frame = Array.init ~f:(fun _ -> 0) (width * height)
-  ; frames = []
   ; was_blanking = false
+  ; which_frame = 0
+  ; on_frame 
   }
 ;;
 
-let commit_frame t = t.frames <- Array.copy t.current_frame :: t.frames
+let commit_frame t = 
+t.on_frame ~which_frame:t.which_frame ~frame:t.current_frame
+; t.which_frame <- t.which_frame + 1
 
 let cycle t ~(video_data : Bits.t) ~(video_signals : Bits.t Video_signals.Video_signals.t)
   =
