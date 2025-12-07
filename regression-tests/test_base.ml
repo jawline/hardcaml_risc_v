@@ -121,15 +121,14 @@ type sim =
 module Sim = Cyclesim.With_interface (With_transmitter.I) (With_transmitter.O)
 
 let base_sim ~trace =
-    Sim.create
-      ~config:(if trace then Cyclesim.Config.trace_all else Cyclesim.Config.default)
-      (With_transmitter.create
-         (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
+  Sim.create
+    ~config:(if trace then Cyclesim.Config.trace_all else Cyclesim.Config.default)
+    (With_transmitter.create
+       (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
+;;
 
 let create_sim name : sim =
-  let sim =
-    base_sim ~trace:true
-  in
+  let sim = base_sim ~trace:true in
   let waveform, sim = Waveform.create sim in
   sim, waveform, name
 ;;
@@ -184,8 +183,7 @@ let send_dma_message ~address ~packet sim =
     whole_packet
 ;;
 
-let flush () = 
-        Core.Out_channel.flush Stdio.stdout;;
+let flush () = Core.Out_channel.flush Stdio.stdout
 
 module Result_machine = struct
   type t =
@@ -213,15 +211,26 @@ module Result_machine = struct
   ;;
 end
 
-let test ?(before_printing_frame = (fun () -> ())) ?(skip_first_n_frames = 0) ~print_frames ~cycles ~data sim =
+let test
+      ?(before_printing_frame = fun () -> ())
+      ?(skip_first_n_frames = 0)
+      ~print_frames
+      ~cycles
+      ~data
+      sim
+  =
   let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
   (* Send a clear signal to initialize any CPU IO controller state back to
      default so we're ready to receive. *)
   clear_registers ~inputs sim;
-  let video_emulator = Video_emulator.create ~width:output_width ~height:output_height ~on_frame:(fun ~which_frame ~frame ->
-          
-  if print_frames && which_frame >= skip_first_n_frames then 
-          (before_printing_frame ();
+  let video_emulator =
+    Video_emulator.create
+      ~width:output_width
+      ~height:output_height
+      ~on_frame:(fun ~which_frame ~frame ->
+        if print_frames && which_frame >= skip_first_n_frames
+        then (
+          before_printing_frame ();
           printf "Framebuffer %i\n" which_frame;
           Sequence.range 0 output_height
           |> Sequence.iter ~f:(fun y ->
@@ -230,9 +239,8 @@ let test ?(before_printing_frame = (fun () -> ())) ?(skip_first_n_frames = 0) ~p
               let px = Array.get frame ((y * output_width) + x) <> 0 in
               printf "%s" (if px then "*" else "-"));
             printf "\n";
-  flush ();          
-            )))
-          in
+            flush ())))
+  in
   send_dma_message ~address:0 ~packet:data sim;
   let _outputs_before : _ With_transmitter.O.t =
     Cyclesim.outputs ~clock_edge:Side.Before sim

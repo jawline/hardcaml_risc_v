@@ -13,7 +13,7 @@ type t =
   ; mutable current_frame : frame
   ; mutable was_blanking : bool
   ; mutable which_frame : int
-  ; on_frame : (which_frame:int -> frame:frame -> unit)
+  ; on_frame : which_frame:int -> frame:frame -> unit
   }
 
 let create ~on_frame ~width ~height =
@@ -24,13 +24,14 @@ let create ~on_frame ~width ~height =
   ; current_frame = Array.init ~f:(fun _ -> 0) (width * height)
   ; was_blanking = false
   ; which_frame = 0
-  ; on_frame 
+  ; on_frame
   }
 ;;
 
-let commit_frame t = 
-t.on_frame ~which_frame:t.which_frame ~frame:t.current_frame
-; t.which_frame <- t.which_frame + 1
+let commit_frame t =
+  t.on_frame ~which_frame:t.which_frame ~frame:t.current_frame;
+  t.which_frame <- t.which_frame + 1
+;;
 
 let cycle t ~(video_data : Bits.t) ~(video_signals : Bits.t Video_signals.Video_signals.t)
   =

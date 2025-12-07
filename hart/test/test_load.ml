@@ -92,7 +92,8 @@ end
 
 module Harness = Cyclesim_harness.Make (Test_machine.I) (Test_machine.O)
 
-let waves_config = Waves_config.to_home_subdirectory_when debug 
+let waves_config = Waves_config.to_home_subdirectory_when debug
+
 let create_sim f =
   Harness.run
     ~trace:`All_named
