@@ -47,18 +47,25 @@ let hide_cursor () =
   Out_channel.flush Out_channel.stdout
 ;;
 
+let without_raw_mode ~f =
+  f () 
+
 let sim =
   Command.basic
     ~summary:"Simulate"
     (let open Command.Let_syntax in
      let open Command.Param in
-     let%map path = flag "path" (required string) ~doc:"path to executable" in
+     let%map path = flag "path" (required string) ~doc:"path to executable" 
+     and raw_mode = flag "raw-mode" (optional bool) ~doc:"use raw mode or not" in
      fun () ->
-       with_raw_mode ~f:(fun () ->
+
+       let tui_fn = if Option.value ~default:true raw_mode then with_raw_mode else without_raw_mode in 
+       tui_fn ~f:(fun () ->
          let program = In_channel.read_all path in
          let sim = Test_base.base_sim ~trace:false in
          hide_cursor ();
          test
+           ~directly_program_ram:true
            ~before_printing_frame:(fun () ->
              clear_screen ();
              move_cursor_home ())

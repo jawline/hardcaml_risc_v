@@ -8,7 +8,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = false
+let debug = true
 let output_width = 64
 let output_height = 34
 
@@ -36,7 +36,7 @@ module Cpu_with_dma_memory =
       let design_frequency = 2000
     end)
     (struct
-      let capacity_in_bytes = 65536
+      let capacity_in_bytes = 1024 * 1024 * 10 (* CR blloring: Make this customizable per test *) 
     end)
     (struct
       let num_harts = 1
@@ -122,7 +122,8 @@ module Sim = Cyclesim.With_interface (With_transmitter.I) (With_transmitter.O)
 
 let base_sim ~trace =
   Sim.create
-    ~config:(if trace then Cyclesim.Config.trace_all else Cyclesim.Config.default)
+    ~config:
+      (if trace then Cyclesim.Config.trace_all else Cyclesim.Config.trace `All_named)
     (With_transmitter.create
        (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
 ;;
@@ -155,9 +156,9 @@ let print_ram sim =
 ;;
 
 let clear_registers ~(inputs : Bits.t ref With_transmitter.I.t) sim =
-  inputs.clear := one 1;
+  inputs.clear := vdd;
   Cyclesim.cycle sim;
-  inputs.clear := zero 1
+  inputs.clear := gnd
 ;;
 
 let send_dma_message ~address ~packet sim =
@@ -211,7 +212,27 @@ module Result_machine = struct
   ;;
 end
 
+let program_ram ~ram ~program =
+  let open Bits in
+  let width_in_bits = Cyclesim.Memory.width_in_bits ram in
+  let size_in_words = Cyclesim.Memory.size_in_words ram in
+  let words =
+    String.to_list program
+    |> List.map ~f:of_char
+    |> concat_lsb
+    |> split_lsb ~part_width:width_in_bits
+  in
+  print_s
+    [%message
+      "Programming ram"
+        (width_in_bits : int)
+        (size_in_words : int)
+        (Cyclesim.Memory.memory_size ram : int)];
+  List.iteri ~f:(fun i word -> Hardcaml.Cyclesim.Memory.of_bits ~address:i ram word) words
+;;
+
 let test
+      ?(directly_program_ram = false)
       ?(before_printing_frame = fun () -> ())
       ?(skip_first_n_frames = 0)
       ~print_frames
@@ -241,13 +262,16 @@ let test
             printf "\n";
             flush ())))
   in
-  send_dma_message ~address:0 ~packet:data sim;
-  let _outputs_before : _ With_transmitter.O.t =
-    Cyclesim.outputs ~clock_edge:Side.Before sim
-  in
-  let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
+  if directly_program_ram
+  then (
+    let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
+    program_ram ~ram ~program:data)
+  else (send_dma_message ~address:0 ~packet:data sim;
+
   (* Wait some arbitrary number of cycles for the actual DMA to proceed. This is hard to guess, since the memory controller can push back. *)
-  Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim);
+  Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim));
+  
+  let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
   (* Send a clear signal and then start the vsync logic *)
   clear_registers ~inputs sim;
   let current_output_state = ref Result_machine.Wait_header in
