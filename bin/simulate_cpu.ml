@@ -61,7 +61,9 @@ let sim =
 
        let tui_fn = if Option.value ~default:true raw_mode then with_raw_mode else without_raw_mode in 
        tui_fn ~f:(fun () ->
+         print_s [%message "Starting up"];
          let program = In_channel.read_all path in
+         print_s [%message "Loaded program"];
          let sim = Test_base.base_sim ~trace:false in
          hide_cursor ();
          test

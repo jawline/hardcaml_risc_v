@@ -214,21 +214,20 @@ end
 
 let program_ram ~ram ~program =
   let open Bits in
+  print_s [%message "looking up ram properties"];
   let width_in_bits = Cyclesim.Memory.width_in_bits ram in
   let size_in_words = Cyclesim.Memory.size_in_words ram in
-  let words =
+  let bytes_ =
     String.to_list program
     |> List.map ~f:of_char
-    |> concat_lsb
-    |> split_lsb ~part_width:width_in_bits
   in
   print_s
     [%message
-      "Programming ram"
+      "programming ram"
         (width_in_bits : int)
         (size_in_words : int)
         (Cyclesim.Memory.memory_size ram : int)];
-  List.iteri ~f:(fun i word -> Hardcaml.Cyclesim.Memory.of_bits ~address:i ram word) words
+  List.iteri ~f:(fun i word -> Hardcaml.Cyclesim.Memory.of_bits ~address:i ram word) bytes_
 ;;
 
 let test
@@ -244,6 +243,8 @@ let test
   (* Send a clear signal to initialize any CPU IO controller state back to
      default so we're ready to receive. *)
   clear_registers ~inputs sim;
+
+  print_s [%message "constructing video emulator"];
   let video_emulator =
     Video_emulator.create
       ~width:output_width
@@ -262,9 +263,11 @@ let test
             printf "\n";
             flush ())))
   in
+  print_s [%message "preparing to program ram"];
   if directly_program_ram
   then (
     let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
+    print_s [%message "found bram"];
     program_ram ~ram ~program:data)
   else (send_dma_message ~address:0 ~packet:data sim;
 
