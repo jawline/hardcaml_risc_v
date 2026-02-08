@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-riscv32-unknown-elf-as -o entry.o entry.s -march=rv32i
-riscv32-unknown-elf-gcc -O3 -ffreestanding -nostdlib -nostartfiles -c game_of_life.c -march=rv32i -mstrict-align -fomit-frame-pointer -Wall -I ../shared/
-riscv32-unknown-elf-gcc -O3 -ffreestanding -nostdlib -nostartfiles -c ../shared/shared.c -march=rv32i -mstrict-align -fomit-frame-pointer -Wall
+riscv32-unknown-elf-as -o entry.o entry.s -march=rv32i_zmmul
+riscv32-unknown-elf-gcc -O3 -ffreestanding -nostdlib -nostartfiles -c game_of_life.c -march=rv32i_zmmul -mstrict-align -fomit-frame-pointer -Wall -I ../shared/
+riscv32-unknown-elf-gcc -O3 -ffreestanding -nostdlib -nostartfiles -c ../shared/shared.c -march=rv32i_zmmul -mstrict-align -fomit-frame-pointer -Wall
 riscv32-unknown-elf-ld -o game_of_life.elf entry.o game_of_life.o -Tlink.ld 
 riscv32-unknown-elf-objcopy game_of_life.elf -O binary game_of_life.bin

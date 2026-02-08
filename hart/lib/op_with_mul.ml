@@ -54,7 +54,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   let create scope (i : _ I.t) =
     let op = Op.hierarchical scope { Op.I.op = i.alu_op; lhs = i.lhs; rhs = i.rhs } in
-    let rd = mux2 i.is_muldiv (multiply_result scope i) op.rd  in
+    let rd = mux2 i.is_muldiv (multiply_result scope i) op.rd in
     { O.rd }
   ;;
 

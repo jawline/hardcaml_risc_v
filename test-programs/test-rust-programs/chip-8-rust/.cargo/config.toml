@@ -1,5 +1,6 @@
 [target.riscv32i-unknown-none-elf]
 rustflags = [
+  "-C", "target-feature=+zmmul",
   "-C", "link-arg=-Tld/memory.ld",
   "-C", "opt-level=3",                
   "-Crelocation-model=static",
