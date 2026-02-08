@@ -113,6 +113,16 @@ let op ~funct7 ~funct3 ~rs1 ~rs2 ~rd =
     ~rd:(of_int_trunc ~width:5 rd)
 ;;
 
+let muldiv ~funct3 ~rs1 ~rs2 ~rd =
+  assemble_r_type
+    ~opcode:Op
+    ~funct3:(of_int_trunc ~width:3 (Funct3.Muldiv.to_int funct3))
+    ~funct7:(of_int_trunc ~width:7 1)
+    ~rs1:(of_int_trunc ~width:5 rs1)
+    ~rs2:(of_int_trunc ~width:5 rs2)
+    ~rd:(of_int_trunc ~width:5 rd)
+;;
+
 let ecall =
   assemble_i_type
     ~opcode:System

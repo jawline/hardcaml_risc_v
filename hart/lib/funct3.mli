@@ -20,6 +20,20 @@ module Op : sig
   module Onehot : Onehot_intf.S with type base := t
 end
 
+module Muldiv : sig
+  type t =
+    | Mul
+    | MulHigh
+    | MulHigh_Signed_Unsigned
+    | MulHigh_Unsigned
+  [@@deriving equal, enumerate, variants]
+
+  val to_int : t -> int
+  val of_int : int -> t option
+
+  module Onehot : Onehot_intf.S with type base := t
+end
+
 module Branch : sig
   type t =
     | Beq

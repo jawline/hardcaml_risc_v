@@ -19,6 +19,9 @@ module M (Registers : Registers_intf.S) = struct
       ; is_csr : 'a
       ; alu_operation : 'a Alu_operation.Onehot.t
         (** The ALU operation onehot encodes what the ALU should do if Decoded_opcode is ALU. The includes the pre-coded Add | Sub and Srl | Sra operations. *)
+      ; muldiv_operation : 'a Funct3.Muldiv.Onehot.t option
+      ; is_muldiv : 'a option
+        (** Set if the ALU instruction is Muldiv (opcode was Op and funct7 is 1). *)
       ; branch_onehot : 'a Funct3.Branch.Onehot.t
       ; load_onehot : 'a Funct3.Load.Onehot.t
       ; store_onehot : 'a Funct3.Store.Onehot.t

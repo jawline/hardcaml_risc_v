@@ -46,6 +46,37 @@ module Op = struct
   module Onehot = Onehot.Make (T)
 end
 
+module Muldiv = struct
+  module T = struct
+    type t =
+      | Mul
+      | MulHigh
+      | MulHigh_Signed_Unsigned
+      | MulHigh_Unsigned
+    [@@deriving equal, enumerate, variants]
+
+    let to_int t =
+      match t with
+      | Mul -> 0b000
+      | MulHigh -> 0b001
+      | MulHigh_Signed_Unsigned -> 0b010
+      | MulHigh_Unsigned -> 0b011
+    ;;
+
+    let of_int i =
+      match i with
+      | 0b000 -> Some Mul
+      | 0b001 -> Some MulHigh
+      | 0b010 -> Some MulHigh_Signed_Unsigned
+      | 0b011 -> Some MulHigh_Unsigned
+      | _ -> None
+    ;;
+  end
+
+  include T
+  module Onehot = Onehot.Make (T)
+end
+
 module Branch = struct
   module T = struct
     type t =

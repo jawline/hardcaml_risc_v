@@ -12,6 +12,7 @@ module Make
 struct
   module Csr = Csr.Make (Hart_config) (Registers) (Decoded_instruction)
   module Op = Op.Make (Hart_config)
+  module Op_with_mul = Op_with_mul.Make (Hart_config)
   module Branch = Branch.Make (Hart_config)
   module Load = Load.Make (Hart_config) (Memory)
   module Store = Store.Make (Hart_config) (Memory)
@@ -63,12 +64,30 @@ struct
         ~valid
         ~(registers : _ Registers.t)
         scope
-        ({ opcode; argument_1; argument_2; alu_operation; _ } : _ Decoded_instruction.t)
+        ({ opcode; argument_1; argument_2; alu_operation; muldiv_operation; is_muldiv; _ } :
+          _ Decoded_instruction.t)
     =
-    let { Op.O.rd = new_rd } =
-      Op.hierarchical
-        scope
-        { Op.I.op = alu_operation; lhs = argument_1; rhs = argument_2 }
+    let new_rd =
+      if Hart_config.Extensions.zmul
+      then (
+        let { Op_with_mul.O.rd = new_rd } =
+          Op_with_mul.hierarchical
+            scope
+            { Op_with_mul.I.alu_op = alu_operation
+            ; muldiv_op = Option.value_exn muldiv_operation
+            ; is_muldiv = Option.value_exn is_muldiv
+            ; lhs = argument_1
+            ; rhs = argument_2
+            }
+        in
+        new_rd)
+      else (
+        let { Op.O.rd = new_rd } =
+          Op.hierarchical
+            scope
+            { Op.I.op = alu_operation; lhs = argument_1; rhs = argument_2 }
+        in
+        new_rd)
     in
     { Opcode_output.valid = valid &: Decoded_opcode.valid opcode ALU
     ; read_bus = None

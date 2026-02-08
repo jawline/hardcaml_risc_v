@@ -34,9 +34,15 @@ module Cpu_with_dma_memory =
       let register_width = Register_width.B32
       let num_registers = 32
       let design_frequency = 2000
+
+      module Extensions = struct
+        let zmul = true
+      end
     end)
     (struct
-      let capacity_in_bytes = 1024 * 1024 * 10 (* CR blloring: Make this customizable per test *) 
+      let capacity_in_bytes = 1024 * 1024 * 32
+      (* Reference designs assume a 32MB RAM *)
+      (* CR blloring: Make this customizable per test *)
     end)
     (struct
       let num_harts = 1
@@ -217,17 +223,16 @@ let program_ram ~ram ~program =
   print_s [%message "looking up ram properties"];
   let width_in_bits = Cyclesim.Memory.width_in_bits ram in
   let size_in_words = Cyclesim.Memory.size_in_words ram in
-  let bytes_ =
-    String.to_list program
-    |> List.map ~f:of_char
-  in
+  let bytes_ = String.to_list program |> List.map ~f:of_char in
   print_s
     [%message
       "programming ram"
         (width_in_bits : int)
         (size_in_words : int)
         (Cyclesim.Memory.memory_size ram : int)];
-  List.iteri ~f:(fun i word -> Hardcaml.Cyclesim.Memory.of_bits ~address:i ram word) bytes_
+  List.iteri
+    ~f:(fun i word -> Hardcaml.Cyclesim.Memory.of_bits ~address:i ram word)
+    bytes_
 ;;
 
 let test
@@ -243,7 +248,6 @@ let test
   (* Send a clear signal to initialize any CPU IO controller state back to
      default so we're ready to receive. *)
   clear_registers ~inputs sim;
-
   print_s [%message "constructing video emulator"];
   let video_emulator =
     Video_emulator.create
@@ -269,11 +273,10 @@ let test
     let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
     print_s [%message "found bram"];
     program_ram ~ram ~program:data)
-  else (send_dma_message ~address:0 ~packet:data sim;
-
-  (* Wait some arbitrary number of cycles for the actual DMA to proceed. This is hard to guess, since the memory controller can push back. *)
-  Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim));
-  
+  else (
+    send_dma_message ~address:0 ~packet:data sim;
+    (* Wait some arbitrary number of cycles for the actual DMA to proceed. This is hard to guess, since the memory controller can push back. *)
+    Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim));
   let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
   (* Send a clear signal and then start the vsync logic *)
   clear_registers ~inputs sim;
@@ -297,8 +300,10 @@ let test
       loop_for (cycles - 1))
   in
   printf "RECEIVED FROM CPU VIA DMA: \n";
+  flush ();
   loop_for cycles;
   printf "\n";
+  flush ();
   match outputs.registers with
   | [ outputs ] ->
     let outputs =

@@ -8,7 +8,7 @@ open Opcode_helper
 open! Bits
 
 let debug = false
-let trials = 4
+let trials = 16
 
 module Make (M : sig
     type sim
@@ -105,6 +105,60 @@ struct
       ~f:(fun l r -> if l land 0xFFFFFFFF < r land 0xFFFFFFFF then 1 else 0)
       ~small_imm_range:false;
     [%expect {| |}]
+  ;;
+
+  let muldiv_helper ~name ~f ~funct3 ~small_rs2_range =
+    let sim = create_sim name in
+    let open Quickcheck.Generator in
+    Core.protect
+      ~finally:(fun () -> M.finalize_sim sim)
+      ~f:(fun () ->
+        Quickcheck.test
+          ~trials
+          (tuple5
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl 1 31)
+             (Int.gen_incl (-2047) 2047)
+             (Int.gen_incl
+                (if small_rs2_range then 0 else -2047)
+                (if small_rs2_range then 10 else 2047)))
+          ~f:(fun (rd, rs1, rs2, rs1_initial, rs2_initial) ->
+            if rs1 <> rs2
+            then (
+              let _pc, registers =
+                M.test_and_registers
+                  ~instructions:
+                    [ op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs1
+                        ~immediate:rs1_initial
+                    ; op_imm
+                        ~funct3:Funct3.Op.Add_or_sub
+                        ~rs1:0
+                        ~rd:rs2
+                        ~immediate:rs2_initial
+                    ; muldiv ~rs1 ~rs2 ~rd ~funct3
+                    ]
+                  sim
+              in
+              let result = List.nth_exn registers rd land 0xFFFFFFFF in
+              let expectation = f rs1_initial rs2_initial land 0xFFFFFFFF in
+              if result <> expectation
+              then
+                raise_s
+                  [%message
+                    "Failed"
+                      (result : int)
+                      (expectation : int)
+                      (rd : int)
+                      (rs1 : int)
+                      (rs2 : int)
+                      (rs1_initial : int)
+                      (rs2_initial : int)
+                      (registers : int list)])
+            else ()))
   ;;
 
   let op_helper ~name ~f ~funct3 ~funct7 ~small_rs2_range =
@@ -263,6 +317,54 @@ struct
     [%expect {| |}]
   ;;
 
+  let%expect_test "mul" =
+    muldiv_helper
+      ~name:"mul"
+      ~funct3:Funct3.Muldiv.Mul
+      ~f:(fun (l : int) (r : int) -> l * r land 0xFFFF_FFFF)
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "mulh" =
+    muldiv_helper
+      ~name:"mulh"
+      ~funct3:Funct3.Muldiv.MulHigh
+      ~f:(fun (l : int) (r : int) ->
+        let l = Int64.of_int l in
+        let r = Int64.of_int r in
+        let r = Int64.((l * r) lsr 32 |> to_int_exn) in
+        r)
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "mulu" =
+    muldiv_helper
+      ~name:"mulu"
+      ~funct3:Funct3.Muldiv.MulHigh_Unsigned
+      ~f:(fun (l : int) (r : int) ->
+        let l = Bits.of_int_trunc ~width:32 l in
+        let r = Bits.of_int_trunc ~width:32 r in
+        let result = Bits.( *: ) l r in
+        Bits.(sel_top ~width:32 result |> to_int_trunc))
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "mulsu" =
+    muldiv_helper
+      ~name:"mulsu"
+      ~funct3:Funct3.Muldiv.MulHigh_Signed_Unsigned
+      ~f:(fun (l : int) (r : int) ->
+        let l = Bits.of_int_trunc ~width:32 l in
+        let r = Bits.of_int_trunc ~width:32 r in
+        let result = Bits.( *+ ) (sextend ~width:33 l) (uextend ~width:33 r) in
+        Bits.(sel_bottom ~width:64 result |> sel_top ~width:32 |> to_int_trunc))
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
   let branch_helper ~name ~f ~funct3 =
     let sim = create_sim name in
     let open Quickcheck.Generator in
@@ -319,22 +421,26 @@ struct
 
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
-    [%expect {| |}]
+    [%expect
+      {| |}]
   ;;
 
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
-    [%expect {| |}]
+    [%expect
+      {| |}]
   ;;
 
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
-    [%expect {| |}]
+    [%expect
+      {| |}]
   ;;
 
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
-    [%expect {| |}]
+    [%expect
+      {| |}]
   ;;
 
   let%expect_test "jal" =
@@ -899,6 +1005,10 @@ module Cpu_with_no_io_controller =
       let register_width = Register_width.B32
       let num_registers = 32
       let design_frequency = 1000
+
+      module Extensions = struct
+        let zmul = true
+      end
     end)
     (struct
       let capacity_in_bytes = 128
@@ -997,6 +1107,10 @@ module Cpu_with_dma_memory =
       let register_width = Register_width.B32
       let num_registers = 32
       let design_frequency = 1000
+
+      module Extensions = struct
+        let zmul = true
+      end
     end)
     (struct
       let capacity_in_bytes = 128

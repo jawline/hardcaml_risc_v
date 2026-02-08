@@ -20,6 +20,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       ; is_ecall : 'a
       ; is_csr : 'a
       ; alu_operation : 'a Alu_operation.Onehot.t
+      ; muldiv_operation : 'a Funct3.Muldiv.Onehot.t option
+            [@exists Hart_config.Extensions.zmul]
+      ; is_muldiv : 'a option [@exists Hart_config.Extensions.zmul]
       ; branch_onehot : 'a Funct3.Branch.Onehot.t
       ; load_onehot : 'a Funct3.Load.Onehot.t
       ; store_onehot : 'a Funct3.Store.Onehot.t
@@ -162,6 +165,16 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       ; is_ecall
       ; is_csr
       ; alu_operation = decoded_alu_operation
+      ; muldiv_operation =
+          (if Hart_config.Extensions.zmul
+           then (
+             let test_funct3 op = funct3 ==:. Funct3.Muldiv.to_int op in
+             Funct3.Muldiv.Onehot.construct_onehot ~f:test_funct3 |> Some)
+           else None)
+      ; is_muldiv =
+          (if Hart_config.Extensions.zmul
+           then Some (funct7.:(0) &: test_opcode Op)
+           else None)
       ; branch_onehot =
           (let test_funct3 op = funct3 ==:. Funct3.Branch.to_int op in
            Funct3.Branch.Onehot.construct_onehot ~f:test_funct3)

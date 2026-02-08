@@ -47,32 +47,39 @@ let hide_cursor () =
   Out_channel.flush Out_channel.stdout
 ;;
 
-let without_raw_mode ~f =
-  f () 
+let without_raw_mode ~f = f ()
 
 let sim =
   Command.basic
     ~summary:"Simulate"
     (let open Command.Let_syntax in
      let open Command.Param in
-     let%map path = flag "path" (required string) ~doc:"path to executable" 
-     and raw_mode = flag "raw-mode" (optional bool) ~doc:"use raw mode or not" in
+     let%map path = flag "path" (required string) ~doc:"path to executable"
+     and raw_mode = flag "raw-mode" (optional bool) ~doc:"use raw mode or not"
+     and print_frames =
+       flag "print-frames" (optional bool) ~doc:"print the framebuffer to stdout"
+     and run_for_cycles =
+       flag "run-for-cycles" (optional int) ~doc:"num cycles to run for"
+     in
      fun () ->
-
-       let tui_fn = if Option.value ~default:true raw_mode then with_raw_mode else without_raw_mode in 
+       let raw_mode = Option.value ~default:true raw_mode in
+       let run_for_cycles = Option.value ~default:100_000_000_000_000 run_for_cycles in
+       let tui_fn = if raw_mode then with_raw_mode else without_raw_mode in
        tui_fn ~f:(fun () ->
          print_s [%message "Starting up"];
          let program = In_channel.read_all path in
          print_s [%message "Loaded program"];
          let sim = Test_base.base_sim ~trace:false in
-         hide_cursor ();
+         if raw_mode then hide_cursor ();
          test
            ~directly_program_ram:true
            ~before_printing_frame:(fun () ->
-             clear_screen ();
-             move_cursor_home ())
-           ~print_frames:true
-           ~cycles:100_000_000_000_000
+             if raw_mode
+             then (
+               clear_screen ();
+               move_cursor_home ()))
+           ~print_frames:(Option.value ~default:true print_frames)
+           ~cycles:run_for_cycles
            ~data:program
            sim))
 ;;
