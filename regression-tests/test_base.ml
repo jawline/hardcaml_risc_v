@@ -239,6 +239,7 @@ let test
       ?(directly_program_ram = false)
       ?(before_printing_frame = fun () -> ())
       ?(skip_first_n_frames = 0)
+      ?print_state_every_n_cycles
       ~print_frames
       ~cycles
       ~data
@@ -281,6 +282,31 @@ let test
   (* Send a clear signal and then start the vsync logic *)
   clear_registers ~inputs sim;
   let current_output_state = ref Result_machine.Wait_header in
+  let print_state ~include_ram =
+    match outputs.registers with
+    | [ outputs ] ->
+      let outputs =
+        Cpu_with_dma_memory.Registers.map ~f:(fun t -> to_int_trunc !t) outputs
+      in
+      print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Registers.t)];
+      if include_ram then print_ram sim;
+      ()
+    | _ -> raise_s [%message "BUG: Unexpected number of harts"]
+  in
+  let maybe_print_state remaining_cycles =
+    match print_state_every_n_cycles with
+    | Some num_cycles ->
+      if remaining_cycles  % num_cycles = 0
+      then (
+        match outputs.registers with
+        | [ outputs ] ->
+          let outputs =
+            Cpu_with_dma_memory.Registers.map ~f:(fun t -> to_int_trunc !t) outputs
+          in
+          print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Registers.t)]
+        | _ -> raise_s [%message "BUG: Can't print state"])
+    | None -> ()
+  in
   let rec loop_for cycles =
     if cycles = 0
     then ()
@@ -297,6 +323,7 @@ let test
       then
         current_output_state
         := Result_machine.on_byte !current_output_state (to_char !(outputs.data_out));
+      maybe_print_state cycles;
       loop_for (cycles - 1))
   in
   printf "RECEIVED FROM CPU VIA DMA: \n";
@@ -304,12 +331,5 @@ let test
   loop_for cycles;
   printf "\n";
   flush ();
-  match outputs.registers with
-  | [ outputs ] ->
-    let outputs =
-      Cpu_with_dma_memory.Registers.map ~f:(fun t -> to_int_trunc !t) outputs
-    in
-    print_s [%message "" ~_:(outputs : int Cpu_with_dma_memory.Registers.t)];
-    print_ram sim
-  | _ -> raise_s [%message "BUG: Unexpected number of harts"]
+  print_state ~include_ram:true
 ;;

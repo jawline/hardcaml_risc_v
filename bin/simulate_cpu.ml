@@ -60,6 +60,8 @@ let sim =
        flag "print-frames" (optional bool) ~doc:"print the framebuffer to stdout"
      and run_for_cycles =
        flag "run-for-cycles" (optional int) ~doc:"num cycles to run for"
+     and print_state_every_n_cycles =
+       flag "print-state-every-n-cycles" (optional int) ~doc:"print state at interval"
      in
      fun () ->
        let raw_mode = Option.value ~default:true raw_mode in
@@ -72,6 +74,7 @@ let sim =
          let sim = Test_base.base_sim ~trace:false in
          if raw_mode then hide_cursor ();
          test
+           ?print_state_every_n_cycles
            ~directly_program_ram:true
            ~before_printing_frame:(fun () ->
              if raw_mode
