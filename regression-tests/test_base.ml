@@ -296,7 +296,7 @@ let test
   let maybe_print_state remaining_cycles =
     match print_state_every_n_cycles with
     | Some num_cycles ->
-      if remaining_cycles  % num_cycles = 0
+      if remaining_cycles % num_cycles = 0
       then (
         match outputs.registers with
         | [ outputs ] ->
