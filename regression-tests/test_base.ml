@@ -211,7 +211,6 @@ module Result_machine = struct
       printf "%c" c;
       if remaining = 1
       then (
-        printf "\n";
         flush ();
         Wait_header)
       else Wait_data (remaining - 1)
