@@ -10,6 +10,7 @@ module FBC = struct
   let input_height = 32
   let output_width = 64
   let output_height = 32
+  let input_pixel_mode = Pixel_mode.One_bit
 end
 
 module Memory_controller = Bram_memory_controller.Make (struct
@@ -70,7 +71,7 @@ module Machine = struct
     in
     Read_bus.Dest.Of_signal.(request_ack <-- List.hd_exn controller.read_to_controller);
     Read_response.With_valid.Of_signal.(response <-- List.hd_exn controller.read_response);
-    { O.pixel = frame.pixel }
+    { O.pixel = frame.pixel.r.:(0) }
   ;;
 end
 

@@ -1,4 +1,4 @@
-(** A framebuffer expander that reads a greyscale bitvector of input_width *
+(** A framebuffer expander that reads a framebuffer of input_width and
     input_height from the memory controller and outputs it pixel by pixel width
     by height.
 
@@ -10,7 +10,16 @@
     pulse to provide leeway for fetching.
 
     Row memory must be word aligned (e.g, if a row is 8 width it must still be
-    4 bytes long). *)
+    4 bytes long).
+
+    There are three modes which change the representation of a framebuffer in
+    memory:
+    - One_bit:  A single bit is used to represent the pixel.
+    - Grescale_8bit: Pixels are represented as a densely packed array of 8 bit greyscale values. 8 bits per pixel.
+    - RGB_8bit: Pixels are represented by 24bit RGB values, this mode requires the highest memory bandwidth.
+
+    If memory is not available in time, the output is not well defined.
+*)
 
 open Core
 open Hardcaml
@@ -23,12 +32,22 @@ module Make
        val input_height : int
        val output_width : int
        val output_height : int
+       val input_pixel_mode : Pixel_mode.t
      end)
     (Memory : Memory_bus_intf.S) =
 struct
   open Config
 
   let data_width = Memory.data_bus_width
+
+  module Pixel = struct
+    type 'a t =
+      { r : 'a [@bits 8]
+      ; g : 'a [@bits 8]
+      ; b : 'a [@bits 8]
+      }
+    [@@deriving hardcaml]
+  end
 
   module I = struct
     type 'a t =
@@ -40,16 +59,16 @@ struct
       ; memory_request : 'a Memory.Read_bus.Dest.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   module O = struct
     type 'a t =
       { valid : 'a
-      ; pixel : 'a
+      ; pixel : 'a Pixel.t
       ; memory_request : 'a Memory.Read_bus.Source.t
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   let () =
@@ -93,16 +112,26 @@ struct
 
   let word_in_bytes = I.port_widths.memory_response.value.read_data / 8
 
-  let row_offset_in_words =
-    (* Number of bytes in a row, aligned to the nearest byte (8 bits). *)
-    let row_num_bytes =
-      let whole_component = input_width / 8 in
-      let ratio_component = input_height % 8 in
-      whole_component + if ratio_component <> 0 then 1 else 0
-    in
-    let whole_component = row_num_bytes / word_in_bytes in
-    let ratio_component = row_num_bytes % word_in_bytes in
+  let bits_per_pixels =
+    match Config.input_pixel_mode with
+    | One_bit -> 1
+    | Greyscale_8bit -> 8
+    | RGB_8bit -> 24
+  ;;
+
+  let bits_per_row = input_width / bits_per_pixel
+
+  (* Number of bytes in a row, aligned to the nearest byte (8 bits). *)
+  let bytes_per_row =
+    let whole_component = bits_per_row / 8 in
+    let ratio_component = bits_per_row % 8 in
     whole_component + if ratio_component <> 0 then 1 else 0
+  ;;
+
+  let row_offset_in_words =
+    let whole_component = bytes_per_row / word_in_bytes in
+    let ratio_component = bytes_per_row % word_in_bytes in
+    bytes_per_row + if ratio_component <> 0 then 1 else 0
   ;;
 
   let create scope (i : _ I.t) =
@@ -148,11 +177,66 @@ struct
     in
     (* When not fetched we will prefetch the next data byte of the body. *)
     let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
+    let%hw_var start_of_row = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data_valid = Variable.reg ~width:1 reg_spec_no_clear in
+    (* In RGB mode we might have some pixels that don't align with read widths. E.g.,  
+     
+       32 bits
+       [ R; G; B; R ]  [ G ; B; R ; G ] [ B; R; G: B ] -> 1 bit misaligned
+
+       Pixel 0: RGB, 1 byte rem
+       Pixel 1: RGB, 2 byte rem
+       Pixel 2: RGB, 3 byte rem
+
+       pixels_this_mem_cell = [ 1; 1; 2 ] 
+
+       0x0: RG BR GB RG BR GB RG BR GB
+
+       Scheme to handle this:
+
+       Previously: We would advance the read head when a fixed constant pixel this mem cell was full
+       Now: We will advance the head when a dynamic value pixels_this_mem_cell is full 
+       where pixels this mem cell is driven by a precomputed counter
+
+       Compute
+
+       cycle: first repeat in num bytes rem
+       so 32b: 3 mem cell cycle
+       pixel 0 (1 rem, pixels this mem cell = 1) -> pixel 1 (2 rem, pixels this mem cell = 1) -> pixel 2 (3 rem, pixels this mem cell = 2)
+
+       reg width = 24 bits + (max rem * 8, 24 bits at a 32bit bus)
+
+       pixels_this_cell = look up table of how many pixels to emit this cell
+
+       on data cell: data <- data.value lsl 3 |: memory cell lsr 3
+
+       on ready:
+        if cur_pixel_this_mem_cell = pixels_this_mem_cell then schedule next read else 
+
+       output data: sll data ~by:(cur_pixel_this_mem_cell * 24)
+
+     *)
+    let rem_trailing_bytes =
+      match Config.input_pixel_mode with
+      | One_bit | Grescale_8bit -> 0
+      | RGB_8bit ->
+        let bus_width = width i.memory_response.value.read_data in
+        let byte_width = bus_width / 8 in
+        assert (byte_width > 3);
+        byte_width % 3
+    in
     let%hw_var data = Variable.reg ~width:data_width reg_spec_no_clear in
     let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
-    let%hw which_bit =
-      let num_bits = num_bits_to_represent (width data.value - 1) in
+    let num_pixels_per_memory_cell =
+      match Config.input_pixel_mode with
+      | One_bit -> width data.value
+      | Greyscale_8bit -> width data.value / 8
+      | RGB_8bit ->
+        (* max num pixels per memory cell in the loop, we decide a loop on the first rem repeat. *)
+        assert false
+    in
+    let%hw which_pixel_this_memory_cell =
+      let num_bits = num_bits_to_represent num_pixels_per_memory_cell in
       if num_bits > width data.value
       then sel_bottom ~width:num_bits reg_x.value
       else uresize ~width:num_bits reg_x.value
@@ -181,6 +265,7 @@ struct
         ; y_px_ctr <--. 0
         ; next_address <-- aligned_address
         ; row_start_address <-- aligned_address
+        ; start_of_row <-- vdd
         ; clear_fetched
         ; enter_state
         ]
@@ -229,6 +314,7 @@ struct
         [ enter_x_line
         ; incr y_px_ctr
         ; next_address <-- row_start_address.value
+        ; start_of_row <-- vdd
         ; clear_fetched
         ; when_ (y_px_ctr.value ==:. scaling_factor_y - 1) [ move_on_to_next_y_row ]
         ]
@@ -247,7 +333,8 @@ struct
             [ x_px_ctr <--. 0
             ; incr reg_x
             ; when_
-                (which_bit ==: ones (width which_bit))
+                (which_pixel_this_memory_cell
+                 ==: ones (width which_pixel_this_memory_cell))
                 [ incr next_address; clear_fetched ]
             ; when_
                 (reg_x.value ==:. input_width - 1)
@@ -284,20 +371,52 @@ struct
         ]
     in
     let request_read = current_state.is X_body &: ~:(fetched.value) in
+    let%hw memory_data_including_trailing =
+      match Config.input_pixel_mode with
+      | One_bit | Greyscale_8bit ->
+        (* Byte aligned pixels do not need trailing data. *)
+        i.memory_response.value.read_data
+      | RGB_8bit ->
+        (* in RGB mode we use 24 bits per pixel. This means that we don't use some trailing data for memory reads > 3. *)
+        assert false
+    in
     compile
       [ when_ i.next [ proceed ]
       ; when_ i.start [ start ]
       ; when_ (request_read &: i.memory_request.ready) [ fetched <-- vdd ]
       ; when_
           i.memory_response.valid
-          [ data_valid <-- vdd; data <-- i.memory_response.value.read_data ]
+          [ data_valid <-- vdd
+          ; data
+            <--
+            (* TODO: Keep track of first read, if not first read then do rem aware assign *)
+            i.memory_response.value.read_data
+          ]
       ];
-    let body_bit =
-      mux_init ~f:(fun i -> bit ~pos:i data.value) which_bit (width data.value)
+    let body_pixel =
+      match Config.input_pixel_mode with
+      | One_bit ->
+        let bit =
+          mux_init
+            ~f:(fun i -> bit ~pos:i data.value)
+            which_pixel_this_memory_cell
+            (width data.value)
+        in
+        let bit_rval = repeat ~count:8 bit in
+        { Pixel.r = bit_rval; g = bit_rval; b = bit_rval }
+      | Greyscale_8bit ->
+        let pixel =
+          mux_init
+            ~f:(fun i -> drop_bottom ~width:(i * 8) data.value |> sel_bottom ~width:8)
+            which_pixel_this_memory_cell
+            num_pixels_per_memory_cell
+        in
+        { Pixel.r = pixel; g = pixel; b = pixel }
+      | RGB_8bit -> assert false
     in
     { O.valid =
         ~:(current_state.is X_body) |: (current_state.is X_body &: data_valid.value)
-    ; pixel = mux2 (current_state.is X_body) body_bit gnd
+    ; pixel = Pixel.Of_signal.(mux2 (current_state.is X_body) body_pixel (zero ()))
     ; memory_request =
         { Memory.Read_bus.Source.valid = request_read
         ; data = { address = next_address.value }
@@ -328,6 +447,7 @@ let%expect_test "margins and scaling factor tests" =
         let input_height = 3
         let output_width = 133
         let output_height = 35
+        let input_pixel_mode = Pixel_mode.Greyscale_8bit
       end)
       (Memory_controller.Memory_bus)
   in
@@ -366,6 +486,7 @@ let%expect_test "margins and scaling factor tests" =
         let input_height = 32
         let output_width = 1280
         let output_height = 720
+        let input_pixel_mode = Pixel_mode.Greyscale_8bit
       end)
       (Memory_controller.Memory_bus)
   in

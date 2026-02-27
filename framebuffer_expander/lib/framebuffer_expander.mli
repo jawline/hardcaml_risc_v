@@ -22,8 +22,18 @@ module Make
        val input_height : int
        val output_width : int
        val output_height : int
+       val input_pixel_mode : Pixel_mode.t
      end)
     (Memory : Memory_bus_intf.S) : sig
+  module Pixel : sig
+    type 'a t =
+      { r : 'a [@bits 8]
+      ; g : 'a [@bits 8]
+      ; b : 'a [@bits 8]
+      }
+    [@@deriving hardcaml]
+  end
+
   module I : sig
     type 'a t =
       { clock : 'a
@@ -40,7 +50,7 @@ module Make
   module O : sig
     type 'a t =
       { valid : 'a
-      ; pixel : 'a
+      ; pixel : 'a Pixel.t
       ; memory_request : 'a Memory.Read_bus.Source.t
       }
     [@@deriving hardcaml]
