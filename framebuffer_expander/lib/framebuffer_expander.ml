@@ -112,7 +112,7 @@ struct
 
   let word_in_bytes = I.port_widths.memory_response.value.read_data / 8
 
-  let bits_per_pixels =
+  let bits_per_pixel =
     match Config.input_pixel_mode with
     | One_bit -> 1
     | Greyscale_8bit -> 8
@@ -131,7 +131,7 @@ struct
   let row_offset_in_words =
     let whole_component = bytes_per_row / word_in_bytes in
     let ratio_component = bytes_per_row % word_in_bytes in
-    bytes_per_row + if ratio_component <> 0 then 1 else 0
+    whole_component + if ratio_component <> 0 then 1 else 0
   ;;
 
   let create scope (i : _ I.t) =
@@ -216,30 +216,67 @@ struct
        output data: sll data ~by:(cur_pixel_this_mem_cell * 24)
 
      *)
-    let rem_trailing_bytes =
-      match Config.input_pixel_mode with
-      | One_bit | Grescale_8bit -> 0
-      | RGB_8bit ->
-        let bus_width = width i.memory_response.value.read_data in
-        let byte_width = bus_width / 8 in
-        assert (byte_width > 3);
-        byte_width % 3
-    in
-    let%hw_var data = Variable.reg ~width:data_width reg_spec_no_clear in
     let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
     let num_pixels_per_memory_cell =
       match Config.input_pixel_mode with
-      | One_bit -> width data.value
-      | Greyscale_8bit -> width data.value / 8
+      | One_bit -> [ data_width ]
+      | Greyscale_8bit -> [ data_width / 8 ]
       | RGB_8bit ->
-        (* max num pixels per memory cell in the loop, we decide a loop on the first rem repeat. *)
-        assert false
+        let bytes_per_pixel = 3 in
+        let min_pixels_every_cycle = data_width / 8 / bytes_per_pixel in
+        let rem_bytes_incr_per_cycle = data_width / 8 % bytes_per_pixel in
+        (* Find a loop of remainders from which we build our cycle schedule *)
+        let rec compute_rem_cycles prev_entries =
+          let prev_rem = List.hd_exn prev_entries |> fst in
+          let rem_this_cycle = (prev_rem + rem_bytes_incr_per_cycle) % bytes_per_pixel in
+          let pixels_this_cycle =
+            if prev_rem + rem_bytes_incr_per_cycle >= bytes_per_pixel
+            then min_pixels_every_cycle + 1
+            else min_pixels_every_cycle
+          in
+          let rem_exists =
+            List.find ~f:(fun (rem, _) -> rem = rem_this_cycle) prev_entries
+            |> Option.is_some
+          in
+          if rem_exists
+          then List.rev prev_entries
+          else compute_rem_cycles ((rem_this_cycle, pixels_this_cycle) :: prev_entries)
+        in
+        compute_rem_cycles [ rem_bytes_incr_per_cycle, min_pixels_every_cycle ]
+        |> List.map ~f:snd
     in
-    let%hw which_pixel_this_memory_cell =
-      let num_bits = num_bits_to_represent num_pixels_per_memory_cell in
-      if num_bits > width data.value
-      then sel_bottom ~width:num_bits reg_x.value
-      else uresize ~width:num_bits reg_x.value
+    let max_num_pixels_per_memory_cell =
+      match Config.input_pixel_mode with
+      | One_bit -> data_width
+      | Greyscale_8bit -> data_width / 8
+      | RGB_8bit -> List.reduce_exn ~f:Int.max num_pixels_per_memory_cell
+    in
+    let%hw_var data =
+      Variable.reg
+        ~width:(max_num_pixels_per_memory_cell * bits_per_pixel)
+        reg_spec_no_clear
+    in
+    let%hw_var cycle_schedule =
+      Variable.reg
+        ~width:(address_bits_for (List.length num_pixels_per_memory_cell))
+        reg_spec_no_clear
+    in
+    let%hw next_cycle_schedule =
+      mux2
+        (cycle_schedule.value ==:. List.length num_pixels_per_memory_cell - 1)
+        (zero (width cycle_schedule.value))
+        (cycle_schedule.value +:. 1)
+    in
+    let%hw num_pixels_next_memory_cell =
+      List.map
+        ~f:(Signal.of_int_trunc ~width:(address_bits_for max_num_pixels_per_memory_cell))
+        num_pixels_per_memory_cell
+      |> mux cycle_schedule.value
+    in
+    let%hw_var which_pixel_this_memory_cell =
+      Variable.reg
+        ~width:(address_bits_for max_num_pixels_per_memory_cell)
+        reg_spec_no_clear
     in
     let enter_x_line =
       if margin_x_start = 0
@@ -333,8 +370,8 @@ struct
             [ x_px_ctr <--. 0
             ; incr reg_x
             ; when_
-                (which_pixel_this_memory_cell
-                 ==: ones (width which_pixel_this_memory_cell))
+                (which_pixel_this_memory_cell.value
+                 ==: assert false (* ones (width which_pixel_this_memory_cell) *))
                 [ incr next_address; clear_fetched ]
             ; when_
                 (reg_x.value ==:. input_width - 1)
@@ -399,7 +436,7 @@ struct
         let bit =
           mux_init
             ~f:(fun i -> bit ~pos:i data.value)
-            which_pixel_this_memory_cell
+            which_pixel_this_memory_cell.value
             (width data.value)
         in
         let bit_rval = repeat ~count:8 bit in
@@ -408,8 +445,8 @@ struct
         let pixel =
           mux_init
             ~f:(fun i -> drop_bottom ~width:(i * 8) data.value |> sel_bottom ~width:8)
-            which_pixel_this_memory_cell
-            num_pixels_per_memory_cell
+            which_pixel_this_memory_cell.value
+            max_num_pixels_per_memory_cell
         in
         { Pixel.r = pixel; g = pixel; b = pixel }
       | RGB_8bit -> assert false
