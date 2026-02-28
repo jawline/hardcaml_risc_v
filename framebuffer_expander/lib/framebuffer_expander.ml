@@ -177,7 +177,6 @@ struct
     in
     (* When not fetched we will prefetch the next data byte of the body. *)
     let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
-    let%hw_var start_of_row = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data_valid = Variable.reg ~width:1 reg_spec_no_clear in
     (* In RGB mode we might have some pixels that don't align with read widths. E.g.,  
      
@@ -261,17 +260,25 @@ struct
         ~width:(address_bits_for (List.length num_pixels_per_memory_cell))
         reg_spec_no_clear
     in
+    let%hw_var num_pixels_this_memory_cell =
+      Variable.reg
+        ~width:(num_bits_to_represent max_num_pixels_per_memory_cell)
+        reg_spec_no_clear
+    in
     let%hw next_cycle_schedule =
       mux2
         (cycle_schedule.value ==:. List.length num_pixels_per_memory_cell - 1)
         (zero (width cycle_schedule.value))
         (cycle_schedule.value +:. 1)
     in
-    let%hw num_pixels_next_memory_cell =
+    let num_pixels_next_memory_cell t =
       List.map
-        ~f:(Signal.of_int_trunc ~width:(address_bits_for max_num_pixels_per_memory_cell))
+        ~f:(of_int_trunc ~width:(num_bits_to_represent max_num_pixels_per_memory_cell))
         num_pixels_per_memory_cell
-      |> mux cycle_schedule.value
+      |> mux t
+    in
+    let%hw num_pixels_first_memory_cell =
+      num_pixels_next_memory_cell (of_int_trunc ~width:(width cycle_schedule.value) 0)
     in
     let%hw_var which_pixel_this_memory_cell =
       Variable.reg
@@ -302,7 +309,8 @@ struct
         ; y_px_ctr <--. 0
         ; next_address <-- aligned_address
         ; row_start_address <-- aligned_address
-        ; start_of_row <-- vdd
+        ; cycle_schedule <--. 0
+        ; num_pixels_this_memory_cell <-- num_pixels_first_memory_cell
         ; clear_fetched
         ; enter_state
         ]
@@ -351,7 +359,8 @@ struct
         [ enter_x_line
         ; incr y_px_ctr
         ; next_address <-- row_start_address.value
-        ; start_of_row <-- vdd
+        ; cycle_schedule <--. 0
+        ; num_pixels_this_memory_cell <-- num_pixels_first_memory_cell
         ; clear_fetched
         ; when_ (y_px_ctr.value ==:. scaling_factor_y - 1) [ move_on_to_next_y_row ]
         ]
@@ -372,7 +381,12 @@ struct
             ; when_
                 (which_pixel_this_memory_cell.value
                  ==: assert false (* ones (width which_pixel_this_memory_cell) *))
-                [ incr next_address; clear_fetched ]
+                [ incr next_address
+                ; cycle_schedule <-- next_cycle_schedule
+                ; num_pixels_this_memory_cell
+                  <-- num_pixels_next_memory_cell next_cycle_schedule
+                ; clear_fetched
+                ]
             ; when_
                 (reg_x.value ==:. input_width - 1)
                 [ reg_x <--. 0; move_on_to_next_part ]
