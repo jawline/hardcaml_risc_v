@@ -172,9 +172,9 @@ struct
 
      *)
   let min_pixels_every_memory_cell = data_width / bits_per_pixel
-  let rem_bytes_incr_per_memory_cell = data_width % bits_per_pixel
+  let rem_bytes_incr_per_memory_cell = data_width % bits_per_pixel / 8
 
-  let num_pixels_and_remaining_per_memory_cell =
+  let num_remaining_and_pixels_per_memory_cell =
     match Config.input_pixel_mode with
     | One_bit | Greyscale_8bit -> [ 0, min_pixels_every_memory_cell ]
     | RGB_8bit ->
@@ -182,14 +182,10 @@ struct
       (* Find a loop of remainders from which we build our cycle schedule *)
       let rec compute_rem_cycles prev_entries =
         let prev_rem = List.hd_exn prev_entries |> fst in
-        let rem_this_cycle =
-          (prev_rem + rem_bytes_incr_per_memory_cell) % bytes_per_pixel
-        in
-        let pixels_this_cycle =
-          if prev_rem + rem_bytes_incr_per_memory_cell >= bytes_per_pixel
-          then min_pixels_every_memory_cell + 1
-          else min_pixels_every_memory_cell
-        in
+        let total_rem_this_mem_cell = prev_rem + rem_bytes_incr_per_memory_cell in
+        let rem_this_cycle = total_rem_this_mem_cell % bytes_per_pixel in
+        let rem_pixels_this_mem_cell = total_rem_this_mem_cell / bytes_per_pixel in
+        let pixels_this_cycle = min_pixels_every_memory_cell + rem_pixels_this_mem_cell in
         let rem_exists =
           List.find ~f:(fun (rem, _) -> rem = rem_this_cycle) prev_entries
           |> Option.is_some
@@ -202,7 +198,7 @@ struct
   ;;
 
   let num_pixels_per_memory_cell =
-    num_pixels_and_remaining_per_memory_cell |> List.map ~f:snd
+    num_remaining_and_pixels_per_memory_cell |> List.map ~f:snd
   ;;
 
   let max_num_pixels_per_memory_cell =
@@ -445,9 +441,16 @@ struct
             match which_cycle with
             | 0 -> uextend ~width:(width data.value) i.memory_response.value.read_data
             | n ->
-              let pixels_last_cell = List.nth_exn num_pixels_per_memory_cell (n - 1) in
+              let rem_last_cell, pixels_last_cell =
+                List.nth_exn num_remaining_and_pixels_per_memory_cell (n - 1)
+              in
+              let consumed_bits_last_cell = pixels_last_cell * bits_per_pixel in
+              let rem_bits_last_cell = rem_last_cell * 8 in
+              let prev_without_consumed_pixel =
+                drop_bottom ~width:consumed_bits_last_cell data.value
+              in
               let remaining_from_last_cell =
-                drop_bottom ~width:(pixels_last_cell * 8) data.value
+                sel_top ~width:rem_bits_last_cell prev_without_consumed_pixel
               in
               concat_lsb [ remaining_from_last_cell; i.memory_response.value.read_data ]
               |> uextend ~width:(width data.value))
@@ -473,15 +476,25 @@ struct
         in
         let bit_rval = repeat ~count:8 bit in
         { Pixel.r = bit_rval; g = bit_rval; b = bit_rval }
-      | Greyscale_8bit ->
+      | Greyscale_8bit | RGB_8bit ->
         let pixel =
           mux_init
-            ~f:(fun i -> drop_bottom ~width:(i * 8) data.value |> sel_bottom ~width:8)
+            ~f:(fun i ->
+              drop_bottom ~width:(i * bits_per_pixel) data.value
+              |> sel_bottom ~width:bits_per_pixel)
             which_pixel_this_memory_cell.value
             max_num_pixels_per_memory_cell
         in
-        { Pixel.r = pixel; g = pixel; b = pixel }
-      | RGB_8bit -> assert false
+        (match Config.input_pixel_mode with
+         | One_bit -> assert false
+         | Greyscale_8bit -> { Pixel.r = pixel; g = pixel; b = pixel }
+         | RGB_8bit ->
+           let r, g, b =
+             match split_lsb ~part_width:8 pixel with
+             | [ r; g; b ] -> r, g, b
+             | _ -> raise_s [%message "BUG: impossible widths"]
+           in
+           { Pixel.r; g; b })
     in
     { O.valid =
         ~:(current_state.is X_body) |: (current_state.is X_body &: data_valid.value)
@@ -533,7 +546,9 @@ let%expect_test "pixel test" =
           (input_height : int)
           (M.bits_per_pixel : int)
           (M.bits_per_row : int)
-          (M.bytes_per_row : int)]
+          (M.bytes_per_row : int)
+          (M.num_remaining_and_pixels_per_memory_cell : (int * int) list)
+          (M.max_num_pixels_per_memory_cell : int)]
   in
   print_config
     ~input_width:8
@@ -556,11 +571,15 @@ let%expect_test "pixel test" =
   [%expect
     {|
     ((input_width 8) (input_height 16) (M.bits_per_pixel 1) (M.bits_per_row 8)
-     (M.bytes_per_row 1))
+     (M.bytes_per_row 1) (M.num_remaining_and_pixels_per_memory_cell ((0 32)))
+     (M.max_num_pixels_per_memory_cell 32))
     ((input_width 8) (input_height 16) (M.bits_per_pixel 8) (M.bits_per_row 64)
-     (M.bytes_per_row 8))
+     (M.bytes_per_row 8) (M.num_remaining_and_pixels_per_memory_cell ((0 4)))
+     (M.max_num_pixels_per_memory_cell 4))
     ((input_width 8) (input_height 16) (M.bits_per_pixel 24) (M.bits_per_row 192)
-     (M.bytes_per_row 24))
+     (M.bytes_per_row 24)
+     (M.num_remaining_and_pixels_per_memory_cell ((1 1) (2 1) (0 2)))
+     (M.max_num_pixels_per_memory_cell 2))
     |}]
 ;;
 

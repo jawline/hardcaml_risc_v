@@ -35,11 +35,11 @@ module Machine = struct
       ; start_frame : 'a
       ; next_pixel : 'a
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   module O = struct
-    type 'a t = { pixel : 'a } [@@deriving hardcaml ~rtlmangle:"$"]
+    type 'a t = { pixel : 'a } [@@deriving hardcaml]
   end
 
   let create (scope : Scope.t) { I.clock; clear; start_frame; next_pixel } =
