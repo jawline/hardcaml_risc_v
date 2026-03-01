@@ -119,7 +119,7 @@ struct
     | RGB_8bit -> 24
   ;;
 
-  let bits_per_row = input_width / bits_per_pixel
+  let bits_per_row = input_width * bits_per_pixel
 
   (* Number of bytes in a row, aligned to the nearest byte (8 bits). *)
   let bytes_per_row =
@@ -132,6 +132,92 @@ struct
     let whole_component = bytes_per_row / word_in_bytes in
     let ratio_component = bytes_per_row % word_in_bytes in
     whole_component + if ratio_component <> 0 then 1 else 0
+  ;;
+
+  (* In RGB mode we might have some pixels that don't align with read widths. E.g.,  
+     
+       32 bits
+       [ R; G; B; R ]  [ G ; B; R ; G ] [ B; R; G: B ] -> 1 bit misaligned
+
+       Pixel 0: RGB, 1 byte rem
+       Pixel 1: RGB, 2 byte rem
+       Pixel 2: RGB, 3 byte rem
+
+       pixels_this_mem_cell = [ 1; 1; 2 ] 
+
+       0x0: RG BR GB RG BR GB RG BR GB
+
+       Scheme to handle this:
+
+       Previously: We would advance the read head when a fixed constant pixel this mem cell was full
+       Now: We will advance the head when a dynamic value pixels_this_mem_cell is full 
+       where pixels this mem cell is driven by a precomputed counter
+
+       Compute
+
+       cycle: first repeat in num bytes rem
+       so 32b: 3 mem cell cycle
+       pixel 0 (1 rem, pixels this mem cell = 1) -> pixel 1 (2 rem, pixels this mem cell = 1) -> pixel 2 (3 rem, pixels this mem cell = 2)
+
+       reg width = 24 bits + (max rem * 8, 24 bits at a 32bit bus)
+
+       pixels_this_cell = look up table of how many pixels to emit this cell
+
+       on data cell: data <- data.value lsl 3 |: memory cell lsr 3
+
+       on ready:
+        if cur_pixel_this_mem_cell = pixels_this_mem_cell then schedule next read else 
+
+       output data: sll data ~by:(cur_pixel_this_mem_cell * 24)
+
+     *)
+  let min_pixels_every_memory_cell = data_width / bits_per_pixel
+  let rem_bytes_incr_per_memory_cell = data_width % bits_per_pixel
+
+  let num_pixels_and_remaining_per_memory_cell =
+    match Config.input_pixel_mode with
+    | One_bit | Greyscale_8bit -> [ 0, min_pixels_every_memory_cell ]
+    | RGB_8bit ->
+      let bytes_per_pixel = bits_per_pixel / 8 in
+      (* Find a loop of remainders from which we build our cycle schedule *)
+      let rec compute_rem_cycles prev_entries =
+        let prev_rem = List.hd_exn prev_entries |> fst in
+        let rem_this_cycle =
+          (prev_rem + rem_bytes_incr_per_memory_cell) % bytes_per_pixel
+        in
+        let pixels_this_cycle =
+          if prev_rem + rem_bytes_incr_per_memory_cell >= bytes_per_pixel
+          then min_pixels_every_memory_cell + 1
+          else min_pixels_every_memory_cell
+        in
+        let rem_exists =
+          List.find ~f:(fun (rem, _) -> rem = rem_this_cycle) prev_entries
+          |> Option.is_some
+        in
+        if rem_exists
+        then List.rev prev_entries
+        else compute_rem_cycles ((rem_this_cycle, pixels_this_cycle) :: prev_entries)
+      in
+      compute_rem_cycles [ rem_bytes_incr_per_memory_cell, min_pixels_every_memory_cell ]
+  ;;
+
+  let num_pixels_per_memory_cell =
+    num_pixels_and_remaining_per_memory_cell |> List.map ~f:snd
+  ;;
+
+  let max_num_pixels_per_memory_cell =
+    match Config.input_pixel_mode with
+    | One_bit -> data_width
+    | Greyscale_8bit -> data_width / 8
+    | RGB_8bit -> List.reduce_exn ~f:Int.max num_pixels_per_memory_cell
+  ;;
+
+  let last_pixel_for_memory_cell t =
+    List.map
+      ~f:(fun t ->
+        of_int_trunc ~width:(address_bits_for max_num_pixels_per_memory_cell) (t - 1))
+      num_pixels_per_memory_cell
+    |> mux t
   ;;
 
   let create scope (i : _ I.t) =
@@ -178,78 +264,7 @@ struct
     (* When not fetched we will prefetch the next data byte of the body. *)
     let%hw_var fetched = Variable.reg ~width:1 reg_spec_no_clear in
     let%hw_var data_valid = Variable.reg ~width:1 reg_spec_no_clear in
-    (* In RGB mode we might have some pixels that don't align with read widths. E.g.,  
-     
-       32 bits
-       [ R; G; B; R ]  [ G ; B; R ; G ] [ B; R; G: B ] -> 1 bit misaligned
-
-       Pixel 0: RGB, 1 byte rem
-       Pixel 1: RGB, 2 byte rem
-       Pixel 2: RGB, 3 byte rem
-
-       pixels_this_mem_cell = [ 1; 1; 2 ] 
-
-       0x0: RG BR GB RG BR GB RG BR GB
-
-       Scheme to handle this:
-
-       Previously: We would advance the read head when a fixed constant pixel this mem cell was full
-       Now: We will advance the head when a dynamic value pixels_this_mem_cell is full 
-       where pixels this mem cell is driven by a precomputed counter
-
-       Compute
-
-       cycle: first repeat in num bytes rem
-       so 32b: 3 mem cell cycle
-       pixel 0 (1 rem, pixels this mem cell = 1) -> pixel 1 (2 rem, pixels this mem cell = 1) -> pixel 2 (3 rem, pixels this mem cell = 2)
-
-       reg width = 24 bits + (max rem * 8, 24 bits at a 32bit bus)
-
-       pixels_this_cell = look up table of how many pixels to emit this cell
-
-       on data cell: data <- data.value lsl 3 |: memory cell lsr 3
-
-       on ready:
-        if cur_pixel_this_mem_cell = pixels_this_mem_cell then schedule next read else 
-
-       output data: sll data ~by:(cur_pixel_this_mem_cell * 24)
-
-     *)
     let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
-    let num_pixels_per_memory_cell =
-      match Config.input_pixel_mode with
-      | One_bit -> [ data_width ]
-      | Greyscale_8bit -> [ data_width / 8 ]
-      | RGB_8bit ->
-        let bytes_per_pixel = 3 in
-        let min_pixels_every_cycle = data_width / 8 / bytes_per_pixel in
-        let rem_bytes_incr_per_cycle = data_width / 8 % bytes_per_pixel in
-        (* Find a loop of remainders from which we build our cycle schedule *)
-        let rec compute_rem_cycles prev_entries =
-          let prev_rem = List.hd_exn prev_entries |> fst in
-          let rem_this_cycle = (prev_rem + rem_bytes_incr_per_cycle) % bytes_per_pixel in
-          let pixels_this_cycle =
-            if prev_rem + rem_bytes_incr_per_cycle >= bytes_per_pixel
-            then min_pixels_every_cycle + 1
-            else min_pixels_every_cycle
-          in
-          let rem_exists =
-            List.find ~f:(fun (rem, _) -> rem = rem_this_cycle) prev_entries
-            |> Option.is_some
-          in
-          if rem_exists
-          then List.rev prev_entries
-          else compute_rem_cycles ((rem_this_cycle, pixels_this_cycle) :: prev_entries)
-        in
-        compute_rem_cycles [ rem_bytes_incr_per_cycle, min_pixels_every_cycle ]
-        |> List.map ~f:snd
-    in
-    let max_num_pixels_per_memory_cell =
-      match Config.input_pixel_mode with
-      | One_bit -> data_width
-      | Greyscale_8bit -> data_width / 8
-      | RGB_8bit -> List.reduce_exn ~f:Int.max num_pixels_per_memory_cell
-    in
     let%hw_var data =
       Variable.reg
         ~width:(max_num_pixels_per_memory_cell * bits_per_pixel)
@@ -260,9 +275,9 @@ struct
         ~width:(address_bits_for (List.length num_pixels_per_memory_cell))
         reg_spec_no_clear
     in
-    let%hw_var num_pixels_this_memory_cell =
+    let%hw_var last_pixel_this_memory_cell =
       Variable.reg
-        ~width:(num_bits_to_represent max_num_pixels_per_memory_cell)
+        ~width:(address_bits_for max_num_pixels_per_memory_cell)
         reg_spec_no_clear
     in
     let%hw next_cycle_schedule =
@@ -271,14 +286,8 @@ struct
         (zero (width cycle_schedule.value))
         (cycle_schedule.value +:. 1)
     in
-    let num_pixels_next_memory_cell t =
-      List.map
-        ~f:(of_int_trunc ~width:(num_bits_to_represent max_num_pixels_per_memory_cell))
-        num_pixels_per_memory_cell
-      |> mux t
-    in
-    let%hw num_pixels_first_memory_cell =
-      num_pixels_next_memory_cell (of_int_trunc ~width:(width cycle_schedule.value) 0)
+    let%hw last_pixel_first_memory_cell =
+      last_pixel_for_memory_cell (of_int_trunc ~width:(width cycle_schedule.value) 0)
     in
     let%hw_var which_pixel_this_memory_cell =
       Variable.reg
@@ -310,7 +319,7 @@ struct
         ; next_address <-- aligned_address
         ; row_start_address <-- aligned_address
         ; cycle_schedule <--. 0
-        ; num_pixels_this_memory_cell <-- num_pixels_first_memory_cell
+        ; last_pixel_this_memory_cell <-- last_pixel_first_memory_cell
         ; clear_fetched
         ; enter_state
         ]
@@ -360,7 +369,8 @@ struct
         ; incr y_px_ctr
         ; next_address <-- row_start_address.value
         ; cycle_schedule <--. 0
-        ; num_pixels_this_memory_cell <-- num_pixels_first_memory_cell
+        ; which_pixel_this_memory_cell <--. 0
+        ; last_pixel_this_memory_cell <-- last_pixel_first_memory_cell
         ; clear_fetched
         ; when_ (y_px_ctr.value ==:. scaling_factor_y - 1) [ move_on_to_next_y_row ]
         ]
@@ -378,13 +388,14 @@ struct
             (x_px_ctr.value ==:. scaling_factor_x - 1)
             [ x_px_ctr <--. 0
             ; incr reg_x
+            ; incr which_pixel_this_memory_cell
             ; when_
-                (which_pixel_this_memory_cell.value
-                 ==: assert false (* ones (width which_pixel_this_memory_cell) *))
+                (which_pixel_this_memory_cell.value ==: last_pixel_this_memory_cell.value)
                 [ incr next_address
+                ; which_pixel_this_memory_cell <--. 0
                 ; cycle_schedule <-- next_cycle_schedule
-                ; num_pixels_this_memory_cell
-                  <-- num_pixels_next_memory_cell next_cycle_schedule
+                ; last_pixel_this_memory_cell
+                  <-- last_pixel_for_memory_cell next_cycle_schedule
                 ; clear_fetched
                 ]
             ; when_
@@ -429,7 +440,19 @@ struct
         i.memory_response.value.read_data
       | RGB_8bit ->
         (* in RGB mode we use 24 bits per pixel. This means that we don't use some trailing data for memory reads > 3. *)
-        assert false
+        mux_init
+          ~f:(fun which_cycle ->
+            match which_cycle with
+            | 0 -> uextend ~width:(width data.value) i.memory_response.value.read_data
+            | n ->
+              let pixels_last_cell = List.nth_exn num_pixels_per_memory_cell (n - 1) in
+              let remaining_from_last_cell =
+                drop_bottom ~width:(pixels_last_cell * 8) data.value
+              in
+              concat_lsb [ remaining_from_last_cell; i.memory_response.value.read_data ]
+              |> uextend ~width:(width data.value))
+          cycle_schedule.value
+          (List.length num_pixels_per_memory_cell)
     in
     compile
       [ when_ i.next [ proceed ]
@@ -437,12 +460,7 @@ struct
       ; when_ (request_read &: i.memory_request.ready) [ fetched <-- vdd ]
       ; when_
           i.memory_response.valid
-          [ data_valid <-- vdd
-          ; data
-            <--
-            (* TODO: Keep track of first read, if not first read then do rem aware assign *)
-            i.memory_response.value.read_data
-          ]
+          [ data_valid <-- vdd; data <-- memory_data_including_trailing ]
       ];
     let body_pixel =
       match Config.input_pixel_mode with
@@ -481,7 +499,7 @@ struct
   ;;
 end
 
-let%expect_test "margins and scaling factor tests" =
+let%expect_test "pixel test" =
   let module Memory_controller =
     Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
@@ -491,32 +509,58 @@ let%expect_test "margins and scaling factor tests" =
       let data_bus_width = 32
     end)
   in
-  let module M =
-    Make
-      (struct
-        let input_width = 3
-        let input_height = 3
-        let output_width = 133
-        let output_height = 35
-        let input_pixel_mode = Pixel_mode.Greyscale_8bit
-      end)
-      (Memory_controller.Memory_bus)
+  let print_config
+        ~input_width
+        ~input_height
+        ~output_width
+        ~output_height
+        ~input_pixel_mode
+    =
+    let module M =
+      Make
+        (struct
+          let input_width = input_width
+          let input_height = input_height
+          let output_width = output_width
+          let output_height = output_height
+          let input_pixel_mode = input_pixel_mode
+        end)
+        (Memory_controller.Memory_bus)
+    in
+    print_s
+      [%message
+        (input_width : int)
+          (input_height : int)
+          (M.bits_per_pixel : int)
+          (M.bits_per_row : int)
+          (M.bytes_per_row : int)]
   in
-  print_s
-    [%message
-      (M.scaling_factor_x : int)
-        (M.scaling_factor_y : int)
-        (M.margin_x_start : int)
-        (M.margin_x_end : int)
-        (M.margin_y_start : int)
-        (M.margin_y_end : int)
-        (M.word_in_bytes : int)
-        (M.row_offset_in_words : int)];
+  print_config
+    ~input_width:8
+    ~input_height:16
+    ~output_width:100
+    ~output_height:200
+    ~input_pixel_mode:Pixel_mode.One_bit;
+  print_config
+    ~input_width:8
+    ~input_height:16
+    ~output_width:100
+    ~output_height:200
+    ~input_pixel_mode:Pixel_mode.Greyscale_8bit;
+  print_config
+    ~input_width:8
+    ~input_height:16
+    ~output_width:100
+    ~output_height:200
+    ~input_pixel_mode:Pixel_mode.RGB_8bit;
   [%expect
     {|
-    ((M.scaling_factor_x 44) (M.scaling_factor_y 11) (M.margin_x_start 1)
-     (M.margin_x_end 0) (M.margin_y_start 1) (M.margin_y_end 1)
-     (M.word_in_bytes 4) (M.row_offset_in_words 1))
+    ((input_width 8) (input_height 16) (M.bits_per_pixel 1) (M.bits_per_row 8)
+     (M.bytes_per_row 1))
+    ((input_width 8) (input_height 16) (M.bits_per_pixel 8) (M.bits_per_row 64)
+     (M.bytes_per_row 8))
+    ((input_width 8) (input_height 16) (M.bits_per_pixel 24) (M.bits_per_row 192)
+     (M.bytes_per_row 24))
     |}]
 ;;
 
@@ -530,31 +574,61 @@ let%expect_test "margins and scaling factor tests" =
       let data_bus_width = 32
     end)
   in
-  let module M =
-    Make
-      (struct
-        let input_width = 64
-        let input_height = 32
-        let output_width = 1280
-        let output_height = 720
-        let input_pixel_mode = Pixel_mode.Greyscale_8bit
-      end)
-      (Memory_controller.Memory_bus)
+  let print_config
+        ~input_width
+        ~input_height
+        ~output_width
+        ~output_height
+        ~input_pixel_mode
+    =
+    let module M =
+      Make
+        (struct
+          let input_width = input_width
+          let input_height = input_height
+          let output_width = output_width
+          let output_height = output_height
+          let input_pixel_mode = input_pixel_mode
+        end)
+        (Memory_controller.Memory_bus)
+    in
+    print_s
+      [%message
+        (input_width : int)
+          (input_height : int)
+          (output_width : int)
+          (output_height : int)
+          (input_pixel_mode : Pixel_mode.t)
+          (M.scaling_factor_x : int)
+          (M.scaling_factor_y : int)
+          (M.margin_x_start : int)
+          (M.margin_x_end : int)
+          (M.margin_y_start : int)
+          (M.margin_y_end : int)
+          (M.word_in_bytes : int)
+          (M.row_offset_in_words : int)]
   in
-  print_s
-    [%message
-      (M.scaling_factor_x : int)
-        (M.scaling_factor_y : int)
-        (M.margin_x_start : int)
-        (M.margin_x_end : int)
-        (M.margin_y_start : int)
-        (M.margin_y_end : int)
-        (M.word_in_bytes : int)
-        (M.row_offset_in_words : int)];
+  print_config
+    ~input_width:3
+    ~input_height:3
+    ~output_width:133
+    ~output_height:35
+    ~input_pixel_mode:Pixel_mode.One_bit;
+  print_config
+    ~input_width:64
+    ~input_height:32
+    ~output_width:1280
+    ~output_height:720
+    ~input_pixel_mode:Pixel_mode.One_bit;
   [%expect
     {|
-    ((M.scaling_factor_x 20) (M.scaling_factor_y 22) (M.margin_x_start 0)
-     (M.margin_x_end 0) (M.margin_y_start 8) (M.margin_y_end 8)
-     (M.word_in_bytes 4) (M.row_offset_in_words 2))
+    ((input_width 3) (input_height 3) (output_width 133) (output_height 35)
+     (input_pixel_mode One_bit) (M.scaling_factor_x 44) (M.scaling_factor_y 11)
+     (M.margin_x_start 1) (M.margin_x_end 0) (M.margin_y_start 1)
+     (M.margin_y_end 1) (M.word_in_bytes 4) (M.row_offset_in_words 1))
+    ((input_width 64) (input_height 32) (output_width 1280) (output_height 720)
+     (input_pixel_mode One_bit) (M.scaling_factor_x 20) (M.scaling_factor_y 22)
+     (M.margin_x_start 0) (M.margin_x_end 0) (M.margin_y_start 8)
+     (M.margin_y_end 8) (M.word_in_bytes 4) (M.row_offset_in_words 2))
     |}]
 ;;
