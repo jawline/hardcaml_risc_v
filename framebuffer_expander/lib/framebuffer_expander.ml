@@ -446,11 +446,11 @@ struct
               in
               let consumed_bits_last_cell = pixels_last_cell * bits_per_pixel in
               let rem_bits_last_cell = rem_last_cell * 8 in
-              let prev_without_consumed_pixel =
+              let%hw prev_without_consumed_pixel =
                 drop_bottom ~width:consumed_bits_last_cell data.value
               in
-              let remaining_from_last_cell =
-                sel_top ~width:rem_bits_last_cell prev_without_consumed_pixel
+              let%hw remaining_from_last_cell =
+                sel_bottom ~width:rem_bits_last_cell prev_without_consumed_pixel
               in
               concat_lsb [ remaining_from_last_cell; i.memory_response.value.read_data ]
               |> uextend ~width:(width data.value))
@@ -465,7 +465,7 @@ struct
           i.memory_response.valid
           [ data_valid <-- vdd; data <-- memory_data_including_trailing ]
       ];
-    let body_pixel =
+    let%hw.Pixel.Of_signal body_pixel =
       match Config.input_pixel_mode with
       | One_bit ->
         let bit =
