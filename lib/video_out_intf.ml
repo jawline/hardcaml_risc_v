@@ -9,7 +9,7 @@ module type Config = sig
   val output_width : int
   val output_height : int
   val framebuffer_address : int
-       val input_pixel_mode : Pixel_mode.t
+  val input_pixel_mode : Pixel_mode.t
 end
 
 module M (Memory : Memory_bus_intf.S) = struct

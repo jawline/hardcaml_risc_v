@@ -14,10 +14,10 @@ struct
   module Framebuffer_config = struct
     let output_width = 1024
     let output_height = 600
-    let input_width = 64
-    let input_height = 32
+    let input_width = 320
+    let input_height = 200
     let framebuffer_address = 0x8000
-              let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit
+    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit
   end
 
   module Video_signal_generator_config = struct

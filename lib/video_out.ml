@@ -65,12 +65,12 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ~clear:(i.clear |: video_signals.next_frame)
         ~capacity:512
         ~wr:pre_fetch_pixel
-        ~d:( concat_lsb [ expander.pixel.r ;  expander.pixel.g ; expander.pixel.b ] )
+        ~d:(concat_lsb [ expander.pixel.r; expander.pixel.g; expander.pixel.b ])
         ~rd:video_signals.video_active
         ()
     in
     pixel_buffer_full <-- pixel_buffer.full;
-    { O.video_data = { vdata =  pixel_buffer.q }
+    { O.video_data = { vdata = pixel_buffer.q }
     ; video_signals
     ; memory_request = expander.memory_request
     }
