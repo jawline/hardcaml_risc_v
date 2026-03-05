@@ -35,7 +35,7 @@ struct
     let csrrw = instruction.funct3 ==:. Funct3.System.to_int Csrrw in
     let register_io =
       Cs_registers.hierarchical
-        ~clock_frequency:Hart_config.design_frequency
+        ~clock_frequency:Hart_config.clock_domain.frequency
         scope
         { Cs_registers.I.clock
         ; clear

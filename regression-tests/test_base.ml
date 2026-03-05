@@ -28,12 +28,16 @@ module Uart_tx = Uart_tx.Make (struct
     let config = uart_config
   end)
 
+let clock_domain_memory = Hardcaml_memory_controller.Clock_domain.create 500
+let clock_domain_cpu = Hardcaml_memory_controller.Clock_domain.create 2000
+let clock_domain_video = Hardcaml_memory_controller.Clock_domain.create 1000
+
 module Cpu_with_dma_memory =
   System_with_bram.Make
     (struct
       let register_width = Register_width.B32
       let num_registers = 32
-      let design_frequency = 2000
+      let clock_domain = clock_domain_cpu
 
       module Extensions = struct
         let zmul = true
@@ -69,6 +73,7 @@ module Cpu_with_dma_memory =
               let v_fp = 1
               let v_sync = 8
               let v_bp = 1
+              let clock_domain = clock_domain_video
             end : Video_signals.Config) )
       ;;
     end)

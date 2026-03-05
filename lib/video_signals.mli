@@ -2,6 +2,7 @@
    the provided  assuming that the clock input is the same as the pixel clock. *)
 open! Core
 open Hardcaml
+open Hardcaml_memory_controller
 
 module type Config = sig
   val h_active : int
@@ -12,6 +13,7 @@ module type Config = sig
   val v_fp : int
   val v_sync : int
   val v_bp : int
+  val clock_domain : Clock_domain.t
 end
 
 module Video_signals : sig

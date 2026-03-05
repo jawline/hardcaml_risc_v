@@ -7,7 +7,11 @@ module Report_synth = Hardcaml_xilinx_reports
 
 module Make_base (C : sig
     val include_video_out : bool
-    val hart_frequency : int
+    (* TODO: Inject memory frequency here *)
+
+    val memory_clock : Clock_domain.t
+    val hart_clock : Clock_domain.t
+    val video_clock : Clock_domain.t
     val capacity_in_bytes : int
   end) =
 struct
@@ -31,6 +35,7 @@ struct
     let v_fp = 10
     let v_sync = 3
     let v_bp = 12
+    let clock_domain = C.video_clock
   end
 
   module General_config = struct
@@ -38,7 +43,7 @@ struct
 
     let include_io_controller =
       Io_controller_config.Uart_controller
-        (Uart_settings.default ~clock_frequency:C.hart_frequency)
+        (Uart_settings.default ~clock_frequency:C.memory_clock.frequency)
     ;;
 
     let include_video_out =
@@ -54,11 +59,12 @@ struct
   module Per_hart_config = struct
     let register_width = Register_width.B32
     let num_registers = 32
-    let design_frequency = C.hart_frequency
 
     module Extensions = struct
       let zmul = true
     end
+
+    let clock_domain = C.memory_clock
   end
 
   module Memory_config = struct
