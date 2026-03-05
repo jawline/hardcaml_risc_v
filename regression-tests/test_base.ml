@@ -56,6 +56,7 @@ module Cpu_with_dma_memory =
               let input_width = 64
               let input_height = 32
               let framebuffer_address = 0x8000
+              let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.One_bit
             end : Video_out_intf.Config)
           , (module struct
               (* TODO: Add a clock requirement *)

@@ -56,23 +56,21 @@ module Make (Memory : Memory_bus_intf.S) = struct
         }
     in
     expander_valid <-- expander.valid;
-    (* We can pre-fetch up to two rows at 1024 * 600 *)
     (* TODO: Rather than pre-fetching here it would be a lot more efficient in
-       memory to pre-fetch words in the framebuffer expander, but this isn't
-       awful since we can use 1 bit wide BRAMs. *)
+       memory to pre-fetch words in the framebuffer expander. *)
     let pixel_buffer =
       Fifo.create
         ~showahead:true
         ~clock:i.clock
         ~clear:(i.clear |: video_signals.next_frame)
-        ~capacity:2048
+        ~capacity:512
         ~wr:pre_fetch_pixel
-        ~d:expander.pixel
+        ~d:( concat_lsb [ expander.pixel.r ;  expander.pixel.g ; expander.pixel.b ] )
         ~rd:video_signals.video_active
         ()
     in
     pixel_buffer_full <-- pixel_buffer.full;
-    { O.video_data = { vdata = repeat ~count:24 pixel_buffer.q }
+    { O.video_data = { vdata =  pixel_buffer.q }
     ; video_signals
     ; memory_request = expander.memory_request
     }
