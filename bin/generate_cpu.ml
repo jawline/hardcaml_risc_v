@@ -7,8 +7,6 @@ module Report_synth = Hardcaml_xilinx_reports
 
 module Make_base (C : sig
     val include_video_out : bool
-    (* TODO: Inject memory frequency here *)
-
     val memory_clock : Clock_domain.t
     val hart_clock : Clock_domain.t
     val video_clock : Clock_domain.t
@@ -54,6 +52,8 @@ struct
           , (module Video_signal_generator_config : Video_signals.Config) )
       else No_video_out
     ;;
+
+    let memory_domain = C.memory_clock
   end
 
   module Per_hart_config = struct
@@ -79,11 +79,13 @@ end
 (** Construct a design with a generic AXI based memory interface and no internal BRAM based main memory. *)
 module Make_with_axi_memory (C : sig
     val include_video_out : bool
-    val hart_frequency : int
     val memory_tag_width : int
     val memory_width : int
     val memory_address_width : int
     val capacity_in_bytes : int
+    val memory_clock : Clock_domain.t
+    val hart_clock : Clock_domain.t
+    val video_clock : Clock_domain.t
   end) =
 struct
   open Make_base (C)
@@ -119,9 +121,15 @@ module Make_with_bram (C : sig
     val include_video_out : bool
     val hart_frequency : int
     val capacity_in_bytes : int
+    val hart_clock : Clock_domain.t
+    val video_clock : Clock_domain.t
   end) =
 struct
-  open Make_base (C)
+  open Make_base (struct
+      include C
+
+      let memory_clock = hart_clock
+    end)
 
   module Design_with_bram =
     System_with_bram.Make (Per_hart_config) (Memory_config) (General_config)

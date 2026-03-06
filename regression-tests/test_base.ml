@@ -51,6 +51,7 @@ module Cpu_with_dma_memory =
     (struct
       let num_harts = 1
       let include_io_controller = Io_controller_config.Uart_controller uart_config
+      let memory_domain = clock_domain_memory
 
       let include_video_out =
         Video_config.Video_out
