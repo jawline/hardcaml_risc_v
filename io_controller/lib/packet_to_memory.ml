@@ -22,8 +22,7 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; in_ : 'a Axi.Source.t
       ; out : 'a Memory.Write_bus.Dest.t
       ; out_ack : 'a Memory.Write_response.With_valid.t
@@ -48,8 +47,8 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     [@@deriving sexp, enumerate, compare ~localize]
   end
 
-  let create (scope : Scope.t) ({ I.clock; clear; in_; out; out_ack = _ } : _ I.t) =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
+  let create (scope : Scope.t) ({ I.clock; in_; out; out_ack = _ } : _ I.t) =
+    let reg_spec = Clocking.to_spec clock in
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
     if Memory.data_bus_width % Axi.Source.port_widths.tdata <> 0
     then raise_s [%message "BUG: Memory width must be a multiple of DMA stream input"];
@@ -58,8 +57,7 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     let address_buffer =
       Address_buffer.hierarchical
         scope
-        { Address_buffer.I.clock
-        ; clear = clear |: reset_buffers.value
+        { Address_buffer.I.clock = Clocking.add_clear clock reset_buffers.value
         ; in_valid = in_.tvalid &: state.is Reading_memory_address
         ; in_data = in_.tdata
         ; out_ready = vdd
@@ -68,8 +66,7 @@ module Make (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
     let word_buffer =
       Word_buffer.hierarchical
         scope
-        { Word_buffer.I.clock
-        ; clear = clear |: reset_buffers.value
+        { Word_buffer.I.clock = Clocking.add_clear clock reset_buffers.value
         ; in_valid = in_.tvalid &: state.is Transferring
         ; in_data = in_.tdata
         ; out_ready = out.ready

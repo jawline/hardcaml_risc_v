@@ -19,8 +19,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
       ; write_response : 'a Memory.Write_response.With_valid.t list
@@ -43,16 +42,16 @@ struct
   end
 
   let create scope (i : _ I.t) =
-    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
+    let reg_spec_with_clear = Clocking.to_spec i.clock in
     let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
-    let%hw just_cleared = ~:(i.clear) &: reg reg_spec_no_clear i.clear in
+    let%hw just_cleared =
+      reg ~initialize_to:Bits.vdd ~clear_to:vdd reg_spec_with_clear gnd
+    in
     let executor =
       Execute_pipeline.hierarchical
         scope
         { Execute_pipeline.I.clock = i.clock
-        ; clear = i.clear
         ; valid = executor_finished |: just_cleared
         ; registers = executor_registers
         ; instret = executor_finished

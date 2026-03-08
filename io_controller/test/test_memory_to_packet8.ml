@@ -57,8 +57,7 @@ let test ~packets =
           ~read_latency:1
           ~priority_mode:Priority_order
           scope
-          { Memory_controller.I.clock
-          ; clear
+          { Memory_controller.I.clock = { clock; clear }
           ; read_to_controller = [ Read_bus.Source.Of_always.value ch_to_controller ]
           ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
           }
@@ -66,8 +65,7 @@ let test ~packets =
       let output =
         Memory_to_packet8.hierarchical
           scope
-          { Memory_to_packet8.I.clock
-          ; clear
+          { Memory_to_packet8.I.clock = { clock; clear }
           ; enable = { valid = enable; value = { address; length } }
           ; output_packet = { tready = Signal.vdd }
           ; memory = List.nth_exn controller.read_to_controller 0

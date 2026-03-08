@@ -13,8 +13,7 @@ struct
   module type S = sig
     module I : sig
       type 'a t =
-        { clock : 'a
-        ; clear : 'a
+        { clock : 'a Clocking.t
         ; uart_rx : 'a
         ; tx_input : 'a Memory_to_packet8.Input.With_valid.t
         ; read_request : 'a Memory.Read_bus.Dest.t

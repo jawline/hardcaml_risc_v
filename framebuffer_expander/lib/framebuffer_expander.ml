@@ -51,8 +51,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; start : 'a
       ; next : 'a
       ; start_address : 'a [@bits Memory.Read_bus.Source.port_widths.data.address]
@@ -218,8 +217,8 @@ struct
 
   let create scope (i : _ I.t) =
     let open Always in
-    let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
+    let reg_spec = Clocking.to_spec i.clock in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear i.clock in
     (* Reg_x and reg_y track where in the input framebuffer we are *)
     let%hw_var reg_x =
       Variable.reg ~width:(num_bits_to_represent input_width) reg_spec_no_clear

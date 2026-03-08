@@ -59,8 +59,7 @@ module Test_machine = struct
     let load =
       Load.hierarchical
         scope
-        { Load.I.clock
-        ; clear
+        { Load.I.clock = { clock; clear }
         ; enable
         ; op =
             (let test_funct3 op = funct3 ==:. Funct3.Load.to_int op in
@@ -76,8 +75,7 @@ module Test_machine = struct
         ~priority_mode:Priority_order
         ~read_latency:1
         scope
-        { Memory_controller.I.clock
-        ; clear
+        { Memory_controller.I.clock = { clock; clear }
         ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
         ; read_to_controller = [ load.read_bus ]
         }

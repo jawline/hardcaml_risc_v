@@ -63,8 +63,7 @@ module Test_machine = struct
     let store =
       Store.hierarchical
         scope
-        { Store.I.clock
-        ; clear
+        { Store.I.clock = { clock; clear }
         ; enable
         ; op =
             (let test_funct3 op = funct3 ==:. Funct3.Store.to_int op in
@@ -81,8 +80,7 @@ module Test_machine = struct
         ~priority_mode:Priority_order
         ~read_latency:1
         scope
-        { Memory_controller.I.clock
-        ; clear
+        { Memory_controller.I.clock = { clock; clear }
         ; write_to_controller = [ store.write_bus ]
         ; read_to_controller =
             [ (* Hardcaml doesn't like having a RAM that never gets read, so we add a dummy channel. *)

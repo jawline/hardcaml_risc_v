@@ -58,8 +58,7 @@ module Test_machine = struct
     let fetch =
       Fetch.hierarchical
         scope
-        { Fetch.I.clock
-        ; clear
+        { Fetch.I.clock = { clock; clear }
         ; valid
         ; registers = { (Registers.For_writeback.Of_signal.zero ()) with pc = address }
         ; read_bus = Read_bus.Dest.Of_always.value read_bus
@@ -72,8 +71,7 @@ module Test_machine = struct
         ~priority_mode:Priority_order
         ~read_latency:4
         scope
-        { Memory_controller.I.clock
-        ; clear
+        { Memory_controller.I.clock = { clock; clear }
         ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
         ; read_to_controller = [ fetch.read_bus ]
         }

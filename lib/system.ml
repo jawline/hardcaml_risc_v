@@ -11,6 +11,15 @@ module Make
     (General_config : System_intf.Config)
     (Axi4 : Axi4.S) =
 struct
+  let () =
+    if not (Clock_domain.equal Hart_config.clock_domain General_config.dma_domain)
+    then
+      raise_s
+        [%message
+          "NOT IMPLEMENTED: The CPU does not currently support the DMA controller and \
+           harts being on different memory domains"]
+  ;;
+
   module Registers = Registers.Make (Hart_config)
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
 
@@ -114,8 +123,10 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { memory_clock : 'a Clocking.t
+      ; video_clock : 'a Clocking.t
+      ; hart_clock : 'a Clocking.t
+      ; dma_clock : 'a Clocking.t
       ; uart_rx : 'a option [@exists include_uart_wires]
       ; memory : 'a Axi4.I.t [@rtlprefix "axi_i$"]
       }
@@ -169,7 +180,7 @@ struct
        necessary, but it makes it easier to stop them both
        issuing commands at the same time and entering a weird
        state. *)
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear clock in
     let hart0 = List.nth_exn harts 0 in
     (* Delay the ecall by a cycle so we can register all the relevant
        registers, reducing routing pressure. *)
@@ -245,8 +256,7 @@ struct
           ~framebuffer_config:(module Framebuffer_config)
           ~video_signals_config:(module Video_signals_config)
           scope
-          { Video_out_with_memory.I.clock = i.clock
-          ; clear = i.clear
+          { Video_out_with_memory.I.clock = i.video_clock
           ; memory_request = memory_request_ack
           ; memory_response
           }
@@ -266,9 +276,9 @@ struct
         ~write_bus_per_hart
         ~(memory_controller : _ Memory_controller.O.t)
         scope
-        { I.clock; clear; _ }
+        { I.hart_clock; _ }
     =
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear hart_clock in
     let harts =
       List.init
         ~f:(fun which_hart ->
@@ -276,8 +286,10 @@ struct
             Hart.hierarchical
               ~instance:[%string "hart_%{which_hart#Int}"]
               scope
-              { Hart.I.clock
-              ; clear = pipeline ~n:2 reg_spec_no_clear (io_clear |: clear)
+              { Hart.I.clock =
+                  { hart_clock with
+                    clear = pipeline ~n:2 reg_spec_no_clear (io_clear |: hart_clock.clear)
+                  }
               ; read_bus =
                   select_rd_chs_for_hart which_hart memory_controller.read_to_controller
               ; write_bus =
@@ -322,8 +334,7 @@ struct
           (Dma.hierarchical
              ~uart_config:config
              scope
-             { Dma.I.clock = i.clock
-             ; clear = i.clear
+             { Dma.I.clock = i.dma_clock
              ; uart_rx = Option.value_exn i.uart_rx
              ; tx_input
              ; read_request = dma_read_request
@@ -357,8 +368,7 @@ struct
       Memory_controller.hierarchical
         ~priority_mode:Priority_order
         scope
-        { Memory_controller.I.clock = i.clock
-        ; clear = i.clear
+        { Memory_controller.I.clock = i.memory_clock
         ; read_to_controller =
             (of_video_out ~f:(fun vd -> [ vd.memory_request ]) |> Option.value ~default:[])
             @ (of_dma ~f:(fun dma -> [ dma.read_request ]) |> Option.value ~default:[])
@@ -386,8 +396,8 @@ struct
         scope
         i
     in
-    assign_ecalls
-      ~clock:i.clock
+    assign_ecalls (* TODO: If DMA clock <> hart clock this is not compatible. *)
+      ~clock:i.hart_clock
       ~tx_input_and_ready:
         (match maybe_dma_controller with
          | Some dma -> Some (tx_input, dma.dma_tx_ready)

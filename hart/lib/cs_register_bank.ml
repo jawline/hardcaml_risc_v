@@ -12,8 +12,7 @@ end
 module Make (Hart_config : Hart_config_intf.S) (Bank_config : Bank_config) = struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; enable : 'a
       ; is_write : 'a
       ; write_value : 'a [@bits Register_width.bits Hart_config.register_width]
@@ -30,7 +29,7 @@ module Make (Hart_config : Hart_config_intf.S) (Bank_config : Bank_config) = str
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create _scope { I.clock = _; clear = _; enable; is_write; address; write_value } =
+  let create _scope { I.clock = _; enable; is_write; address; write_value } =
     let result =
       Bank_config.register_io
         ~valid:enable

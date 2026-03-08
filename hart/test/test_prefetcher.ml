@@ -55,8 +55,7 @@ module Test_machine = struct
     let prefetcher =
       Prefetcher.hierarchical
         scope
-        { Prefetcher.I.clock
-        ; clear
+        { Prefetcher.I.clock = { clock; clear }
         ; valid
         ; aligned_address = address
         ; read_bus = Read_bus.Dest.Of_always.value read_bus
@@ -69,8 +68,7 @@ module Test_machine = struct
         ~priority_mode:Priority_order
         ~read_latency:4
         scope
-        { Memory_controller.I.clock
-        ; clear
+        { Memory_controller.I.clock = { clock; clear }
         ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
         ; read_to_controller = [ prefetcher.read_bus ]
         }

@@ -12,8 +12,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlprefix "input_"]
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; read_bus : 'a Memory.Read_bus.Dest.t
@@ -36,8 +35,8 @@ struct
     mux2 enable signal (reg ~enable reg_spec signal)
   ;;
 
-  let create scope ({ clock; clear; valid; registers; read_bus; read_response } : _ I.t) =
-    let reg_spec_with_clear = Reg_spec.create ~clock ~clear () in
+  let create scope ({ clock; valid; registers; read_bus; read_response } : _ I.t) =
+    let reg_spec_with_clear = Clocking.to_spec clock in
     let%hw address = registers.pc in
     let%hw prefetcher_ready = wire 1 in
     let%hw want_to_issue_fetch =
@@ -52,13 +51,7 @@ struct
     let prefetcher =
       Prefetcher.hierarchical
         scope
-        { clock
-        ; clear
-        ; valid = want_to_issue_fetch
-        ; aligned_address
-        ; read_bus
-        ; read_response
-        }
+        { clock; valid = want_to_issue_fetch; aligned_address; read_bus; read_response }
     in
     prefetcher_ready <-- prefetcher.ready;
     (* TODO: These can optionally be made cut through for zero cycles of

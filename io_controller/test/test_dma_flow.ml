@@ -97,14 +97,18 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
       let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
-        Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
+        Uart_tx.hierarchical
+          scope
+          { Uart_tx.I.clock = { clock; clear }; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid = uart_rx_valid
           ; data_out = uart_rx_data
           ; parity_error
           }
         =
-        Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx = uart_tx }
+        Uart_rx.hierarchical
+          scope
+          { Uart_rx.I.clock = { clock; clear }; uart_rx = uart_tx }
       in
       let serial_to_packet_ready = wire 1 in
       let { Serial_buffer.O.out_valid = serial_to_buffer_valid
@@ -114,8 +118,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
         Serial_buffer.hierarchical
           ~capacity:8192
           scope
-          { Serial_buffer.I.clock
-          ; clear
+          { Serial_buffer.I.clock = { clock; clear }
           ; in_valid = uart_rx_valid
           ; in_data = uart_rx_data
           ; out_ready = serial_to_packet_ready
@@ -125,8 +128,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       let { Serial_to_packet.O.dn; up_ready = serial_to_packet_ready' } =
         Serial_to_packet.hierarchical
           scope
-          { Serial_to_packet.I.clock
-          ; clear
+          { Serial_to_packet.I.clock = { clock; clear }
           ; in_valid = serial_to_buffer_valid
           ; in_data = serial_to_buffer_data
           ; dn = { tready = vdd }
@@ -138,8 +140,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
       let dma =
         Dma.hierarchical
           scope
-          { Dma.I.clock
-          ; clear
+          { Dma.I.clock = { clock; clear }
           ; in_ = dn
           ; out = Write_bus.Dest.Of_always.value dma_to_memory_controller
           ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
@@ -152,8 +153,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
           ~priority_mode:Priority_order
           ~read_latency:1
           scope
-          { Memory_controller.I.clock
-          ; clear
+          { Memory_controller.I.clock = { clock; clear }
           ; read_to_controller = [ Read_bus.Source.Of_signal.zero () ]
           ; write_to_controller = [ dma.out ]
           }

@@ -26,8 +26,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlprefix "input_"]
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; ecall_transaction : 'a Transaction.With_valid.t
@@ -59,7 +58,6 @@ struct
       Fetch.hierarchical
         scope
         { Fetch.I.clock = i.clock
-        ; clear = i.clear
         ; valid = i.valid
         ; registers = i.registers
         ; read_bus = List.nth_exn i.read_bus 1
@@ -70,7 +68,6 @@ struct
       Decode.hierarchical
         scope
         { Decode.I.clock = i.clock
-        ; clear = i.clear
         ; valid = fetch.valid
         ; registers = fetch.registers
         ; instruction = fetch.instruction
@@ -80,7 +77,6 @@ struct
       Execute.hierarchical
         scope
         { Execute.I.clock = i.clock
-        ; clear = i.clear
         ; valid = decode.valid
         ; registers = decode.registers
         ; instruction = decode.instruction
@@ -96,7 +92,6 @@ struct
       Write_back.hierarchical
         scope
         { Write_back.I.clock = i.clock
-        ; clear = i.clear
         ; valid = execute.valid
         ; registers = execute.registers
         ; instruction = execute.instruction

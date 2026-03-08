@@ -9,8 +9,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlprefix "input_"]
       ; aligned_address : 'a [@bits address_width] [@rtlprefix "input_"]
       ; read_bus : 'a Memory.Read_bus.Dest.t
@@ -42,11 +41,8 @@ module Make (Memory : Memory_bus_intf.S) = struct
     [@@deriving enumerate, sexp, compare ~localize]
   end
 
-  let create
-        scope
-        ({ clock; clear; valid; aligned_address; read_bus; read_response } : _ I.t)
-    =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
+  let create scope ({ clock; valid; aligned_address; read_bus; read_response } : _ I.t) =
+    let reg_spec = Clocking.to_spec clock in
     let aligned_address = cut_through_latch ~enable:valid reg_spec aligned_address in
     let%hw.Always.State_machine sm =
       Always.State_machine.create (module State) reg_spec
@@ -58,8 +54,8 @@ module Make (Memory : Memory_bus_intf.S) = struct
     (* We could end up with multiple reads in flight so we buffer them up  *)
     let address_fifo =
       Fifo.create
-        ~clock
-        ~clear
+        ~clock:clock.clock
+        ~clear:clock.clear
         ~showahead:true
         ~read_latency:0
         ~capacity:8

@@ -10,8 +10,7 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; enable : 'a
       ; op : 'a Funct3.Load.Onehot.t
       ; address : 'a [@bits register_width]
@@ -41,10 +40,10 @@ module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) = st
 
   let create
         (scope : Scope.t)
-        ({ I.clock; clear; enable; op; address; read_bus; read_response } : _ I.t)
+        ({ I.clock; enable; op; address; read_bus; read_response } : _ I.t)
     =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let reg_spec = Clocking.to_spec clock in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear clock in
     let%hw.State_machine current_state = State_machine.create (module State) reg_spec in
     let%hw_var load_valid = Variable.wire ~default:gnd () in
     let%hw aligned_address =

@@ -13,8 +13,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a
       ; instruction : 'a Decoded_instruction.t
       ; instret : 'a
@@ -30,7 +29,7 @@ struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create scope ({ clock; clear; valid; instruction; instret } : _ I.t) =
+  let create scope ({ clock; valid; instruction; instret } : _ I.t) =
     (* TODO: Send a zero / sign extend signal too so the bank can decide how to expand bank signals smaller than the Hart register with. *)
     let csrrw = instruction.funct3 ==:. Funct3.System.to_int Csrrw in
     let register_io =
@@ -38,7 +37,6 @@ struct
         ~clock_frequency:Hart_config.clock_domain.frequency
         scope
         { Cs_registers.I.clock
-        ; clear
         ; enable =
             valid &: Decoded_opcode.valid instruction.opcode System &: instruction.is_csr
         ; is_write = csrrw

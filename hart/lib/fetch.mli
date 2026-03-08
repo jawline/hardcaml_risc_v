@@ -8,8 +8,7 @@ module Make
     (Registers : Registers_intf.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; read_bus : 'a Memory.Read_bus.Dest.t

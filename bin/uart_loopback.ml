@@ -21,8 +21,7 @@ module Tx = Uart_tx.Make (Config)
 module Machine = struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; uart_rx : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -32,16 +31,16 @@ module Machine = struct
     type 'a t = { uart_tx : 'a } [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create (scope : Scope.t) ({ I.clock; clear; uart_rx } : _ I.t) =
+  let create (scope : Scope.t) ({ I.clock; uart_rx } : _ I.t) =
     let open Signal in
-    let rx = Rx.hierarchical scope { Rx.I.clock; clear; uart_rx } in
+    let rx = Rx.hierarchical scope { Rx.I.clock; uart_rx } in
     let rdy = wire 1 in
     let buffer =
       Fifo.create
         ~showahead:true
         ~capacity:512
-        ~clock
-        ~clear
+        ~clock:clock.clock
+        ~clear:clock.clear
         ~wr:rx.data_out_valid
         ~d:rx.data_out
         ~rd:rdy
@@ -50,7 +49,7 @@ module Machine = struct
     let tx =
       Tx.hierarchical
         scope
-        { Tx.I.clock; clear; data_in_valid = ~:(buffer.empty); data_in = buffer.q }
+        { Tx.I.clock; data_in_valid = ~:(buffer.empty); data_in = buffer.q }
     in
     rdy <-- tx.data_in_ready;
     { O.uart_tx = tx.uart_tx }

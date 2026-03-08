@@ -18,8 +18,7 @@ module Make
     (Transaction : Transaction_intf.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; ecall_transaction : 'a Transaction.With_valid.t
         (* When is_ecall is high the opcode will be considered finished when
              ecall_transaction is finished. If a user wants custom behaviour on ecall

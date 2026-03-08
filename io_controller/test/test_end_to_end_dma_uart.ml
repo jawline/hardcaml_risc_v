@@ -83,16 +83,19 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
           }
       =
       let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
-        Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
+        Uart_tx.hierarchical
+          scope
+          { Uart_tx.I.clock = { clock; clear }; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
-        Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx = uart_tx }
+        Uart_rx.hierarchical
+          scope
+          { Uart_rx.I.clock = { clock; clear }; uart_rx = uart_tx }
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
           scope
-          { Serial_to_packet.I.clock
-          ; clear
+          { Serial_to_packet.I.clock = { clock; clear }
           ; in_valid = data_out_valid
           ; in_data = data_out
           ; dn = { tready = vdd }
@@ -103,8 +106,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
       let dma =
         Dma.hierarchical
           scope
-          { Dma.I.clock
-          ; clear
+          { Dma.I.clock = { clock; clear }
           ; in_ = dn
           ; out = Write_bus.Dest.Of_always.value dma_to_memory_controller
           ; out_ack = Write_response.With_valid.Of_always.value memory_controller_to_dma
@@ -116,8 +118,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
       let dma_out =
         Memory_to_packet8.hierarchical
           scope
-          { Memory_to_packet8.I.clock
-          ; clear
+          { Memory_to_packet8.I.clock = { clock; clear }
           ; enable =
               { valid = dma_out_enable
               ; value = { address = dma_out_address; length = dma_out_length }
@@ -131,8 +132,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
       let dma_out_uart_tx =
         Uart_tx.hierarchical
           scope
-          { Uart_tx.I.clock
-          ; clear
+          { Uart_tx.I.clock = { clock; clear }
           ; data_in_valid = dma_out.output_packet.tvalid
           ; data_in = dma_out.output_packet.tdata
           }
@@ -141,7 +141,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
       let dma_out_uart_rx =
         Uart_rx.hierarchical
           scope
-          { Uart_rx.I.clock; clear; uart_rx = dma_out_uart_tx.uart_tx }
+          { Uart_rx.I.clock = { clock; clear }; uart_rx = dma_out_uart_tx.uart_tx }
       in
       let controller =
         Memory_controller.hierarchical
@@ -149,8 +149,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
           ~priority_mode:Priority_order
           ~read_latency:1
           scope
-          { Memory_controller.I.clock
-          ; clear
+          { Memory_controller.I.clock = { clock; clear }
           ; write_to_controller = [ dma.out ]
           ; read_to_controller = [ dma_out.memory ]
           }

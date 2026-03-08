@@ -51,6 +51,7 @@ module Cpu_with_dma_memory =
     (struct
       let num_harts = 1
       let include_io_controller = Io_controller_config.Uart_controller uart_config
+      let dma_domain = clock_domain_cpu
       let memory_domain = clock_domain_memory
 
       let include_video_out =
@@ -103,19 +104,26 @@ module With_transmitter = struct
 
   let create scope { I.clock; clear; data_in_valid; data_in } =
     let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
-      Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
+      Uart_tx.hierarchical
+        scope
+        { Uart_tx.I.clock = { clock; clear }; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
       Cpu_with_dma_memory.hierarchical
         ~read_latency:2
         ~build_mode:Simulation
         scope
-        { clock; clear; uart_rx = Some uart_tx }
+        { hart_clock = { clock; clear }
+        ; video_clock = { clock; clear }
+        ; memory_clock = { clock; clear }
+        ; dma_clock = { clock; clear }
+        ; uart_rx = Some uart_tx
+        }
     in
     let { Uart_rx.O.data_out_valid; data_out; _ } =
       Uart_rx.hierarchical
         scope
-        { Uart_rx.I.clock; clear; uart_rx = Option.value_exn cpu_uart_tx }
+        { Uart_rx.I.clock = { clock; clear }; uart_rx = Option.value_exn cpu_uart_tx }
     in
     { O.registers
     ; data_out_valid

@@ -23,8 +23,7 @@ module Make
     (Transaction : Transaction_intf.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; ecall_transaction : 'a Transaction.With_valid.t

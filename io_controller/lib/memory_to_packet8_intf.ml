@@ -21,8 +21,7 @@ module M (Memory : Memory_bus_intf.S) (Axi : Stream.S) = struct
 
     module I : sig
       type 'a t =
-        { clock : 'a
-        ; clear : 'a
+        { clock : 'a Clocking.t
         ; enable : 'a Input.With_valid.t
         ; output_packet : 'a Axi.Dest.t
         ; memory : 'a Memory.Read_bus.Dest.t

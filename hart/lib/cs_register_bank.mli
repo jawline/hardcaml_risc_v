@@ -17,8 +17,7 @@ end
 module Make (Hart_config : Hart_config_intf.S) (Bank_config : Bank_config) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; enable : 'a
         (** Enable should be pulsed rather than held high. Each pulse indicates a unique read / write. The caller should expect a response, but it may take many cycles. *)
       ; is_write : 'a

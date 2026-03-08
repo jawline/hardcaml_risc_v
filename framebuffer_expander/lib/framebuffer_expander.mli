@@ -36,8 +36,7 @@ module Make
 
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; start : 'a
       ; next : 'a
       ; start_address : 'a

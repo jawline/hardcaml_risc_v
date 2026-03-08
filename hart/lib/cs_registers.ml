@@ -5,8 +5,7 @@ open Signal
 module Make (Hart_config : Hart_config_intf.S) = struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; enable : 'a
       ; is_write : 'a
       ; address : 'a [@bits 12]
@@ -27,9 +26,9 @@ module Make (Hart_config : Hart_config_intf.S) = struct
   let create
         ~clock_frequency
         scope
-        { I.clock; clear; instret; enable; is_write; address; write_value }
+        { I.clock; instret; enable; is_write; address; write_value }
     =
-    let spec = Reg_spec.create ~clock ~clear () in
+    let spec = Clocking.to_spec clock in
     let cycle = reg_fb spec ~width:64 ~f:(fun t -> t +:. 1) in
     let ns_per_cycle =
       let ns_per_second = 1_000_000_000 in
@@ -114,7 +113,6 @@ module Make (Hart_config : Hart_config_intf.S) = struct
       Unpriveleged_counters_and_timers.create
         (Scope.sub_scope scope "unpriveleged$")
         { Unpriveleged_counters_and_timers.I.clock
-        ; clear
         ; enable = enable &: unpriveleged_counters_and_timer_active
         ; is_write
         ; address =

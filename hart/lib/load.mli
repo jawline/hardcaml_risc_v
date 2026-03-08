@@ -9,8 +9,7 @@ open Hardcaml_memory_controller
 module Make (Hart_config : Hart_config_intf.S) (Memory : Memory_bus_intf.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; enable : 'a
       ; op : 'a Funct3.Load.Onehot.t
       ; address : 'a

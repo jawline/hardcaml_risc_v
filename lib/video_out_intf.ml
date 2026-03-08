@@ -20,8 +20,7 @@ module M (Memory : Memory_bus_intf.S) = struct
 
     module I : sig
       type 'a t =
-        { clock : 'a
-        ; clear : 'a
+        { clock : 'a Clocking.t
         ; memory_request : 'a Memory.Read_bus.Dest.t
         ; memory_response : 'a Memory.Read_response.With_valid.t
         }

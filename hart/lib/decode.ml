@@ -9,8 +9,7 @@ module Make
 struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlprefix "input_"]
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; instruction : 'a [@bits 32]
@@ -28,8 +27,8 @@ struct
   end
 
   let create scope (i : _ I.t) =
-    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock:i.clock () in
+    let reg_spec_with_clear = Clocking.to_spec i.clock in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear i.clock in
     { O.valid = reg reg_spec_with_clear i.valid
     ; registers =
         Registers.For_writeback.Of_signal.reg

@@ -18,8 +18,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; uart_rx : 'a
       ; tx_input : 'a Memory_to_packet8.Input.With_valid.t
       ; read_request : 'a Memory.Read_bus.Dest.t
@@ -63,7 +62,6 @@ struct
         ~uart_config
         scope
         { I.clock
-        ; clear
         ; uart_rx
         ; tx_input
         ; read_request
@@ -104,7 +102,7 @@ struct
         ; parity_error = _
         }
       =
-      Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx }
+      Uart_rx.hierarchical scope { Uart_rx.I.clock; uart_rx }
     in
     let serial_to_packet_ready = wire 1 in
     let { Serial_buffer.O.out_valid = serial_buffer_valid; out_data = serial_buffer_data }
@@ -113,7 +111,6 @@ struct
         ~capacity:8096
         scope
         { Serial_buffer.I.clock
-        ; clear
         ; in_valid = uart_rx_valid
         ; in_data = uart_rx_data
         ; out_ready = serial_to_packet_ready
@@ -124,7 +121,6 @@ struct
       Serial_to_packet.hierarchical
         scope
         { Serial_to_packet.I.clock
-        ; clear
         ; in_valid = serial_buffer_valid
         ; in_data = serial_buffer_data
         ; dn = { tready = dpath_ready }
@@ -134,8 +130,8 @@ struct
     let { Axi8.Datapath_register.IO.source = dn; dest = dpath_ready' } =
       Axi8.Datapath_register.hierarchical
         scope
-        { clock
-        ; clear
+        { clock = clock.clock
+        ; clear = clock.clear
         ; i = { Axi8.Datapath_register.IO.source = dn; dest = { tready = router_ready } }
         }
     in
@@ -147,7 +143,6 @@ struct
       Router.hierarchical
         scope
         { Router.I.clock
-        ; clear
         ; up = dn
         ; dns = [ { tready = dma_dpath_ready }; { tready = pulse_ready } ]
         }
@@ -157,8 +152,8 @@ struct
     let { Axi8.Datapath_register.IO.source = dma; dest = dpath_ready' } =
       Axi8.Datapath_register.hierarchical
         scope
-        { clock
-        ; clear
+        { clock = clock.clock
+        ; clear = clock.clear
         ; i =
             { Axi8.Datapath_register.IO.source = List.nth_exn router.dns 0
             ; dest = { tready = dma_ready }
@@ -171,7 +166,6 @@ struct
       Packet_to_memory.hierarchical
         scope
         { Packet_to_memory.I.clock
-        ; clear
         ; in_ = dma
         ; out = { ready = dma_write_dpath_ready }
         ; out_ack = write_response
@@ -181,14 +175,14 @@ struct
     let dma_write_dpath_reg =
       Write_dpath.hierarchical
         scope
-        { Write_dpath.I.clock
-        ; clear
+        { Write_dpath.I.clock = clock.clock
+        ; clear = clock.clear
         ; i = { valid = dma.out.valid; data = dma.out.data; ready = write_request.ready }
         }
     in
     dma_write_dpath_ready <-- dma_write_dpath_reg.ready;
     let pulse =
-      Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
+      Pulse.hierarchical scope { Pulse.I.clock; up = List.nth_exn router.dns 1 }
     in
     pulse_ready <-- pulse.up.tready;
     let uart_tx_ready = wire 1 in
@@ -196,7 +190,6 @@ struct
       Memory_to_packet8.hierarchical
         scope
         { Memory_to_packet8.I.clock
-        ; clear
         ; enable = tx_input
         ; memory = read_request
         ; memory_response = read_response
@@ -207,7 +200,6 @@ struct
       Uart_tx.hierarchical
         scope
         { Uart_tx.I.clock
-        ; clear
         ; data_in_valid = dma_out.output_packet.tvalid
         ; data_in = dma_out.output_packet.tdata
         }

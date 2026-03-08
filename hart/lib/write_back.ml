@@ -17,8 +17,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlprefix "input_"]
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; instruction : 'a Decoded_instruction.t
@@ -36,7 +35,7 @@ struct
   end
 
   let create _scope (i : _ I.t) =
-    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let reg_spec_with_clear = Clocking.to_spec i.clock in
     let commit_transaction ~new_pc ~set_rd ~new_rd reg =
       let reg = Registers.For_writeback.to_registers reg in
       Registers.set_pc reg new_pc

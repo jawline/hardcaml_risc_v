@@ -64,7 +64,7 @@ struct
       let zmul = true
     end
 
-    let clock_domain = C.memory_clock
+    let clock_domain = C.hart_clock
   end
 
   module Memory_config = struct
@@ -119,7 +119,6 @@ end
 (** Construct a design with BRAM based main memory. *)
 module Make_with_bram (C : sig
     val include_video_out : bool
-    val hart_frequency : int
     val capacity_in_bytes : int
     val hart_clock : Clock_domain.t
     val video_clock : Clock_domain.t
@@ -160,6 +159,11 @@ let bram =
          ~doc:"include logic for generating a video signal"
      and hart_frequency =
        flag "hart-frequency" (required int) ~doc:"clock frequency in hz for the hart"
+     and video_frequency =
+       flag
+         "video-frequency"
+         (required int)
+         ~doc:"video frequency in hz for the video controller (ignored if unused)"
      and capacity_in_bytes =
        flag "memory-capacity-in-bytes" (required int) ~doc:"memory capacity in bytes"
      in
@@ -169,6 +173,8 @@ let bram =
            let include_video_out = include_video_out
            let hart_frequency = hart_frequency
            let capacity_in_bytes = capacity_in_bytes
+           let video_clock = Clock_domain.create video_frequency
+           let hart_clock = Clock_domain.create hart_frequency
          end)
        in
        M.Rtl.emit ())
@@ -184,6 +190,11 @@ let axi =
          "include-video-out"
          (required bool)
          ~doc:"include logic for generating a video signal"
+     and video_frequency =
+       flag
+         "video-frequency"
+         (required int)
+         ~doc:"video frequency in hz for the video controller (ignored if unused)"
      and hart_frequency =
        flag "hart-frequency" (required int) ~doc:"clock frequency in hz for the hart"
      and capacity_in_bytes =
@@ -197,16 +208,34 @@ let axi =
        flag "memory-addr-width" (required int) ~doc:"memory address width in bits"
      and memory_width =
        flag "memory-width" (required int) ~doc:"memory read/write width in bits"
+     and memory_frequency =
+       flag
+         "memory-frequency"
+         (required int)
+         ~doc:"clock frequency in hz for the memory controller"
+     in
+     let memory_clock = Clock_domain.create memory_frequency in
+     let hart_clock =
+       if hart_frequency = memory_frequency
+       then memory_clock
+       else Clock_domain.create hart_frequency
+     in
+     let video_clock =
+       if video_frequency = memory_frequency
+       then memory_clock
+       else Clock_domain.create video_frequency
      in
      fun () ->
        let module M =
          Make_with_axi_memory (struct
            let include_video_out = include_video_out
-           let hart_frequency = hart_frequency
            let memory_tag_width = memory_tag_width
            let memory_width = memory_width
            let memory_address_width = memory_address_width
            let capacity_in_bytes = capacity_in_bytes
+           let video_clock = video_clock
+           let hart_clock = hart_clock
+           let memory_clock = memory_clock
          end)
        in
        M.Rtl.emit ())

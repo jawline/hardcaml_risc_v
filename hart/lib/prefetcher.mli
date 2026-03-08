@@ -17,8 +17,7 @@ open Hardcaml_memory_controller
 module Make (Memory : Memory_bus_intf.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlprefix "input_"]
       ; aligned_address : 'a [@bits address_width]
       ; read_bus : 'a Memory.Read_bus.Dest.t

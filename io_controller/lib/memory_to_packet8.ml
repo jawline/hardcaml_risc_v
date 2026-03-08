@@ -29,8 +29,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; enable : 'a Input.With_valid.t
       ; output_packet : 'a Axi.Dest.t
       ; memory : 'a Memory.Read_bus.Dest.t
@@ -63,7 +62,6 @@ struct
   let create
         (scope : Scope.t)
         ({ I.clock
-         ; clear
          ; enable =
              { valid = input_enable
              ; value = { length = input_length; address = input_address }
@@ -74,8 +72,8 @@ struct
          } :
           _ I.t)
     =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
-    let reg_spec_no_clear = Reg_spec.create ~clock () in
+    let reg_spec = Clocking.to_spec clock in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear clock in
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
     let%hw_var do_read = Variable.reg ~width:1 reg_spec in
     let%hw_var length = Variable.reg ~width:(width input_length) reg_spec_no_clear in

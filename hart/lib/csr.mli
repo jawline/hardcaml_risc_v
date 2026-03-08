@@ -7,8 +7,7 @@ module Make
     (Decoded_instruction : Decoded_instruction_intf.M(Registers).S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a
       ; instruction : 'a Decoded_instruction.t
       ; instret : 'a

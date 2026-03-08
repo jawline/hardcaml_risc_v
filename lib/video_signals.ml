@@ -29,18 +29,14 @@ module Make (Config : Config) = struct
   let v_total_lines = Config.v_active + Config.v_fp + Config.v_sync + Config.v_bp
 
   module I = struct
-    type 'a t =
-      { clock : 'a
-      ; clear : 'a
-      }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    type 'a t = { clock : 'a Clocking.t } [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = Video_signals
 
   let create _scope (i : _ I.t) =
     (* This is pretty inefficient in comparisons and could be done with rollovers instead. *)
-    let reg_spec = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let reg_spec = Clocking.to_spec i.clock in
     let h_cnt =
       reg_fb
         ~width:(num_bits_to_represent (h_total_pixels - 1))

@@ -48,8 +48,7 @@ module Machine = struct
     let frame =
       Framebuffer_expander.hierarchical
         scope
-        { Framebuffer_expander.I.clock
-        ; clear
+        { Framebuffer_expander.I.clock = { clock; clear }
         ; start = start_frame
         ; start_address = zero 32
         ; next = next_pixel
@@ -63,8 +62,7 @@ module Machine = struct
         ~priority_mode:Priority_order
         ~read_latency:1
         scope
-        { Memory_controller.I.clock
-        ; clear
+        { Memory_controller.I.clock = { clock; clear }
         ; read_to_controller = [ frame.memory_request ]
         ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
         }

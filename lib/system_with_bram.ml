@@ -42,8 +42,10 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { memory_clock : 'a Clocking.t
+      ; video_clock : 'a Clocking.t
+      ; hart_clock : 'a Clocking.t
+      ; dma_clock : 'a Clocking.t
       ; uart_rx : 'a option [@exists include_uart_wires]
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -59,20 +61,31 @@ struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create ~build_mode ~read_latency scope { I.clock; clear; uart_rx } =
+  let create
+        ~build_mode
+        ~read_latency
+        scope
+        { I.hart_clock; video_clock; memory_clock; dma_clock; uart_rx }
+    =
     let memory = Axi4.O.Of_signal.wires () in
     let mem =
       Memory.hierarchical
         ~build_mode
         ~read_latency
         scope
-        { Memory.I.clock; clear; memory }
+        { Memory.I.clock = memory_clock; memory }
     in
     let core =
       System.hierarchical
         ~build_mode
         scope
-        { System.I.clock; clear; uart_rx; memory = mem.memory }
+        { System.I.hart_clock
+        ; memory_clock
+        ; video_clock
+        ; dma_clock
+        ; uart_rx
+        ; memory = mem.memory
+        }
     in
     Axi4.O.Of_signal.assign memory core.memory;
     { O.registers = core.registers

@@ -31,8 +31,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a [@rtlname "input_valid"]
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
@@ -151,7 +150,6 @@ struct
   (** The load table loads a value from [rs1] and places it in rd *)
   let load_instruction
         ~clock
-        ~clear
         ~valid
         ~read_bus
         ~read_response
@@ -163,7 +161,6 @@ struct
       Load.hierarchical
         scope
         { Load.I.clock
-        ; clear
         ; enable =
             (* We need to guard the Load instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
@@ -185,7 +182,6 @@ struct
   (** The store table loads a value from [rs1] and writes it to address rd *)
   let store_instruction
         ~clock
-        ~clear
         ~valid
         ~write_bus
         ~write_response
@@ -197,7 +193,6 @@ struct
       Store.hierarchical
         scope
         { Store.I.clock
-        ; clear
         ; enable =
             (* We need to guard the Store instruction since it's internal
                state machine might try to load data and get stuck otherwise. *)
@@ -226,7 +221,6 @@ struct
       via the is_ecall and ecall_transaction signals. *)
   let system_instruction
         ~clock
-        ~clear
         ~valid
         ~instret
         ~(registers : _ Registers.t)
@@ -244,7 +238,7 @@ struct
     let csr =
       Csr.hierarchical
         scope
-        { Csr.I.clock; clear; valid; instruction = decoded_instruction; instret }
+        { Csr.I.clock; valid; instruction = decoded_instruction; instret }
     in
     let ecall_valid = valid &: is_ecall in
     let csr_valid = csr.valid in
@@ -272,7 +266,6 @@ struct
 
   let instruction_table
         ~clock
-        ~clear
         ~valid
         ~instret
         ~registers
@@ -297,7 +290,6 @@ struct
         ~opcode:Decoded_opcode.Load
         (load_instruction
            ~clock
-           ~clear
            ~valid
            ~read_bus
            ~read_response
@@ -308,7 +300,6 @@ struct
         ~opcode:Decoded_opcode.Store
         (store_instruction
            ~clock
-           ~clear
            ~valid
            ~write_bus
            ~write_response
@@ -319,7 +310,6 @@ struct
         ~opcode:Decoded_opcode.System
         (system_instruction
            ~clock
-           ~clear
            ~valid
            ~registers
            ~ecall_transaction
@@ -356,11 +346,10 @@ struct
   ;;
 
   let create scope (i : _ I.t) =
-    let reg_spec_with_clear = Reg_spec.create ~clock:i.clock ~clear:i.clear () in
+    let reg_spec_with_clear = Clocking.to_spec i.clock in
     let instruction_table =
       instruction_table
         ~clock:i.clock
-        ~clear:i.clear
         ~valid:i.valid
         ~instret:i.instret
         ~decoded_instruction:i.instruction

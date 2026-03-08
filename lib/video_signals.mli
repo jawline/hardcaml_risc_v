@@ -28,11 +28,7 @@ end
 
 module Make (Config : Config) : sig
   module I : sig
-    type 'a t =
-      { clock : 'a
-      ; clear : 'a
-      }
-    [@@deriving hardcaml]
+    type 'a t = { clock : 'a Clocking.t } [@@deriving hardcaml]
   end
 
   module O = Video_signals

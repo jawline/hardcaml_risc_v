@@ -21,8 +21,10 @@ module Make
 
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { memory_clock : 'a Clocking.t
+      ; video_clock : 'a Clocking.t
+      ; hart_clock : 'a Clocking.t
+      ; dma_clock : 'a Clocking.t
       ; uart_rx : 'a option
       ; memory : 'a Axi4.I.t
       }

@@ -11,8 +11,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; memory_request : 'a Memory.Read_bus.Dest.t
       ; memory_response : 'a Memory.Read_response.With_valid.t
       }
@@ -36,9 +35,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
       Framebuffer_expander.Make (Framebuffer_config) (Memory)
     in
     let video_signals =
-      Video_signals.hierarchical
-        scope
-        { Video_signals.I.clock = i.clock; clear = i.clear }
+      Video_signals.hierarchical scope { Video_signals.I.clock = i.clock }
     in
     let pixel_buffer_full = wire 1 in
     let expander_valid = wire 1 in
@@ -47,7 +44,6 @@ module Make (Memory : Memory_bus_intf.S) = struct
       Framebuffer_expander.hierarchical
         scope
         { Framebuffer_expander.I.clock = i.clock
-        ; clear = i.clear
         ; start = video_signals.next_frame
         ; next = pre_fetch_pixel
         ; memory_request = i.memory_request
@@ -61,8 +57,8 @@ module Make (Memory : Memory_bus_intf.S) = struct
     let pixel_buffer =
       Fifo.create
         ~showahead:true
-        ~clock:i.clock
-        ~clear:(i.clear |: video_signals.next_frame)
+        ~clock:i.clock.clock
+        ~clear:(i.clock.clear |: video_signals.next_frame)
         ~capacity:512
         ~wr:pre_fetch_pixel
         ~d:(concat_lsb [ expander.pixel.r; expander.pixel.g; expander.pixel.b ])

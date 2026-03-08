@@ -1015,6 +1015,7 @@ module Cpu_with_no_io_controller =
       let capacity_in_bytes = 128
     end)
     (struct
+      let dma_domain = clock_domain_cpu
       let memory_domain = clock_domain_memory
       let num_harts = 1
       let include_io_controller = Io_controller_config.No_io_controller
@@ -1056,10 +1057,16 @@ module With_manually_programmed_ram = Make (struct
     ;;
 
     let clear_registers ~(inputs : Bits.t ref Cpu_with_no_io_controller.I.t) sim =
-      inputs.clear := Bits.vdd;
+      inputs.memory_clock.clear := Bits.vdd;
+      inputs.hart_clock.clear := Bits.vdd;
+      inputs.dma_clock.clear := Bits.vdd;
+      inputs.video_clock.clear := Bits.vdd;
       Cyclesim.cycle sim;
       Cyclesim.cycle sim;
-      inputs.clear := Bits.gnd
+      inputs.memory_clock.clear := Bits.gnd;
+      inputs.hart_clock.clear := Bits.gnd;
+      inputs.dma_clock.clear := Bits.gnd;
+      inputs.video_clock.clear := Bits.gnd
     ;;
 
     let test_and_registers ?(cycles = 50) ~instructions sim =
@@ -1119,6 +1126,7 @@ module Cpu_with_dma_memory =
     end)
     (struct
       let num_harts = 1
+      let dma_domain = clock_domain_cpu
       let memory_domain = clock_domain_memory
       let include_io_controller = Io_controller_config.Uart_controller uart_config
       let include_video_out = Video_config.No_video_out
@@ -1145,14 +1153,21 @@ module With_transmitter = struct
 
   let create scope { I.clock; clear; data_in_valid; data_in } =
     let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
-      Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
+      Uart_tx.hierarchical
+        scope
+        { Uart_tx.I.clock = { clock; clear }; data_in_valid; data_in }
     in
     let { Cpu_with_dma_memory.O.registers; _ } =
       Cpu_with_dma_memory.hierarchical
         ~read_latency:1
         ~build_mode:Simulation
         scope
-        { clock; clear; uart_rx = Some uart_tx }
+        { hart_clock = { clock; clear }
+        ; video_clock = { clock; clear }
+        ; memory_clock = { clock; clear }
+        ; dma_clock = { clock; clear }
+        ; uart_rx = Some uart_tx
+        }
     in
     { O.registers; ready_for_next_input }
   ;;

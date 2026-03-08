@@ -10,8 +10,7 @@ module Make
     (Transaction : Transaction_intf.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
