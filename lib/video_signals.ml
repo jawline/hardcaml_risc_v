@@ -11,7 +11,7 @@ module type Config = sig
   val v_fp : int
   val v_sync : int
   val v_bp : int
-  val clock_domain : Hardcaml_memory_controller.Clock_domain.t
+  val clock_domain : Hardcaml_memory_controller.Custom_clock_domain.t
 end
 
 module Video_signals = struct

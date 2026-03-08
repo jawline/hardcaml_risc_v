@@ -13,7 +13,7 @@ module type Config = sig
   val v_fp : int
   val v_sync : int
   val v_bp : int
-  val clock_domain : Clock_domain.t
+  val clock_domain : Custom_clock_domain.t
 end
 
 module Video_signals : sig

@@ -28,9 +28,9 @@ module Uart_tx = Uart_tx.Make (struct
     let config = uart_config
   end)
 
-let clock_domain_memory = Hardcaml_memory_controller.Clock_domain.create 500
-let clock_domain_cpu = Hardcaml_memory_controller.Clock_domain.create 2000
-let clock_domain_video = Hardcaml_memory_controller.Clock_domain.create 1000
+let clock_domain_memory = Hardcaml_memory_controller.Custom_clock_domain.create 500
+let clock_domain_cpu = Hardcaml_memory_controller.Custom_clock_domain.create 2000
+let clock_domain_video = Hardcaml_memory_controller.Custom_clock_domain.create 1000
 
 module Cpu_with_dma_memory =
   System_with_bram.Make

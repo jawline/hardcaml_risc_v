@@ -7,9 +7,9 @@ module Report_synth = Hardcaml_xilinx_reports
 
 module Make_base (C : sig
     val include_video_out : bool
-    val memory_clock : Clock_domain.t
-    val hart_clock : Clock_domain.t
-    val video_clock : Clock_domain.t
+    val memory_clock : Custom_clock_domain.t
+    val hart_clock : Custom_clock_domain.t
+    val video_clock : Custom_clock_domain.t
     val capacity_in_bytes : int
   end) =
 struct
@@ -84,9 +84,9 @@ module Make_with_axi_memory (C : sig
     val memory_width : int
     val memory_address_width : int
     val capacity_in_bytes : int
-    val memory_clock : Clock_domain.t
-    val hart_clock : Clock_domain.t
-    val video_clock : Clock_domain.t
+    val memory_clock : Custom_clock_domain.t
+    val hart_clock : Custom_clock_domain.t
+    val video_clock : Custom_clock_domain.t
   end) =
 struct
   open Make_base (C)
@@ -121,8 +121,8 @@ end
 module Make_with_bram (C : sig
     val include_video_out : bool
     val capacity_in_bytes : int
-    val hart_clock : Clock_domain.t
-    val video_clock : Clock_domain.t
+    val hart_clock : Custom_clock_domain.t
+    val video_clock : Custom_clock_domain.t
   end) =
 struct
   open Make_base (struct
@@ -174,8 +174,8 @@ let bram =
            let include_video_out = include_video_out
            let hart_frequency = hart_frequency
            let capacity_in_bytes = capacity_in_bytes
-           let video_clock = Clock_domain.create video_frequency
-           let hart_clock = Clock_domain.create hart_frequency
+           let video_clock = Custom_clock_domain.create video_frequency
+           let hart_clock = Custom_clock_domain.create hart_frequency
          end)
        in
        M.Rtl.emit ())
@@ -215,16 +215,16 @@ let axi =
          (required int)
          ~doc:"clock frequency in hz for the memory controller"
      in
-     let memory_clock = Clock_domain.create memory_frequency in
+     let memory_clock = Custom_clock_domain.create memory_frequency in
      let hart_clock =
        if hart_frequency = memory_frequency
        then memory_clock
-       else Clock_domain.create hart_frequency
+       else Custom_clock_domain.create hart_frequency
      in
      let video_clock =
        if video_frequency = memory_frequency
        then memory_clock
-       else Clock_domain.create video_frequency
+       else Custom_clock_domain.create video_frequency
      in
      fun () ->
        let module M =

@@ -12,7 +12,7 @@ module Make
     (Axi4 : Axi4.S) =
 struct
   let () =
-    if not (Clock_domain.equal Hart_config.clock_domain General_config.dma_domain)
+    if not (Custom_clock_domain.equal Hart_config.clock_domain General_config.dma_domain)
     then
       raise_s
         [%message
@@ -322,10 +322,69 @@ struct
        bunch of unconnected wires. These will be wired to the memory controller
        and harts below. *)
     let tx_input = Memory_to_packet8.Input.With_valid.Of_signal.wires () in
-    let dma_read_request = Read_bus.Dest.Of_signal.wires () in
-    let dma_write_request = Write_bus.Dest.Of_signal.wires () in
+    let dma_read_request = Read_bus.Source.Of_signal.wires () in
+    let dma_read_request_ack = Read_bus.Dest.Of_signal.wires () in
+    let dma_write_request = Write_bus.Source.Of_signal.wires () in
+    let dma_write_request_ack = Write_bus.Dest.Of_signal.wires () in
     let dma_read_response = Read_response.With_valid.Of_signal.wires () in
     let dma_write_response = Write_response.With_valid.Of_signal.wires () in
+    let ( dma_read_request
+        , dma_read_request_ack
+        , dma_write_request
+        , dma_write_request_ack
+        , dma_read_response
+        , dma_write_response )
+      =
+      let open Memory_controller.Cross_clocks in
+      let read_request =
+        maybe_cross_read_request
+          ~clock_domain_memory:General_config.memory_domain
+          ~clock_domain_user:General_config.dma_domain
+          scope
+          { Read.I.clocking_i = i.dma_clock
+          ; clocking_o = i.memory_clock
+          ; i = dma_read_request
+          ; o = dma_read_request_ack
+          }
+      in
+      let write_request =
+        maybe_cross_write_request
+          ~clock_domain_memory:General_config.memory_domain
+          ~clock_domain_user:General_config.dma_domain
+          scope
+          { Write.I.clocking_i = i.dma_clock
+          ; clocking_o = i.memory_clock
+          ; i = dma_write_request
+          ; o = dma_write_request_ack
+          }
+      in
+      let read_response =
+        maybe_cross_read_response
+          ~clock_domain_memory:General_config.memory_domain
+          ~clock_domain_user:General_config.dma_domain
+          scope
+          { Read_response.I.clocking_i = i.memory_clock
+          ; clocking_o = i.dma_clock
+          ; i = dma_read_response
+          }
+      in
+      let write_response =
+        maybe_cross_write_response
+          ~clock_domain_memory:General_config.memory_domain
+          ~clock_domain_user:General_config.dma_domain
+          scope
+          { Write_response.I.clocking_i = i.memory_clock
+          ; clocking_o = i.dma_clock
+          ; i = dma_write_response
+          }
+      in
+      ( read_request.i
+      , read_request.o
+      , write_request.i
+      , write_request.o
+      , read_response.i
+      , write_response.i )
+    in
     let maybe_dma_controller =
       match General_config.include_io_controller with
       | No_io_controller -> None
@@ -337,8 +396,8 @@ struct
              { Dma.I.clock = i.dma_clock
              ; uart_rx = Option.value_exn i.uart_rx
              ; tx_input
-             ; read_request = dma_read_request
-             ; write_request = dma_write_request
+             ; read_request = dma_read_request_ack
+             ; write_request = dma_write_request_ack
              ; read_response = dma_read_response
              ; write_response = dma_write_response
              })
@@ -364,6 +423,12 @@ struct
             required_write_channels_per_hart)
         General_config.num_harts
     in
+    of_dma ~f:(fun dma -> [ dma.read_request ])
+    |> Option.iter ~f:(fun t ->
+      Read_bus.Source.Of_signal.(dma_read_request <-- List.nth_exn t 0));
+    of_dma ~f:(fun dma -> [ dma.write_request ])
+    |> Option.iter ~f:(fun t ->
+      Write_bus.Source.Of_signal.(dma_write_request <-- List.nth_exn t 0));
     let controller =
       Memory_controller.hierarchical
         ~priority_mode:Priority_order
@@ -371,10 +436,10 @@ struct
         { Memory_controller.I.clock = i.memory_clock
         ; read_to_controller =
             (of_video_out ~f:(fun vd -> [ vd.memory_request ]) |> Option.value ~default:[])
-            @ (of_dma ~f:(fun dma -> [ dma.read_request ]) |> Option.value ~default:[])
+            @ (of_dma ~f:(fun _dma -> [ dma_read_request ]) |> Option.value ~default:[])
             @ List.concat read_bus_per_hart
         ; write_to_controller =
-            (of_dma ~f:(fun dma -> [ dma.write_request ]) |> Option.value ~default:[])
+            (of_dma ~f:(fun _dma -> [ dma_write_request ]) |> Option.value ~default:[])
             @ List.concat write_bus_per_hart
         ; memory = i.memory
         }
@@ -417,11 +482,12 @@ struct
     (match maybe_dma_controller with
      | Some _ ->
        Read_bus.Dest.Of_signal.(
-         dma_read_request <-- List.nth_exn controller.read_to_controller dma_read_slot);
+         dma_read_request_ack <-- List.nth_exn controller.read_to_controller dma_read_slot);
        Read_response.With_valid.Of_signal.(
          dma_read_response <-- List.nth_exn controller.read_response dma_read_slot);
        Write_bus.Dest.Of_signal.(
-         dma_write_request <-- List.nth_exn controller.write_to_controller dma_write_slot);
+         dma_write_request_ack
+         <-- List.nth_exn controller.write_to_controller dma_write_slot);
        Write_response.With_valid.Of_signal.(
          dma_write_response <-- List.nth_exn controller.write_response dma_write_slot)
      | None -> ());

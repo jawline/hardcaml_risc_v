@@ -997,8 +997,8 @@ end
 
 (* By using different clock domains, memory will be routed through an async fifo though
    the simulator is still single clock only so this should behave as a normal fifo. *)
-let clock_domain_memory = Hardcaml_memory_controller.Clock_domain.create 500
-let clock_domain_cpu = Hardcaml_memory_controller.Clock_domain.create 2000
+let clock_domain_memory = Hardcaml_memory_controller.Custom_clock_domain.create 500
+let clock_domain_cpu = Hardcaml_memory_controller.Custom_clock_domain.create 2000
 
 module Cpu_with_no_io_controller =
   System_with_bram.Make
