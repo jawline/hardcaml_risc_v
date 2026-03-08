@@ -2,7 +2,11 @@ open! Core
 open Core_unix
 open Terminal_io
 open Hardcaml_risc_v_regression_tests
-open Test_base
+open Test_base.Make(struct
+    let debug = false
+    let read_latency = 1
+    let share_clocks = true
+  end)
 
 let set_raw_mode fd =
   let mode = tcgetattr fd in
@@ -71,7 +75,7 @@ let sim =
          print_s [%message "Starting up"];
          let program = In_channel.read_all path in
          print_s [%message "Loaded program"];
-         let sim = Test_base.base_sim ~trace:false in
+         let sim = base_sim ~trace:false in
          if raw_mode then hide_cursor ();
          test
            ?print_state_every_n_cycles

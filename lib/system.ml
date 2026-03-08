@@ -245,11 +245,40 @@ struct
     | Video_out
         ( (module Framebuffer_config : Video_out_intf.Config)
         , (module Video_signals_config : Video_signals.Config) ) ->
-      let memory_request_ack =
+      let open Memory_controller.Cross_clocks in
+      let read_request_ack_i =
         Memory_controller.Memory_bus.Read_bus.Dest.Of_signal.wires ()
       in
-      let memory_response =
+      let read_request_i =
+        Memory_controller.Memory_bus.Read_bus.Source.Of_signal.wires ()
+      in
+      let read_response_i =
         Memory_controller.Memory_bus.Read_response.With_valid.Of_signal.wires ()
+      in
+      let read_request, read_request_ack =
+        let o =
+          maybe_cross_read_request
+            ~clock_domain_memory:General_config.memory_domain
+            ~clock_domain_user:Video_signals_config.clock_domain
+            scope
+            { Read.I.clocking_i = i.memory_clock
+            ; clocking_o = i.video_clock
+            ; i = read_request_i
+            ; o = read_request_ack_i
+            }
+        in
+        o.i, o.o
+      in
+      let read_response =
+        (maybe_cross_read_response
+           ~clock_domain_memory:General_config.memory_domain
+           ~clock_domain_user:Video_signals_config.clock_domain
+           scope
+           { Read_response.I.clocking_i = i.memory_clock
+           ; clocking_o = i.video_clock
+           ; i = read_response_i
+           })
+          .i
       in
       let video_out =
         Video_out_with_memory.hierarchical
@@ -257,15 +286,17 @@ struct
           ~video_signals_config:(module Video_signals_config)
           scope
           { Video_out_with_memory.I.clock = i.video_clock
-          ; memory_request = memory_request_ack
-          ; memory_response
+          ; memory_request = read_request_ack
+          ; memory_response = read_response
           }
       in
+      Memory_controller.Memory_bus.Read_bus.Source.Of_signal.(
+        read_request_i <-- video_out.memory_request);
       Some
         { Video_data.video_data = video_out
-        ; memory_request_ack
-        ; memory_request = video_out.memory_request
-        ; memory_response
+        ; memory_request_ack = read_request_ack_i
+        ; memory_request = read_request
+        ; memory_response = read_response_i
         }
   ;;
 
@@ -317,7 +348,7 @@ struct
               let o =
                 maybe_cross_read_request
                   ~clock_domain_memory:General_config.memory_domain
-                  ~clock_domain_user:General_config.dma_domain
+                  ~clock_domain_user:Hart_config.clock_domain
                   scope
                   { Read.I.clocking_i = hart_clock
                   ; clocking_o = memory_clock
@@ -334,7 +365,7 @@ struct
               let o =
                 maybe_cross_write_request
                   ~clock_domain_memory:General_config.memory_domain
-                  ~clock_domain_user:General_config.dma_domain
+                  ~clock_domain_user:Hart_config.clock_domain
                   scope
                   { Write.I.clocking_i = hart_clock
                   ; clocking_o = memory_clock
@@ -350,7 +381,7 @@ struct
               ~f:(fun read_response ->
                 (maybe_cross_read_response
                    ~clock_domain_memory:General_config.memory_domain
-                   ~clock_domain_user:General_config.dma_domain
+                   ~clock_domain_user:Hart_config.clock_domain
                    scope
                    { Read_response.I.clocking_i = hart_clock
                    ; clocking_o = memory_clock
@@ -364,7 +395,7 @@ struct
               ~f:(fun write_response ->
                 (maybe_cross_write_response
                    ~clock_domain_memory:General_config.memory_domain
-                   ~clock_domain_user:General_config.dma_domain
+                   ~clock_domain_user:Hart_config.clock_domain
                    scope
                    { Write_response.I.clocking_i = hart_clock
                    ; clocking_o = memory_clock

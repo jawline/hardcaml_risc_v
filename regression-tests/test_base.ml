@@ -8,7 +8,15 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = true
+module Make(
+    C : sig
+      val debug : bool
+      val read_latency  : int
+      val share_clocks : bool
+    end) = struct
+
+
+let debug = C.debug
 let output_width = 64
 let output_height = 34
 
@@ -28,9 +36,14 @@ module Uart_tx = Uart_tx.Make (struct
     let config = uart_config
   end)
 
-let clock_domain_memory = Hardcaml_memory_controller.Custom_clock_domain.create 500
-let clock_domain_cpu = Hardcaml_memory_controller.Custom_clock_domain.create 2000
-let clock_domain_video = Hardcaml_memory_controller.Custom_clock_domain.create 1000
+(* The design will inject fifos between communicating domains if these differ (distincted by a UUID, not frequency). *)
+let clock_domain_memory, clock_domain_cpu, clock_domain_video  = 
+  if C.share_clocks then 
+    (
+    let shared_domain = Hardcaml_memory_controller.Custom_clock_domain.create 500 in
+    shared_domain, shared_domain, shared_domain )  else (
+    Hardcaml_memory_controller.Custom_clock_domain.create 500, Hardcaml_memory_controller.Custom_clock_domain.create 2000, Hardcaml_memory_controller.Custom_clock_domain.create 1000)
+;;
 
 module Cpu_with_dma_memory =
   System_with_bram.Make
@@ -110,7 +123,7 @@ module With_transmitter = struct
     in
     let { Cpu_with_dma_memory.O.registers; uart_tx = cpu_uart_tx; video_out; _ } =
       Cpu_with_dma_memory.hierarchical
-        ~read_latency:2
+        ~read_latency:C.read_latency
         ~build_mode:Simulation
         scope
         { hart_clock = { clock; clear }
@@ -347,3 +360,4 @@ let test
   flush ();
   print_state ~include_ram:true
 ;;
+end

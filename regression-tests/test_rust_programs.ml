@@ -1,5 +1,9 @@
 open! Core
-open Test_base
+open Test_base.Make(struct
+    let debug = true
+    let read_latency = 2
+    let share_clocks = false
+  end)
 
 let%expect_test "Hello world (Rust)" =
   let program =
