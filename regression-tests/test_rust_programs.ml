@@ -1,5 +1,6 @@
 open! Core
-open Test_base.Make(struct
+
+open Test_base.Make (struct
     let debug = true
     let read_latency = 2
     let share_clocks = false

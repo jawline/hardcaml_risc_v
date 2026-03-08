@@ -2,7 +2,8 @@ open! Core
 open Core_unix
 open Terminal_io
 open Hardcaml_risc_v_regression_tests
-open Test_base.Make(struct
+
+open Test_base.Make (struct
     let debug = false
     let read_latency = 1
     let share_clocks = true

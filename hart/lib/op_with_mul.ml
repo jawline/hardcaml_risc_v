@@ -9,17 +9,23 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   module I = struct
     type 'a t =
-      { alu_op : 'a Alu_operation.Onehot.t
+      { clock : 'a Clocking.t
+      ; valid : 'a
+      ; alu_op : 'a Alu_operation.Onehot.t
       ; muldiv_op : 'a Funct3.Muldiv.Onehot.t
       ; is_muldiv : 'a
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   module O = struct
-    type 'a t = { rd : 'a [@bits register_width] } [@@deriving hardcaml ~rtlmangle:"$"]
+    type 'a t =
+      { valid : 'a [@rtlprefix "output_"]
+      ; rd : 'a [@bits register_width]
+      }
+    [@@deriving hardcaml]
   end
 
   let multiply_result scope (i : _ I.t) =
@@ -49,13 +55,23 @@ module Make (Hart_config : Hart_config_intf.S) = struct
             sel_top ~width:register_width full_width_result)
         op
     in
-    result
+    { O.valid = pipeline ~n:4 (Clocking.to_spec i.clock) (i.valid &: i.is_muldiv)
+    ; rd = pipeline ~n:4 (Clocking.to_spec_no_clear i.clock) result
+    }
   ;;
 
   let create scope (i : _ I.t) =
-    let op = Op.hierarchical scope { Op.I.op = i.alu_op; lhs = i.lhs; rhs = i.rhs } in
-    let rd = mux2 i.is_muldiv (multiply_result scope i) op.rd in
-    { O.rd }
+    let op =
+      Op.hierarchical
+        scope
+        { Op.I.valid = i.valid &: ~:(i.is_muldiv)
+        ; op = i.alu_op
+        ; lhs = i.lhs
+        ; rhs = i.rhs
+        }
+    in
+    let multiply_result = multiply_result scope i in
+    { O.valid = op.valid |: multiply_result.valid; rd = op.rd |: multiply_result.rd }
   ;;
 
   let hierarchical (scope : Scope.t) (input : Signal.t I.t) =

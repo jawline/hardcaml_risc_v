@@ -61,34 +61,42 @@ struct
 
   let op_instructions
         ~valid
+        ~clock
         ~(registers : _ Registers.t)
         scope
         ({ opcode; argument_1; argument_2; alu_operation; muldiv_operation; is_muldiv; _ } :
           _ Decoded_instruction.t)
     =
-    let new_rd =
+    let alu_input = valid &: Decoded_opcode.valid opcode ALU in
+    let valid, new_rd =
       if Hart_config.Extensions.zmul
       then (
-        let { Op_with_mul.O.rd = new_rd } =
+        let { Op_with_mul.O.valid; rd = new_rd } =
           Op_with_mul.hierarchical
             scope
-            { Op_with_mul.I.alu_op = alu_operation
+            { Op_with_mul.I.clock
+            ; valid = alu_input
+            ; alu_op = alu_operation
             ; muldiv_op = Option.value_exn muldiv_operation
             ; is_muldiv = Option.value_exn is_muldiv
             ; lhs = argument_1
             ; rhs = argument_2
             }
         in
-        new_rd)
+        valid, new_rd)
       else (
-        let { Op.O.rd = new_rd } =
+        let { Op.O.valid; rd = new_rd } =
           Op.hierarchical
             scope
-            { Op.I.op = alu_operation; lhs = argument_1; rhs = argument_2 }
+            { Op.I.valid = alu_input
+            ; op = alu_operation
+            ; lhs = argument_1
+            ; rhs = argument_2
+            }
         in
-        new_rd)
+        valid, new_rd)
     in
-    { Opcode_output.valid = valid &: Decoded_opcode.valid opcode ALU
+    { Opcode_output.valid
     ; read_bus = None
     ; write_bus = None
     ; transaction =
@@ -279,7 +287,7 @@ struct
     =
     [ Table_entry.create
         ~opcode:Decoded_opcode.ALU
-        (op_instructions ~valid ~registers scope decoded_instruction)
+        (op_instructions ~clock ~valid ~registers scope decoded_instruction)
     ; Table_entry.create
         ~opcode:Decoded_opcode.Assign_pc_sum_of_arguments
         (assign_pc_sum_of_arguments ~valid ~registers decoded_instruction scope)

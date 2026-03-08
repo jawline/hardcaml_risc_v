@@ -41,7 +41,7 @@ struct
 
     let include_io_controller =
       Io_controller_config.Uart_controller
-        (Uart_settings.default ~clock_frequency:C.memory_clock.frequency)
+        (Uart_settings.default ~clock_frequency:C.hart_clock.frequency)
     ;;
 
     let include_video_out =

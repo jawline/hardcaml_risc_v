@@ -8,7 +8,8 @@ open Hardcaml
 module Make (Hart_config : Hart_config_intf.S) : sig
   module I : sig
     type 'a t =
-      { op : 'a Alu_operation.Onehot.t
+      { valid : 'a
+      ; op : 'a Alu_operation.Onehot.t
       ; lhs : 'a
       ; rhs : 'a
       }
@@ -16,7 +17,11 @@ module Make (Hart_config : Hart_config_intf.S) : sig
   end
 
   module O : sig
-    type 'a t = { rd : 'a [@bits register_width] } [@@deriving hardcaml]
+    type 'a t =
+      { valid : 'a
+      ; rd : 'a [@bits register_width]
+      }
+    [@@deriving hardcaml]
   end
 
   val hierarchical : Scope.t -> Signal.t I.t -> Signal.t O.t

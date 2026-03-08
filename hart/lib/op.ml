@@ -7,18 +7,23 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   module I = struct
     type 'a t =
-      { op : 'a Alu_operation.Onehot.t
+      { valid : 'a
+      ; op : 'a Alu_operation.Onehot.t
       ; lhs : 'a [@bits register_width]
       ; rhs : 'a [@bits register_width]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   module O = struct
-    type 'a t = { rd : 'a [@bits register_width] } [@@deriving hardcaml ~rtlmangle:"$"]
+    type 'a t =
+      { valid : 'a [@rtlprefix "output_"]
+      ; rd : 'a [@bits register_width]
+      }
+    [@@deriving hardcaml]
   end
 
-  let create _scope ({ I.op; lhs; rhs } : _ I.t) =
+  let create _scope ({ I.valid; op; lhs; rhs } : _ I.t) =
     let rd =
       Alu_operation.Onehot.switch
         ~f:(function
@@ -34,7 +39,7 @@ module Make (Hart_config : Hart_config_intf.S) = struct
           | Sra -> log_shift ~f:sra ~by:(sel_bottom ~width:6 rhs) lhs)
         op
     in
-    { O.rd }
+    { O.valid; rd }
   ;;
 
   let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
