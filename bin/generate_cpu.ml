@@ -54,6 +54,7 @@ struct
     ;;
 
     let memory_domain = C.memory_clock
+    let dma_domain = C.hart_clock
   end
 
   module Per_hart_config = struct
