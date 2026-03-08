@@ -1125,9 +1125,9 @@ module Cpu_with_dma_memory =
       let capacity_in_bytes = 128
     end)
     (struct
-      let num_harts = 1
       let dma_domain = clock_domain_cpu
       let memory_domain = clock_domain_memory
+      let num_harts = 1
       let include_io_controller = Io_controller_config.Uart_controller uart_config
       let include_video_out = Video_config.No_video_out
     end)
