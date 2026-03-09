@@ -72,10 +72,13 @@ struct
     let registers =
       Registers.For_writeback.Of_signal.reg ~enable:valid reg_spec_with_clear registers
     in
+    let maybe_reg =
+      if Hart_config.register_fetch_output then reg reg_spec_with_clear else Fn.id
+    in
     { O.read_bus = prefetcher.read_bus
-    ; valid = reg reg_spec_with_clear (output_valid &: (valid |: was_valid))
+    ; valid = maybe_reg (output_valid &: (valid |: was_valid))
     ; registers
-    ; instruction = reg reg_spec_with_clear prefetcher.value
+    ; instruction = maybe_reg prefetcher.value
     }
   ;;
 

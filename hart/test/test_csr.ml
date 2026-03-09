@@ -3,20 +3,9 @@ open Hardcaml
 open Hardcaml_risc_v_hart
 open Hardcaml_test_harness
 open Bits
-
-module Hart_config = struct
-  let register_width = Register_width.B32
-  let num_registers = 32
-  let clock_domain = Hardcaml_memory_controller.Custom_clock_domain.create 50_000_000
-
-  module Extensions = struct
-    let zmul = false
-  end
-end
-
-module Registers = Registers.Make (Hart_config)
-module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
-module Csr = Csr.Make (Hart_config) (Registers) (Decoded_instruction)
+module Registers = Registers.Make (Example_hart)
+module Decoded_instruction = Decoded_instruction.Make (Example_hart) (Registers)
+module Csr = Csr.Make (Example_hart) (Registers) (Decoded_instruction)
 module Harness = Cyclesim_harness.Make (Csr.I) (Csr.O)
 
 let create_sim f =

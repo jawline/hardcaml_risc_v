@@ -8,16 +8,6 @@ open! Bits
 
 let debug = false
 
-module Hart_config = struct
-  let register_width = Register_width.B32
-  let num_registers = 32
-  let clock_domain = Hardcaml_memory_controller.Custom_clock_domain.create 50_000_000
-
-  module Extensions = struct
-    let zmul = false
-  end
-end
-
 module Memory_controller = Bram_memory_controller.Make (struct
     let capacity_in_bytes = 128
     let num_write_channels = 1
@@ -26,9 +16,9 @@ module Memory_controller = Bram_memory_controller.Make (struct
     let data_bus_width = 32
   end)
 
-module Registers = Registers.Make (Hart_config)
+module Registers = Registers.Make (Example_hart)
 open Memory_controller.Memory_bus
-module Fetch = Fetch.Make (Hart_config) (Memory_controller.Memory_bus) (Registers)
+module Fetch = Fetch.Make (Example_hart) (Memory_controller.Memory_bus) (Registers)
 
 module Test_machine = struct
   open! Signal

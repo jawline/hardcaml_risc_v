@@ -1,0 +1,2 @@
+open Hardcaml_risc_v_hart
+include Hart_config_intf.S
