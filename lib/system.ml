@@ -185,15 +185,14 @@ struct
     (* Delay the ecall by a cycle so we can register all the relevant
        registers, reducing routing pressure. *)
     (* TODO: This is pretty jank - move ecall to write back and pass 'ecall registers' out of the pipeline *)
-    let%hw delayed_r5 = (List.nth_exn hart0.registers.general 5 ==:. 0)
-    in
-    let%hw delayed_r6 = (List.nth_exn hart0.registers.general 6) in
+    let%hw delayed_r5 = List.nth_exn hart0.registers.general 5 ==:. 0 in
+    let%hw delayed_r6 = List.nth_exn hart0.registers.general 6 in
     let%hw delayed_r7 =
-        (List.nth_exn hart0.registers.general 7
-         |> uresize ~width:Memory_to_packet8.Input.port_widths.length)
+      List.nth_exn hart0.registers.general 7
+      |> uresize ~width:Memory_to_packet8.Input.port_widths.length
     in
     let%hw is_dma_write = hart0.is_ecall &: delayed_r5 in
-    let%hw next_pc = (hart0.registers.pc +:. 4) in
+    let%hw next_pc = hart0.registers.pc +:. 4 in
     (* TODO: I think this can race. *)
     Memory_to_packet8.Input.With_valid.Of_signal.(
       tx_input

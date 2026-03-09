@@ -40,7 +40,11 @@ struct
     let%hw address = registers.pc in
     let%hw prefetcher_ready = wire 1 in
     let%hw want_to_issue_fetch =
-      valid |: reg_fb ~width:1 ~f:(fun t -> t &: ~:prefetcher_ready) reg_spec_with_clear
+      valid
+      |: reg_fb
+           ~width:1
+           ~f:(fun t -> mux2 prefetcher_ready gnd (t |: valid))
+           reg_spec_with_clear
     in
     let%hw aligned_address =
       cut_through_latch
