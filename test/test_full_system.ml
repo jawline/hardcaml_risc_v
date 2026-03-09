@@ -324,24 +324,7 @@ struct
       ~funct3:Funct3.Muldiv.Mul
       ~f:(fun (l : int) (r : int) -> l * r land 0xFFFF_FFFF)
       ~small_rs2_range:false;
-    [%expect {|
-      ((rs1_initial -2047) (rs2_initial 1448))
-      ((rs1_initial 970) (rs2_initial 1033))
-      ((rs1_initial 1071) (rs2_initial 1191))
-      ((rs1_initial -27) (rs2_initial -1253))
-      ((rs1_initial -1987) (rs2_initial -279))
-      ((rs1_initial -168) (rs2_initial -518))
-      ((rs1_initial 2047) (rs2_initial 1253))
-      ((rs1_initial 1370) (rs2_initial -1981))
-      ((rs1_initial 401) (rs2_initial 515))
-      ((rs1_initial 847) (rs2_initial 52))
-      ((rs1_initial -1215) (rs2_initial -1660))
-      ((rs1_initial 694) (rs2_initial -69))
-      ((rs1_initial 1760) (rs2_initial 1821))
-      ((rs1_initial -473) (rs2_initial -139))
-      ((rs1_initial 761) (rs2_initial 498))
-      ((rs1_initial 58) (rs2_initial -1309))
-      |}]
+    [%expect {| |}]
   
   ;;
 
@@ -355,24 +338,7 @@ struct
         let r = Int64.((l * r) lsr 32 |> to_int_exn) in
         r)
       ~small_rs2_range:false;
-    [%expect {|
-      ((rs1_initial -2047) (rs2_initial 1448))
-      ((rs1_initial 970) (rs2_initial 1033))
-      ((rs1_initial 1071) (rs2_initial 1191))
-      ((rs1_initial -27) (rs2_initial -1253))
-      ((rs1_initial -1987) (rs2_initial -279))
-      ((rs1_initial -168) (rs2_initial -518))
-      ((rs1_initial 2047) (rs2_initial 1253))
-      ((rs1_initial 1370) (rs2_initial -1981))
-      ((rs1_initial 401) (rs2_initial 515))
-      ((rs1_initial 847) (rs2_initial 52))
-      ((rs1_initial -1215) (rs2_initial -1660))
-      ((rs1_initial 694) (rs2_initial -69))
-      ((rs1_initial 1760) (rs2_initial 1821))
-      ((rs1_initial -473) (rs2_initial -139))
-      ((rs1_initial 761) (rs2_initial 498))
-      ((rs1_initial 58) (rs2_initial -1309))
-      |}]
+    [%expect {| |}]
   
   ;;
 
@@ -386,24 +352,7 @@ struct
         let result = Bits.( *: ) l r in
         Bits.(sel_top ~width:32 result |> to_int_trunc))
       ~small_rs2_range:false;
-    [%expect {|
-      ((rs1_initial -2047) (rs2_initial 1448))
-      ((rs1_initial 970) (rs2_initial 1033))
-      ((rs1_initial 1071) (rs2_initial 1191))
-      ((rs1_initial -27) (rs2_initial -1253))
-      ((rs1_initial -1987) (rs2_initial -279))
-      ((rs1_initial -168) (rs2_initial -518))
-      ((rs1_initial 2047) (rs2_initial 1253))
-      ((rs1_initial 1370) (rs2_initial -1981))
-      ((rs1_initial 401) (rs2_initial 515))
-      ((rs1_initial 847) (rs2_initial 52))
-      ((rs1_initial -1215) (rs2_initial -1660))
-      ((rs1_initial 694) (rs2_initial -69))
-      ((rs1_initial 1760) (rs2_initial 1821))
-      ((rs1_initial -473) (rs2_initial -139))
-      ((rs1_initial 761) (rs2_initial 498))
-      ((rs1_initial 58) (rs2_initial -1309))
-      |}]
+    [%expect {| |}]
   
   ;;
 
@@ -417,24 +366,7 @@ struct
         let result = Bits.( *+ ) (sextend ~width:33 l) (uextend ~width:33 r) in
         Bits.(sel_bottom ~width:64 result |> sel_top ~width:32 |> to_int_trunc))
       ~small_rs2_range:false;
-    [%expect {|
-      ((rs1_initial -2047) (rs2_initial 1448))
-      ((rs1_initial 970) (rs2_initial 1033))
-      ((rs1_initial 1071) (rs2_initial 1191))
-      ((rs1_initial -27) (rs2_initial -1253))
-      ((rs1_initial -1987) (rs2_initial -279))
-      ((rs1_initial -168) (rs2_initial -518))
-      ((rs1_initial 2047) (rs2_initial 1253))
-      ((rs1_initial 1370) (rs2_initial -1981))
-      ((rs1_initial 401) (rs2_initial 515))
-      ((rs1_initial 847) (rs2_initial 52))
-      ((rs1_initial -1215) (rs2_initial -1660))
-      ((rs1_initial 694) (rs2_initial -69))
-      ((rs1_initial 1760) (rs2_initial 1821))
-      ((rs1_initial -473) (rs2_initial -139))
-      ((rs1_initial 761) (rs2_initial 498))
-      ((rs1_initial 58) (rs2_initial -1309))
-      |}]
+    [%expect {| |}]
   
   ;;
 
@@ -531,7 +463,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1117, characters 4-71
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 496, characters 4-71
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -583,7 +515,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1201, characters 4-72
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 548, characters 4-72
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -635,7 +567,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1285, characters 4-71
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 600, characters 4-71
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -687,7 +619,7 @@ struct
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 1369, characters 4-72
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 652, characters 4-72
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -749,7 +681,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1455-1479, characters 4-45
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 706-730, characters 4-45
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     ================================= Output 2 / 2 =================================
@@ -873,7 +805,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1571-1620, characters 4-21
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 805-854, characters 4-21
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -963,7 +895,7 @@ struct
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
     Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 273, characters 4-44
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1696-1744, characters 4-16
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 899-947, characters 4-16
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -1060,7 +992,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1817-1869, characters 4-21
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 989-1041, characters 4-21
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
