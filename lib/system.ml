@@ -383,8 +383,8 @@ struct
                    ~clock_domain_memory:General_config.memory_domain
                    ~clock_domain_user:Hart_config.clock_domain
                    scope
-                   { Read_response.I.clocking_i = hart_clock
-                   ; clocking_o = memory_clock
+                   { Read_response.I.clocking_i = memory_clock
+                   ; clocking_o = hart_clock
                    ; i = read_response
                    })
                   .i)
@@ -397,8 +397,8 @@ struct
                    ~clock_domain_memory:General_config.memory_domain
                    ~clock_domain_user:Hart_config.clock_domain
                    scope
-                   { Write_response.I.clocking_i = hart_clock
-                   ; clocking_o = memory_clock
+                   { Write_response.I.clocking_i = memory_clock
+                   ; clocking_o = hart_clock
                    ; i = write_response
                    })
                   .i)
