@@ -67,31 +67,36 @@ struct
     in
     working <-- (reg ~enable:(valid |: working) spec (valid |: ~:finishing) |: valid);
     finishing <-- (stage ==:. steps - 1);
-    let%hw shift = reg ~clear:finishing ~enable:working spec vdd in
     let%hw lhs_input =
       which_input ~side:`Lhs ~lhs:[ lhs_lo; lhs_hi ] ~rhs:[ rhs_lo; rhs_hi ] ~stage
     in
     let%hw rhs_input =
       which_input ~side:`Rhs ~lhs:[ lhs_lo; lhs_hi ] ~rhs:[ rhs_lo; rhs_hi ] ~stage
     in
+    (* We pipeline the inputs and outputs to the multiplier for timings. On the 7 series FPGAs
+       the DSP blocks are pretty bad for timings (6ns~ for 2 cascaded). *)
+    let%hw lhs_input = reg spec_no_clear lhs_input in
+    let%hw rhs_input = reg spec_no_clear rhs_input in
+    let%hw multiplier_output = reg spec_no_clear (lhs_input *: rhs_input) in
+    let%hw working = pipeline ~n:2 spec_no_clear working in
+    let%hw finishing = pipeline ~n:2 spec_no_clear finishing in
+    let%hw shift = reg ~clear:finishing ~enable:working spec vdd in
     let%hw acc =
       reg_fb
-        ~width:(width lhs)
         ~enable:working
+        ~width:(width lhs)
         ~f:(fun t ->
-          let%hw multiplier_output = lhs_input *: rhs_input in
+          (* On the first cycle (the only unshifted cycle) we clear the
+             accumulator, otherwise we add to it. *)
           let%hw shifted_result =
             mux2 shift (sll ~by:(width lhs_lo) multiplier_output) multiplier_output
           in
-          let%hw shifted_result_trunc = sel_bottom ~width:(width t) shifted_result in
-          (* On the first cycle (the only unshifted cycle) we clear the
-             accumulator, otherwise we add to it. *)
+          let%hw shifted_result_trunc = sel_bottom ~width:(width lhs) shifted_result in
           let%hw accumulated_result = t +: shifted_result_trunc in
-          let%hw next = mux2 shift accumulated_result shifted_result_trunc in
-          next)
+          mux2 shift accumulated_result shifted_result_trunc)
         spec_no_clear
     in
-    { O.valid = reg spec_no_clear finishing; value = acc }
+    { O.valid = pipeline ~n:2 spec_no_clear finishing; value = acc }
   ;;
 
   let hierarchical (scope : Scope.t) (input : Signal.t I.t) =

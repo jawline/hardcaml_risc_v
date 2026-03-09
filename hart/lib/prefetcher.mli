@@ -29,7 +29,6 @@ module Make (Memory : Memory_bus_intf.S) : sig
   module O : sig
     type 'a t =
       { valid : 'a
-      ; aligned_address : 'a [@bits address_width]
       ; value : 'a [@bits data_width]
       ; read_bus : 'a Memory.Read_bus.Source.t
       ; ready : 'a

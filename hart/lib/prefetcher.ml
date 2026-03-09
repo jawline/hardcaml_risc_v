@@ -21,7 +21,6 @@ module Make (Memory : Memory_bus_intf.S) = struct
   module O = struct
     type 'a t =
       { valid : 'a
-      ; aligned_address : 'a [@bits address_width]
       ; value : 'a [@bits data_width]
       ; read_bus : 'a Memory.Read_bus.Source.t
       ; ready : 'a
@@ -103,7 +102,6 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ; data = { address = mux2 (sm.is Fetch_next_guess) next_guess fetch_request }
         }
     ; valid = prefetched_valid &: (aligned_address ==: prefetched_address)
-    ; aligned_address = prefetched_address
     ; value = prefetched_result
     ; ready = sm.is Idle
     }

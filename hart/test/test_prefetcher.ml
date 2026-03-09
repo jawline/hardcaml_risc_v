@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = true
+let debug = false
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -42,7 +42,6 @@ module Test_machine = struct
   module O = struct
     type 'a t =
       { valid : 'a
-      ; address : 'a [@bits 32]
       ; value : 'a [@bits 32]
       ; ready : 'a
       }
@@ -81,11 +80,7 @@ module Test_machine = struct
           read_response
           (List.nth_exn controller.read_response 0)
       ];
-    { O.valid = prefetcher.valid
-    ; address = prefetcher.aligned_address
-    ; value = prefetcher.value
-    ; ready = prefetcher.ready
-    }
+    { O.valid = prefetcher.valid; value = prefetcher.value; ready = prefetcher.ready }
   ;;
 end
 
@@ -119,11 +114,7 @@ let issue_load ~address sim =
   let rec loop_until_valid max =
     if max = 0 then raise_s [%message "BUG: Timed out"];
     Cyclesim.cycle sim;
-    if
-      Bits.to_bool !(outputs_before.valid)
-      && Bits.to_int_trunc !(outputs_before.address) = address
-    then ()
-    else loop_until_valid (max - 1)
+    if Bits.to_bool !(outputs_before.valid) then () else loop_until_valid (max - 1)
   in
   loop_until_valid 50;
   let before = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs_before in
@@ -148,39 +139,38 @@ let%expect_test "prefetcher basic test" =
     issue 0;
     [%expect
       {|
-      ("Before: " (before ((valid 1) (address 0) (value 0) (ready 1))))
-      ("After: " (after ((valid 0) (address 1) (value 1) (ready 1))))
+      ("Before: " (before ((valid 1) (value 0) (ready 1))))
+      ("After: " (after ((valid 0) (value 1) (ready 1))))
       |}];
     issue 1;
     [%expect
       {|
-      ("Before: " (before ((valid 1) (address 1) (value 1) (ready 0))))
-      ("After: " (after ((valid 0) (address 2) (value 2) (ready 1))))
+      ("Before: " (before ((valid 1) (value 1) (ready 0))))
+      ("After: " (after ((valid 0) (value 2) (ready 1))))
       |}];
     issue 2;
     [%expect
       {|
-      ("Before: " (before ((valid 1) (address 2) (value 2) (ready 0))))
-      ("After: " (after ((valid 0) (address 3) (value 3) (ready 1))))
+      ("Before: " (before ((valid 1) (value 2) (ready 0))))
+      ("After: " (after ((valid 0) (value 3) (ready 1))))
       |}];
     issue 3;
     [%expect
       {|
-      ("Before: " (before ((valid 1) (address 3) (value 3) (ready 0))))
-      ("After: " (after ((valid 0) (address 4) (value 4) (ready 1))))
+      ("Before: " (before ((valid 1) (value 3) (ready 0))))
+      ("After: " (after ((valid 0) (value 4) (ready 1))))
       |}];
     issue 0;
     [%expect
       {|
-      ("Before: " (before ((valid 1) (address 0) (value 0) (ready 1))))
-      ("After: " (after ((valid 0) (address 1) (value 1) (ready 1))))
+      ("Before: " (before ((valid 1) (value 0) (ready 1))))
+      ("After: " (after ((valid 0) (value 1) (ready 1))))
       |}];
     issue 9;
     [%expect
       {|
-      ("Before: " (before ((valid 1) (address 9) (value 9) (ready 1))))
-      ("After: " (after ((valid 0) (address 10) (value 10) (ready 1))))
+      ("Before: " (before ((valid 1) (value 9) (ready 1))))
+      ("After: " (after ((valid 0) (value 10) (ready 1))))
       |}]);
-  [%expect
-    {| Saved waves to /var/home/blake/waves//_prefetcher_basic_test.hardcamlwaveform |}]
+  [%expect {| |}]
 ;;

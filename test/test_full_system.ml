@@ -7,7 +7,7 @@ open Hardcaml_waveterm
 open Opcode_helper
 open! Bits
 
-let debug = true
+let debug = false
 let trials = 16
 let cycles_per_trial = 100
 
@@ -422,94 +422,22 @@ struct
 
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
-    [%expect
-      {|
-      ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
-      ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
-      ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
-      ((rs1 9) (rs2 23) (rs1_initial 577) (rs2_initial -431))
-      ((rs1 1) (rs2 25) (rs1_initial 759) (rs2_initial -27))
-      ((rs1 31) (rs2 24) (rs1_initial -1987) (rs2_initial -279))
-      ((rs1 13) (rs2 16) (rs1_initial -518) (rs2_initial 1876))
-      ((rs1 31) (rs2 24) (rs1_initial -238) (rs2_initial 1228))
-      ((rs1 20) (rs2 19) (rs1_initial 1080) (rs2_initial 378))
-      ((rs1 3) (rs2 25) (rs1_initial -1054) (rs2_initial 1370))
-      ((rs1 16) (rs2 27) (rs1_initial 401) (rs2_initial 515))
-      ((rs1 7) (rs2 28) (rs1_initial 52) (rs2_initial 695))
-      ((rs1 22) (rs2 22) (rs1_initial 1562) (rs2_initial 1063))
-      ((rs1 16) (rs2 9) (rs1_initial -1300) (rs2_initial 1786))
-      ((rs1 11) (rs2 14) (rs1_initial -1264) (rs2_initial 694))
-      ((rs1 31) (rs2 27) (rs1_initial 1760) (rs2_initial 1821))
-      |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
-    [%expect
-      {|
-      ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
-      ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
-      ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
-      ((rs1 9) (rs2 23) (rs1_initial 577) (rs2_initial -431))
-      ((rs1 1) (rs2 25) (rs1_initial 759) (rs2_initial -27))
-      ((rs1 31) (rs2 24) (rs1_initial -1987) (rs2_initial -279))
-      ((rs1 13) (rs2 16) (rs1_initial -518) (rs2_initial 1876))
-      ((rs1 31) (rs2 24) (rs1_initial -238) (rs2_initial 1228))
-      ((rs1 20) (rs2 19) (rs1_initial 1080) (rs2_initial 378))
-      ((rs1 3) (rs2 25) (rs1_initial -1054) (rs2_initial 1370))
-      ((rs1 16) (rs2 27) (rs1_initial 401) (rs2_initial 515))
-      ((rs1 7) (rs2 28) (rs1_initial 52) (rs2_initial 695))
-      ((rs1 22) (rs2 22) (rs1_initial 1562) (rs2_initial 1063))
-      ((rs1 16) (rs2 9) (rs1_initial -1300) (rs2_initial 1786))
-      ((rs1 11) (rs2 14) (rs1_initial -1264) (rs2_initial 694))
-      ((rs1 31) (rs2 27) (rs1_initial 1760) (rs2_initial 1821))
-      |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
-    [%expect
-      {|
-      ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
-      ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
-      ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
-      ((rs1 9) (rs2 23) (rs1_initial 577) (rs2_initial -431))
-      ((rs1 1) (rs2 25) (rs1_initial 759) (rs2_initial -27))
-      ((rs1 31) (rs2 24) (rs1_initial -1987) (rs2_initial -279))
-      ((rs1 13) (rs2 16) (rs1_initial -518) (rs2_initial 1876))
-      ((rs1 31) (rs2 24) (rs1_initial -238) (rs2_initial 1228))
-      ((rs1 20) (rs2 19) (rs1_initial 1080) (rs2_initial 378))
-      ((rs1 3) (rs2 25) (rs1_initial -1054) (rs2_initial 1370))
-      ((rs1 16) (rs2 27) (rs1_initial 401) (rs2_initial 515))
-      ((rs1 7) (rs2 28) (rs1_initial 52) (rs2_initial 695))
-      ((rs1 22) (rs2 22) (rs1_initial 1562) (rs2_initial 1063))
-      ((rs1 16) (rs2 9) (rs1_initial -1300) (rs2_initial 1786))
-      ((rs1 11) (rs2 14) (rs1_initial -1264) (rs2_initial 694))
-      ((rs1 31) (rs2 27) (rs1_initial 1760) (rs2_initial 1821))
-      |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
-    [%expect
-      {|
-      ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
-      ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
-      ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
-      ((rs1 9) (rs2 23) (rs1_initial 577) (rs2_initial -431))
-      ((rs1 1) (rs2 25) (rs1_initial 759) (rs2_initial -27))
-      ((rs1 31) (rs2 24) (rs1_initial -1987) (rs2_initial -279))
-      ((rs1 13) (rs2 16) (rs1_initial -518) (rs2_initial 1876))
-      ((rs1 31) (rs2 24) (rs1_initial -238) (rs2_initial 1228))
-      ((rs1 20) (rs2 19) (rs1_initial 1080) (rs2_initial 378))
-      ((rs1 3) (rs2 25) (rs1_initial -1054) (rs2_initial 1370))
-      ((rs1 16) (rs2 27) (rs1_initial 401) (rs2_initial 515))
-      ((rs1 7) (rs2 28) (rs1_initial 52) (rs2_initial 695))
-      ((rs1 22) (rs2 22) (rs1_initial 1562) (rs2_initial 1063))
-      ((rs1 16) (rs2 9) (rs1_initial -1300) (rs2_initial 1786))
-      ((rs1 11) (rs2 14) (rs1_initial -1264) (rs2_initial 694))
-      ((rs1 31) (rs2 27) (rs1_initial 1760) (rs2_initial 1821))
-      |}]
+    [%expect {| |}]
   ;;
 
   let%expect_test "jal" =

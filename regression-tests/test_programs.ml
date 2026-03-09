@@ -1,7 +1,7 @@
 open! Core
 
 open Test_base.Make (struct
-    let debug = true
+    let debug = false
     let read_latency = 2
     let share_clocks = false
     let memory_capacity = 128 * 1024
