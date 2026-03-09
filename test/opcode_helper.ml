@@ -95,13 +95,13 @@ let branch ~funct3 ~rs1 ~rs2 ~offset =
 ;;
 
 let op_imm ~funct3 ~rs1 ~rd ~immediate =
-        let encoded = of_int_trunc ~width:12 immediate in
+  let encoded = of_int_trunc ~width:12 immediate in
   assemble_i_type
     ~opcode:Op_imm
     ~funct3:(of_int_trunc ~width:3 (Funct3.Op.to_int funct3))
     ~rs1:(of_int_trunc ~width:5 rs1)
     ~rd:(of_int_trunc ~width:5 rd)
-    ~immediate:(encoded)
+    ~immediate:encoded
 ;;
 
 let op ~funct7 ~funct3 ~rs1 ~rs2 ~rd =

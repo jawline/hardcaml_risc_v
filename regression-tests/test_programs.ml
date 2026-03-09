@@ -4,7 +4,7 @@ open Test_base.Make (struct
     let debug = true
     let read_latency = 2
     let share_clocks = false
-    let memory_capacity = 32 * 1024 
+    let memory_capacity = 32 * 1024
   end)
 
 let%expect_test "Hello world" =

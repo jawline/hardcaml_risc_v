@@ -52,8 +52,8 @@ module Make (Memory : Memory_bus_intf.S) = struct
       (* TODO: We could cut through on valid to increase throughput here. *)
       sm.is Fetch |: sm.is Fetch_next_guess
     in
-    let will_fetch = fetching &: ~:address_fifo_full in
     let address_fifo_full = wire 1 in
+    let will_fetch = fetching &: ~:address_fifo_full in
     (* We could end up with multiple reads in flight so we buffer them up  *)
     let address_fifo =
       Fifo.create
@@ -78,29 +78,28 @@ module Make (Memory : Memory_bus_intf.S) = struct
     in
     Always.(
       compile
-        [ if_
-            valid
-            [ if_
-                (prefetched_valid &: (prefetched_address ==: aligned_address))
-                [ sm.set_next Fetch_next_guess ]
-              @@ else_ [ sm.set_next Fetch ]
+        [ sm.switch
+            [ ( Idle
+              , [ when_
+                    valid
+                    [ if_
+                        (prefetched_valid &: (prefetched_address ==: aligned_address))
+                        [ sm.set_next Fetch_next_guess ]
+                      @@ else_ [ sm.set_next Fetch ]
+                    ]
+                ] )
+            ; Fetch, [ when_ read_bus.ready [ sm.set_next Fetch_next_guess ] ]
+            ; Fetch_next_guess, [ when_ read_bus.ready [ sm.set_next Idle ] ]
             ]
-          @@ else_
-               [ sm.switch
-                   [ Idle, []
-                   ; Fetch, [ when_ read_bus.ready [ sm.set_next Fetch_next_guess ] ]
-                   ; Fetch_next_guess, [ when_ read_bus.ready [ sm.set_next Idle ] ]
-                   ]
-               ]
         ]);
     { O.read_bus =
         { Memory.Read_bus.Source.valid = will_fetch
         ; data = { address = mux2 (sm.is Fetch_next_guess) next_guess aligned_address }
         }
-    ; valid = prefetched_valid
+    ; valid = (prefetched_valid &: (aligned_address ==: prefetched_address))
     ; aligned_address = prefetched_address
     ; value = prefetched_result
-    ; ready = read_bus.ready &: ~:address_fifo_full
+    ; ready = sm.is Idle
     }
   ;;
 

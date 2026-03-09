@@ -46,7 +46,8 @@ struct
     let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
     let%hw just_cleared =
-      ~:(i.clock.clear) &: reg ~initialize_to:Bits.vdd ~clear_to:vdd reg_spec_with_clear gnd
+      ~:(i.clock.clear)
+      &: reg ~initialize_to:Bits.vdd ~clear_to:vdd reg_spec_with_clear gnd
     in
     let executor =
       Execute_pipeline.hierarchical

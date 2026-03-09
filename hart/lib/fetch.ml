@@ -60,7 +60,7 @@ struct
       Registers.For_writeback.Of_signal.reg ~enable:valid reg_spec_with_clear registers
     in
     let output_valid =
-      prefetcher.valid &: (prefetcher.aligned_address ==: aligned_address)
+      prefetcher.valid
     in
     (* Was valid guards that we only raise valid once per input valid. This gets set when we output valid and reset
        when we see valid as an input. *)

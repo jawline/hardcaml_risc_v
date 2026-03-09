@@ -6,7 +6,7 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 module Hart_config = struct
   let register_width = Register_width.B32
@@ -126,8 +126,11 @@ let issue_load ~address sim =
     else loop_until_valid (max - 1)
   in
   loop_until_valid 50;
-  let outputs = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs in
-  print_s [%message (outputs : int Test_machine.O.t)]
+  let before = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs_before in
+  Cyclesim.cycle ~n:50 sim;
+  let after = Test_machine.O.map ~f:(fun t -> Bits.to_int_trunc !t) outputs in
+  print_s [%message "Before: " (before : int Test_machine.O.t)];
+  print_s [%message "After: " (after : int Test_machine.O.t)]
 ;;
 
 let%expect_test "prefetcher basic test" =
@@ -143,13 +146,29 @@ let%expect_test "prefetcher basic test" =
          ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i / 4 else 0))
          128);
     issue 0;
-    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 0))) |}];
+    [%expect {|
+      ("Before: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+      ("After: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+      |}];
     issue 1;
-    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 0))) |}];
+    [%expect {|
+      ("Before: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+      ("After: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+      |}];
     issue 2;
-    [%expect {| (outputs ((valid 1) (address 2) (value 2) (ready 0))) |}];
+    [%expect {|
+      ("Before: " (outputs ((valid 1) (address 2) (value 2) (ready 0))))
+      ("After: " (outputs ((valid 1) (address 2) (value 2) (ready 0))))
+      |}];
     issue 3;
-    [%expect {| (outputs ((valid 1) (address 3) (value 3) (ready 0))) |}];
+    [%expect {|
+      ("Before: " (outputs ((valid 1) (address 3) (value 3) (ready 0))))
+      ("After: " (outputs ((valid 1) (address 3) (value 3) (ready 0))))
+      |}];
     issue 0;
-    [%expect {| (outputs ((valid 1) (address 1) (value 1) (ready 0))) |}])
+    [%expect {|
+      ("Before: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+      ("After: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+      |}]);
+  [%expect {| Saved waves to /home/ubuntu/waves//_prefetcher_basic_test.hardcamlwaveform |}]
 ;;

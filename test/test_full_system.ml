@@ -73,6 +73,30 @@ struct
       ~f:( + )
       ~small_imm_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966697) (rd 23) (rs1 14)
+           (rs1_initial -2047) (imm 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Error.raise_s in file \"src/error.ml\" (inlined), line 24, characters 48-72"
+            "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 56-65, characters 10-39"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 70-74, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "and" =
@@ -83,11 +107,59 @@ struct
   let%expect_test "xor" =
     opi_helper ~name:"not_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966697) (rd 23) (rs1 14)
+           (rs1_initial -2047) (imm 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Error.raise_s in file \"src/error.ml\" (inlined), line 24, characters 48-72"
+            "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 56-65, characters 10-39"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 109, characters 4-90
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "or" =
     opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966697) (rd 23) (rs1 14)
+           (rs1_initial -2047) (imm 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Error.raise_s in file \"src/error.ml\" (inlined), line 24, characters 48-72"
+            "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 56-65, characters 10-39"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 139, characters 4-87
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "slt" =
@@ -97,6 +169,30 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 1) (rd 23) (rs1 14) (rs1_initial -2047)
+           (imm 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Error.raise_s in file \"src/error.ml\" (inlined), line 24, characters 48-72"
+            "Called from Hardcaml_risc_v_test__Test_full_system.Make.opi_helper.(fun) in file \"test/test_full_system.ml\", lines 56-65, characters 10-39"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 169-173, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "sltu" =
@@ -224,6 +320,31 @@ struct
       ~f:( + )
       ~small_rs2_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966697) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 320-325, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "sub" =
@@ -234,6 +355,31 @@ struct
       ~f:( - )
       ~small_rs2_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294963801) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 356-361, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "and" =
@@ -254,6 +400,31 @@ struct
       ~f:( lxor )
       ~small_rs2_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966697) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 402-407, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "or" =
@@ -264,6 +435,31 @@ struct
       ~f:( lor )
       ~small_rs2_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966697) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 438-443, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "slt" =
@@ -274,6 +470,31 @@ struct
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 1) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 474-479, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "sltu" =
@@ -294,6 +515,31 @@ struct
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsl (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294963202) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 520-525, characters 4-27
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "srl" =
@@ -304,6 +550,31 @@ struct
       ~f:(fun l r -> (l land 0xFFFFFFFF) lsr (r land 0xFFFFFFFF))
       ~small_rs2_range:true;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 2147482624) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 556-561, characters 4-27
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "sra" =
@@ -316,6 +587,31 @@ struct
         Int32.to_int_exn shift_right)
       ~small_rs2_range:true;
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294966272) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 592-599, characters 4-27
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "mul" =
@@ -325,7 +621,31 @@ struct
       ~f:(fun (l : int) (r : int) -> l * r land 0xFFFF_FFFF)
       ~small_rs2_range:false;
     [%expect {| |}]
-  
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4292003240) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 630-634, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "mulh" =
@@ -339,7 +659,31 @@ struct
         r)
       ~small_rs2_range:false;
     [%expect {| |}]
-  
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294967295) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 665-673, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "mulu" =
@@ -353,7 +697,31 @@ struct
         Bits.(sel_top ~width:32 result |> to_int_trunc))
       ~small_rs2_range:false;
     [%expect {| |}]
-  
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 1447) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 704-712, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "mulsu" =
@@ -367,7 +735,31 @@ struct
         Bits.(sel_bottom ~width:64 result |> sel_top ~width:32 |> to_int_trunc))
       ~small_rs2_range:false;
     [%expect {| |}]
-  
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 0) (expectation 4294967295) (rd 11) (rs1 23) (rs2 14)
+           (rs1_initial -2047) (rs2_initial 1448)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 743-751, characters 4-28
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let branch_helper ~name ~f ~funct3 =
@@ -426,7 +818,8 @@ struct
 
   let%expect_test "beq" =
     branch_helper ~name:"beq_qcheck" ~funct3:Funct3.Branch.Beq ~f:( = );
-    [%expect {|
+    [%expect
+      {|
       ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
       ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
       ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
@@ -452,18 +845,18 @@ struct
        Please change this test to not include a backtrace. *)
     ("Base_quickcheck.Test.run: test failed" (input _)
       (error
-        ((Failed (result 16) (expectation 12) (rs1 23) (rs2 14)
+        ((Failed (result 4) (expectation 12) (rs1 23) (rs2 14)
            (rs1_initial -2047) (rs2_initial 1448)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 1448 0 0 0 0 0 0 0 0 4294965249 0 0 0 0
-               0 0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 496, characters 4-71
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 836, characters 4-71
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -473,12 +866,12 @@ struct
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "bne" =
     branch_helper ~name:"bne_qcheck" ~funct3:Funct3.Branch.Bne ~f:( <> );
-    [%expect {|
+    [%expect
+      {|
       ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
       ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
       ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
@@ -504,18 +897,18 @@ struct
        Please change this test to not include a backtrace. *)
     ("Base_quickcheck.Test.run: test failed" (input _)
       (error
-        ((Failed (result 262) (expectation 258) (rs1 23) (rs2 14)
+        ((Failed (result 4) (expectation 258) (rs1 23) (rs2 14)
            (rs1_initial -2047) (rs2_initial 1448)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 1448 0 0 0 0 0 0 0 0 4294965249 0 0 0 0
-               0 0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 548, characters 4-72
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 889, characters 4-72
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -525,12 +918,12 @@ struct
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "blt" =
     branch_helper ~name:"blt_qcheck" ~funct3:Funct3.Branch.Blt ~f:( < );
-    [%expect {|
+    [%expect
+      {|
       ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
       ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
       ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
@@ -556,18 +949,18 @@ struct
        Please change this test to not include a backtrace. *)
     ("Base_quickcheck.Test.run: test failed" (input _)
       (error
-        ((Failed (result 262) (expectation 258) (rs1 23) (rs2 14)
+        ((Failed (result 4) (expectation 258) (rs1 23) (rs2 14)
            (rs1_initial -2047) (rs2_initial 1448)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 1448 0 0 0 0 0 0 0 0 4294965249 0 0 0 0
-               0 0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 600, characters 4-71
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 942, characters 4-71
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -577,12 +970,12 @@ struct
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "bge" =
     branch_helper ~name:"bge_qcheck" ~funct3:Funct3.Branch.Bge ~f:( >= );
-    [%expect {|
+    [%expect
+      {|
       ((rs1 23) (rs2 14) (rs1_initial -2047) (rs2_initial 1448))
       ((rs1 16) (rs2 12) (rs1_initial 1033) (rs2_initial -595))
       ((rs1 27) (rs2 26) (rs1_initial 428) (rs2_initial -961))
@@ -608,18 +1001,18 @@ struct
        Please change this test to not include a backtrace. *)
     ("Base_quickcheck.Test.run: test failed" (input _)
       (error
-        ((Failed (result 16) (expectation 12) (rs1 23) (rs2 14)
+        ((Failed (result 4) (expectation 12) (rs1 23) (rs2 14)
            (rs1_initial -2047) (rs2_initial 1448)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 1448 0 0 0 0 0 0 0 0 4294965249 0 0 0 0
-               0 0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
+               0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
     Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 652, characters 4-72
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", line 995, characters 4-72
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -629,7 +1022,6 @@ struct
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "jal" =
@@ -661,33 +1053,6 @@ struct
                     (offset : int)
                     (registers : int list)]));
     [%expect {| |}]
-  [@@expect.uncaught_exn {|
-    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
-    ================================= Output 1 / 2 =================================
-    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-       This is strongly discouraged as backtraces are fragile.
-       Please change this test to not include a backtrace. *)
-    ("Base_quickcheck.Test.run: test failed" (input _)
-      (error
-        ((Failed (result 97192) (expectation 48596) (pc 97192) (rd 48600)
-           (offset 48597)
-           (registers
-             (0 48600 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-               0)))
-          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
-            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
-    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
-    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
-    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
-    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-    Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 706-730, characters 4-45
-    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
-
-    ================================= Output 2 / 2 =================================
-    <expect test ran without uncaught exception>
-    |}]
-  
   ;;
 
   let%expect_test "jalr" =
@@ -729,6 +1094,31 @@ struct
                     (rs1 : int)
                     (registers : int list)]));
     [%expect {| |}]
+  [@@expect.uncaught_exn {|
+    (* CR expect_test: Test ran multiple times with different uncaught exceptions *)
+    ================================= Output 1 / 2 =================================
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+    ("Base_quickcheck.Test.run: test failed" (input _)
+      (error
+        ((Failed (result 4) (expectation 4294966696) (rd 23) (rs1 14)
+           (registers
+             (0 0 0 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+               0 0 0)))
+          ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
+            "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
+    Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
+    Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
+    Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
+    Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
+    Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1081-1115, characters 4-45
+    Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
+
+    ================================= Output 2 / 2 =================================
+    <expect test ran without uncaught exception>
+    |}]
   ;;
 
   let%expect_test "sb/lb" =
@@ -796,8 +1186,7 @@ struct
         ((Failed (result 0) (expectation 1) (rd 30) (rs1 11) (rs2 23)
            (rs1_initial 74) (rs2_initial -2047) (offset 23)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
@@ -805,7 +1194,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 805-854, characters 4-21
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1148-1197, characters 4-21
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -816,13 +1205,12 @@ struct
      "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000060  00 01 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
 
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "sh/lh" =
@@ -889,13 +1277,12 @@ struct
         ((Failed (result 0) (expectation 63489) (rd 30) (rs1 11) (rs2 23)
            (rs1_initial 74) (rs2_initial -2047) (offset 22)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 74 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
     Called from Core__Quickcheck.Configure.test in file "core/src/quickcheck.ml" (inlined), line 273, characters 4-44
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 899-947, characters 4-16
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1241-1289, characters 4-16
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -906,13 +1293,12 @@ struct
      "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000060  01 f8 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
+     "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
 
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "sw/lw" =
@@ -983,8 +1369,7 @@ struct
         ((Failed (result 0) (expectation 4294965249) (rd 30) (rs1 11) (rs2 23)
            (rs1_initial 72) (rs2_initial -2047) (offset 20)
            (registers
-             (0 0 0 0 0 0 0 0 0 0 0 72 0 0 0 0 0 0 0 0 0 0 0 4294965249 0 0 0 0 0
-               0 0 0)))
+             (0 0 0 0 0 0 0 0 0 0 0 72 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)))
           ("Raised at Base__Error.raise in file \"src/error.ml\", line 15, characters 34-62"
             "Called from Base__Or_error.try_with in file \"src/or_error.ml\", line 81, characters 9-15"))))
     Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
@@ -992,7 +1377,7 @@ struct
     Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
     Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
     Called from Base__Exn.protect in file "src/exn.ml" (inlined), line 66, characters 26-49
-    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 989-1041, characters 4-21
+    Called from Hardcaml_risc_v_test__Test_full_system.Make.(fun) in file "test/test_full_system.ml", lines 1330-1382, characters 4-21
     Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
 
     Trailing output
@@ -1002,14 +1387,13 @@ struct
      "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 01 f8 ff ff  |................|"
+     "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
      "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
 
     ================================= Output 2 / 2 =================================
     <expect test ran without uncaught exception>
     |}]
-  
   ;;
 
   let%expect_test "op_imm" =
@@ -1019,20 +1403,6 @@ struct
       sim;
     [%expect
       {|
-      (* CR expect_test: Test ran multiple times with different test outputs *)
-      ============================= Output 1 / 2 ==============================
-      ("PC: " 8 REG:
-       (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-      ("00000000  93 00 60 22 00 00 00 00  00 00 00 00 00 00 00 00  |..`\"............|"
-       "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000030  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000040  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000050  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000060  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
-       "00000070  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|")
-
-      ============================= Output 2 / 2 ==============================
       ("PC: " 4 REG:
        (0 550 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 60 22 00 00 00 00  00 00 00 00 00 00 00 00  |..`\"............|"
@@ -1215,8 +1585,8 @@ struct
       {|
       (* CR expect_test: Test ran multiple times with different test outputs *)
       ============================= Output 1 / 2 ==============================
-      ("PC: " 16 REG:
-       (0 500 300 0 800 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+      ("PC: " 4 REG:
+       (0 500 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       ("00000000  93 00 40 1f 13 01 c0 12  33 82 20 00 00 00 00 00  |..@.....3. .....|"
        "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
        "00000020  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1257,7 +1627,7 @@ struct
           {|
           (* CR expect_test: Test ran multiple times with different test outputs *)
           ============================= Output 1 / 2 ==============================
-          ("PC: " 508 REG:
+          ("PC: " 4 REG:
            (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
           ("00000000  63 14 00 0c 63 0a 00 1e  00 00 00 00 00 00 00 00  |c...c...........|"
            "00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|"
@@ -1730,7 +2100,7 @@ module With_dma_ram = struct
     [%expect
       {|
       ("PC: " 24 REG:
-       (0 8 6500000 2 25 16000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+       (0 9 7000000 2 27 17000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         0))
       ("00000000  f3 20 00 c0 73 21 10 c0  f3 21 20 c0 73 22 00 c0  |. ..s!...! .s\"..|"
        "00000010  f3 22 10 c0 73 23 20 c0  00 00 00 00 00 00 00 00  |.\"..s# .........|"

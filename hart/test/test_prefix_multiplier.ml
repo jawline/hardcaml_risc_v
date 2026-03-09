@@ -64,5 +64,5 @@ let%expect_test "op_tests" =
       (rd 90)
       (rd 42)
       |}]);
-  [%expect {| Saved waves to /var/home/blake/waves//_op_tests.hardcamlwaveform |}]
+  [%expect {| Saved waves to /home/ubuntu/waves//_op_tests.hardcamlwaveform |}]
 ;;
