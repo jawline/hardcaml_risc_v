@@ -10,7 +10,7 @@ module Mul = Prefix_multiplier.Make (struct
 
 module Harness = Cyclesim_harness.Make (Mul.I) (Mul.O)
 
-let debug = true
+let debug = false
 
 let create_sim f =
   Harness.run
@@ -50,7 +50,7 @@ let test ~lhs ~rhs sim =
   print outputs
 ;;
 
-let%expect_test "op_tests" =
+let%expect_test "mul_tests" =
   create_sim (fun sim ->
     clear sim;
     test ~lhs:5 ~rhs:3 sim;
@@ -64,5 +64,5 @@ let%expect_test "op_tests" =
       (rd 90)
       (rd 42)
       |}]);
-  [%expect {| Saved waves to /home/ubuntu/waves//_op_tests.hardcamlwaveform |}]
+  [%expect {| |}]
 ;;

@@ -60,8 +60,6 @@ struct
       end)
       (struct
         let capacity_in_bytes = C.memory_capacity
-        (* Reference designs assume a 32MB RAM *)
-        (* CR blloring: Make this customizable per test *)
       end)
       (struct
         let num_harts = 1
@@ -193,7 +191,7 @@ struct
 
   let clear_registers ~(inputs : Bits.t ref With_transmitter.I.t) sim =
     inputs.clear := vdd;
-    Cyclesim.cycle sim;
+    Cyclesim.cycle ~n:20 sim;
     inputs.clear := gnd
   ;;
 

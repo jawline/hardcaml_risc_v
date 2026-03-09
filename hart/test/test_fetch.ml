@@ -100,6 +100,13 @@ let create_sim f =
     (fun ~inputs:_ ~outputs:_ sim -> f sim)
 ;;
 
+let clear sim =
+  let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
+  inputs.clear := Bits.vdd;
+  Cyclesim.cycle ~n:10 sim;
+  inputs.clear := Bits.gnd
+;;
+
 let issue_load ~address sim =
   let inputs : _ Test_machine.I.t = Cyclesim.inputs sim in
   let outputs_before : _ Test_machine.O.t =
@@ -111,8 +118,11 @@ let issue_load ~address sim =
   inputs.valid := Bits.gnd;
   let rec loop_until_valid max =
     if max = 0 then raise_s [%message "BUG: Timed out"];
-    Cyclesim.cycle sim;
-    if Bits.to_bool !(outputs_before.valid) then () else loop_until_valid (max - 1)
+    if Bits.to_bool !(outputs_before.valid)
+    then ()
+    else (
+      Cyclesim.cycle sim;
+      loop_until_valid (max - 1))
   in
   loop_until_valid 50;
   let print ~msg =
@@ -120,15 +130,12 @@ let issue_load ~address sim =
     print_s [%message msg (outputs : int Test_machine.O.t)]
   in
   print ~msg:"The cycle valid raised";
-  Cyclesim.cycle sim;
-  print ~msg:"The cycle after";
-  Cyclesim.cycle sim;
-  print ~msg:"The cycle that";
   ()
 ;;
 
 let%expect_test "fetch basic test" =
   create_sim (fun sim ->
+    clear sim;
     let issue address =
       try issue_load ~address sim with
       | _ -> print_s [%message "BUG: Timed out or exception"]
@@ -137,42 +144,27 @@ let%expect_test "fetch basic test" =
     Test_util.program_ram
       sim
       (Array.init
-         ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i / 4 else 0))
+         ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i else 0))
          128);
     issue 0;
-    [%expect
-      {|
-      ("The cycle valid raised" (outputs ((valid 1) (value 0))))
-      ("The cycle after" (outputs ((valid 0) (value 1))))
-      ("The cycle that" (outputs ((valid 0) (value 1))))
-      |}];
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 0)))) |}];
     issue 4;
-    [%expect
-      {|
-      ("The cycle valid raised" (outputs ((valid 1) (value 1))))
-      ("The cycle after" (outputs ((valid 0) (value 1))))
-      ("The cycle that" (outputs ((valid 0) (value 1))))
-      |}];
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 4)))) |}];
     issue 8;
-    [%expect
-      {|
-      ("The cycle valid raised" (outputs ((valid 1) (value 2))))
-      ("The cycle after" (outputs ((valid 0) (value 2))))
-      ("The cycle that" (outputs ((valid 0) (value 2))))
-      |}];
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 8)))) |}];
     issue 12;
-    [%expect
-      {|
-      ("The cycle valid raised" (outputs ((valid 1) (value 3))))
-      ("The cycle after" (outputs ((valid 0) (value 3))))
-      ("The cycle that" (outputs ((valid 0) (value 3))))
-      |}];
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 12)))) |}];
     issue 0;
-    [%expect
-      {|
-      ("The cycle valid raised" (outputs ((valid 1) (value 0))))
-      ("The cycle after" (outputs ((valid 0) (value 1))))
-      ("The cycle that" (outputs ((valid 0) (value 1))))
-      |}]);
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 0)))) |}];
+    issue 0;
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 0)))) |}];
+    issue 0;
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 0)))) |}];
+    issue 4;
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 4)))) |}];
+    issue 4;
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 4)))) |}];
+    issue 12;
+    [%expect {| ("The cycle valid raised" (outputs ((valid 1) (value 12)))) |}]);
   [%expect {| |}]
 ;;

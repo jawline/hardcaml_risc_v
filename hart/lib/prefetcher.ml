@@ -46,13 +46,13 @@ module Make (Memory : Memory_bus_intf.S) = struct
     let%hw.Always.State_machine sm =
       Always.State_machine.create (module State) reg_spec
     in
-    let%hw aligned_address = cut_through_latch ~enable:valid reg_spec aligned_address in
+    let%hw fetch_request = reg ~enable:valid reg_spec aligned_address in
     let%hw next_guess = reg ~enable:valid reg_spec (aligned_address +:. 1) in
+    let address_fifo_full = wire 1 in
     let%hw fetching =
       (* TODO: We could cut through on valid to increase throughput here. *)
       sm.is Fetch |: sm.is Fetch_next_guess
     in
-    let address_fifo_full = wire 1 in
     let will_fetch = fetching &: ~:address_fifo_full in
     (* We could end up with multiple reads in flight so we buffer them up  *)
     let address_fifo =
@@ -60,9 +60,9 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ~showahead:true
         ~clock:clock.clock
         ~clear:clock.clear
-        ~capacity:8
+        ~capacity:2
         ~wr:(will_fetch &: read_bus.ready)
-        ~d:(mux2 (sm.is Fetch_next_guess) next_guess aligned_address)
+        ~d:(mux2 (sm.is Fetch_next_guess) next_guess fetch_request)
         ~rd:read_response.valid
         ()
     in
@@ -76,6 +76,12 @@ module Make (Memory : Memory_bus_intf.S) = struct
     let%hw prefetched_result =
       cut_through_latch ~enable:read_response.valid reg_spec read_response.value.read_data
     in
+    let%hw request_already_prefetched =
+      prefetched_valid &: (prefetched_address ==: aligned_address)
+    in
+    let%hw request_already_in_flight =
+      ~:(address_fifo.empty) &: (address_fifo.q ==: aligned_address)
+    in
     Always.(
       compile
         [ sm.switch
@@ -83,7 +89,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
               , [ when_
                     valid
                     [ if_
-                        (prefetched_valid &: (prefetched_address ==: aligned_address))
+                        (request_already_prefetched |: request_already_in_flight)
                         [ sm.set_next Fetch_next_guess ]
                       @@ else_ [ sm.set_next Fetch ]
                     ]
@@ -94,7 +100,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ]);
     { O.read_bus =
         { Memory.Read_bus.Source.valid = will_fetch
-        ; data = { address = mux2 (sm.is Fetch_next_guess) next_guess aligned_address }
+        ; data = { address = mux2 (sm.is Fetch_next_guess) next_guess fetch_request }
         }
     ; valid = prefetched_valid &: (aligned_address ==: prefetched_address)
     ; aligned_address = prefetched_address

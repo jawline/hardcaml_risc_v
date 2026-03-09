@@ -174,7 +174,13 @@ let%expect_test "prefetcher basic test" =
       {|
       ("Before: " (before ((valid 1) (address 0) (value 0) (ready 1))))
       ("After: " (after ((valid 0) (address 1) (value 1) (ready 1))))
+      |}];
+    issue 9;
+    [%expect
+      {|
+      ("Before: " (before ((valid 1) (address 9) (value 9) (ready 1))))
+      ("After: " (after ((valid 0) (address 10) (value 10) (ready 1))))
       |}]);
   [%expect
-    {| Saved waves to /home/ubuntu/waves//_prefetcher_basic_test.hardcamlwaveform |}]
+    {| Saved waves to /var/home/blake/waves//_prefetcher_basic_test.hardcamlwaveform |}]
 ;;

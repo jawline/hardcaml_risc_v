@@ -169,7 +169,7 @@ struct
   let dma_write_slot = 0
 
   let assign_dma_io_ecall
-        ~clock
+        ~clock:_
         (harts : _ Hart.O.t list)
         hart_ecall_transactions
         ~tx_input
@@ -180,23 +180,20 @@ struct
        necessary, but it makes it easier to stop them both
        issuing commands at the same time and entering a weird
        state. *)
-    let reg_spec_no_clear = Clocking.to_spec_no_clear clock in
+    (* TODO: This is a terrible implementation of ecall, it would be better if there was a postbox style interface. *)
     let hart0 = List.nth_exn harts 0 in
     (* Delay the ecall by a cycle so we can register all the relevant
        registers, reducing routing pressure. *)
     (* TODO: This is pretty jank - move ecall to write back and pass 'ecall registers' out of the pipeline *)
-    let%hw delayed_r5 =
-      reg reg_spec_no_clear (List.nth_exn hart0.registers.general 5 ==:. 0)
+    let%hw delayed_r5 = (List.nth_exn hart0.registers.general 5 ==:. 0)
     in
-    let%hw delayed_r6 = reg reg_spec_no_clear (List.nth_exn hart0.registers.general 6) in
+    let%hw delayed_r6 = (List.nth_exn hart0.registers.general 6) in
     let%hw delayed_r7 =
-      reg
-        reg_spec_no_clear
         (List.nth_exn hart0.registers.general 7
          |> uresize ~width:Memory_to_packet8.Input.port_widths.length)
     in
     let%hw is_dma_write = hart0.is_ecall &: delayed_r5 in
-    let%hw next_pc = reg reg_spec_no_clear (hart0.registers.pc +:. 4) in
+    let%hw next_pc = (hart0.registers.pc +:. 4) in
     (* TODO: I think this can race. *)
     Memory_to_packet8.Input.With_valid.Of_signal.(
       tx_input
