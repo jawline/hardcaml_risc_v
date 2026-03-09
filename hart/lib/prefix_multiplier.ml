@@ -53,6 +53,8 @@ struct
   let create scope ({ I.clock; valid; lhs; rhs } : _ I.t) =
     let spec = Clocking.to_spec clock in
     let spec_no_clear = Clocking.to_spec_no_clear clock in
+    (* In the first stage, track where we are in the multiplication and
+       we select the input from the lo, hi parts of the input. *)
     let%hw lhs_hi, lhs_lo = split_in_half_msb lhs in
     let%hw rhs_hi, rhs_lo = split_in_half_msb rhs in
     let%hw working = wire 1 in
@@ -73,11 +75,17 @@ struct
     let%hw rhs_input =
       which_input ~side:`Rhs ~lhs:[ lhs_lo; lhs_hi ] ~rhs:[ rhs_lo; rhs_hi ] ~stage
     in
-    (* We pipeline the inputs and outputs to the multiplier for timings. On the 7 series FPGAs
+    (* In the second stage, We pipeline the inputs and outputs to the
+       multiplier for timings. On the 7 series FPGAs
        the DSP blocks are pretty bad for timings (6ns~ for 2 cascaded). *)
     let%hw lhs_input = reg spec_no_clear lhs_input in
     let%hw rhs_input = reg spec_no_clear rhs_input in
     let%hw multiplier_output = reg spec_no_clear (lhs_input *: rhs_input) in
+    (* In the final stage, we accumulate the outputs of the partial products.
+       On cycle 0 we do not need to shfit so we replac the entire accumulator,
+       on the other cycles we shift the result left as it's the upper portion
+       of the product. Since we do not need the top bits, we only do three
+       multiplications. *)
     let%hw working = pipeline ~n:2 spec_no_clear working in
     let%hw finishing = pipeline ~n:2 spec_no_clear finishing in
     let%hw shift = reg ~clear:finishing ~enable:working spec vdd in
