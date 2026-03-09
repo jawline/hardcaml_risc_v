@@ -59,7 +59,7 @@ struct
     let%hw finishing = wire 1 in
     let%hw stage =
       reg_fb
-      ~clear:finishing
+        ~clear:finishing
         ~enable:working
         ~width:(address_bits_for steps)
         ~f:(fun t -> mux2 valid (of_int_trunc ~width:(width t) 1) (t +:. 1))
@@ -83,14 +83,12 @@ struct
           let%hw shifted_result =
             mux2 shift (sll ~by:(width lhs_lo) multiplier_output) multiplier_output
           in
-          let%hw shifted_result_trunc  = sel_bottom ~width:(width t) shifted_result in
+          let%hw shifted_result_trunc = sel_bottom ~width:(width t) shifted_result in
           (* On the first cycle (the only unshifted cycle) we clear the
              accumulator, otherwise we add to it. *)
-  let%hw accumulated_result =(t +: shifted_result_trunc) in
- 
-  let%hw next = 
-          mux2 shift  accumulated_result shifted_result_trunc 
-  in next)
+          let%hw accumulated_result = t +: shifted_result_trunc in
+          let%hw next = mux2 shift accumulated_result shifted_result_trunc in
+          next)
         spec_no_clear
     in
     { O.valid = reg spec_no_clear finishing; value = acc }

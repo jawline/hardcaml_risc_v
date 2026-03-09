@@ -57,7 +57,8 @@ let%expect_test "op_tests" =
     test ~lhs:4 ~rhs:4 sim;
     test ~lhs:9 ~rhs:10 sim;
     test ~lhs:7 ~rhs:6 sim;
-    [%expect {|
+    [%expect
+      {|
       (rd 15)
       (rd 16)
       (rd 90)
