@@ -146,29 +146,35 @@ let%expect_test "prefetcher basic test" =
          ~f:(fun i -> Bits.of_unsigned_int ~width:8 (if i % 4 = 0 then i / 4 else 0))
          128);
     issue 0;
-    [%expect {|
-      ("Before: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
-      ("After: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+    [%expect
+      {|
+      ("Before: " (before ((valid 1) (address 0) (value 0) (ready 1))))
+      ("After: " (after ((valid 0) (address 1) (value 1) (ready 1))))
       |}];
     issue 1;
-    [%expect {|
-      ("Before: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
-      ("After: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+    [%expect
+      {|
+      ("Before: " (before ((valid 1) (address 1) (value 1) (ready 0))))
+      ("After: " (after ((valid 0) (address 2) (value 2) (ready 1))))
       |}];
     issue 2;
-    [%expect {|
-      ("Before: " (outputs ((valid 1) (address 2) (value 2) (ready 0))))
-      ("After: " (outputs ((valid 1) (address 2) (value 2) (ready 0))))
+    [%expect
+      {|
+      ("Before: " (before ((valid 1) (address 2) (value 2) (ready 0))))
+      ("After: " (after ((valid 0) (address 3) (value 3) (ready 1))))
       |}];
     issue 3;
-    [%expect {|
-      ("Before: " (outputs ((valid 1) (address 3) (value 3) (ready 0))))
-      ("After: " (outputs ((valid 1) (address 3) (value 3) (ready 0))))
+    [%expect
+      {|
+      ("Before: " (before ((valid 1) (address 3) (value 3) (ready 0))))
+      ("After: " (after ((valid 0) (address 4) (value 4) (ready 1))))
       |}];
     issue 0;
-    [%expect {|
-      ("Before: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
-      ("After: " (outputs ((valid 1) (address 1) (value 1) (ready 0))))
+    [%expect
+      {|
+      ("Before: " (before ((valid 1) (address 0) (value 0) (ready 1))))
+      ("After: " (after ((valid 0) (address 1) (value 1) (ready 1))))
       |}]);
-  [%expect {| Saved waves to /home/ubuntu/waves//_prefetcher_basic_test.hardcamlwaveform |}]
+  [%expect
+    {| Saved waves to /home/ubuntu/waves//_prefetcher_basic_test.hardcamlwaveform |}]
 ;;

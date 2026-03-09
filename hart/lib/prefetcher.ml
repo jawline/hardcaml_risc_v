@@ -96,7 +96,7 @@ module Make (Memory : Memory_bus_intf.S) = struct
         { Memory.Read_bus.Source.valid = will_fetch
         ; data = { address = mux2 (sm.is Fetch_next_guess) next_guess aligned_address }
         }
-    ; valid = (prefetched_valid &: (aligned_address ==: prefetched_address))
+    ; valid = prefetched_valid &: (aligned_address ==: prefetched_address)
     ; aligned_address = prefetched_address
     ; value = prefetched_result
     ; ready = sm.is Idle
