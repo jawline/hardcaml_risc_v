@@ -24,7 +24,7 @@ struct
     [@@deriving hardcaml]
   end
 
-  let steps = 4
+  let steps = 3
 
   (* Cuts the LHS and RHS into the input for the given stage of the prefix multiplier. *)
   let which_input ~stage ~lhs ~rhs ~side =
@@ -37,12 +37,11 @@ struct
       ~f:(fun stage ->
         match stage with
         | 0 -> List.nth_exn arg 0
-        | 1 -> List.nth_exn arg 1
-        | 2 ->
+        | 1 ->
           (match side with
            | `Lhs -> List.nth_exn arg 0
            | `Rhs -> List.nth_exn arg 1)
-        | 3 ->
+        | 2 ->
           (match side with
            | `Lhs -> List.nth_exn arg 1
            | `Rhs -> List.nth_exn arg 0)
@@ -60,6 +59,7 @@ struct
     let%hw finishing = wire 1 in
     let%hw stage =
       reg_fb
+      ~clear:finishing
         ~enable:working
         ~width:(address_bits_for steps)
         ~f:(fun t -> mux2 valid (of_int_trunc ~width:(width t) 1) (t +:. 1))
@@ -79,14 +79,18 @@ struct
         ~width:(width lhs)
         ~enable:working
         ~f:(fun t ->
-          let multiplier_output = lhs_input *: rhs_input in
-          let res =
+          let%hw multiplier_output = lhs_input *: rhs_input in
+          let%hw shifted_result =
             mux2 shift (sll ~by:(width lhs_lo) multiplier_output) multiplier_output
           in
-          let res = sel_bottom ~width:(width t) res in
+          let%hw shifted_result_trunc  = sel_bottom ~width:(width t) shifted_result in
           (* On the first cycle (the only unshifted cycle) we clear the
              accumulator, otherwise we add to it. *)
-          mux2 shift (t +: res) res)
+  let%hw accumulated_result =(t +: shifted_result_trunc) in
+ 
+  let%hw next = 
+          mux2 shift  accumulated_result shifted_result_trunc 
+  in next)
         spec_no_clear
     in
     { O.valid = reg spec_no_clear finishing; value = acc }
