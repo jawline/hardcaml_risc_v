@@ -6,7 +6,9 @@ open Hardcaml_risc_v_regression_tests
 open Test_base.Make (struct
     let debug = false
     let read_latency = 1
+   
     let share_clocks = true
+    let memory_capacity = 1024 * 1024 * 32
   end)
 
 let set_raw_mode fd =

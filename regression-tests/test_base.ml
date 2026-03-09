@@ -12,6 +12,7 @@ module Make (C : sig
     val debug : bool
     val read_latency : int
     val share_clocks : bool
+    val memory_capacity : int
   end) =
 struct
   let debug = C.debug
@@ -58,7 +59,7 @@ struct
         end
       end)
       (struct
-        let capacity_in_bytes = 1024 * 1024 * 32
+        let capacity_in_bytes = C.memory_capacity
         (* Reference designs assume a 32MB RAM *)
         (* CR blloring: Make this customizable per test *)
       end)
