@@ -29,16 +29,15 @@ struct
   let create scope (i : _ I.t) =
     let reg_spec_with_clear = Clocking.to_spec i.clock in
     let reg_spec_no_clear = Clocking.to_spec_no_clear i.clock in
-    { O.valid = reg reg_spec_with_clear i.valid
+    let maybe_reg ~f t = if Hart_config.register_decode_output then f t else t in
+    { O.valid = maybe_reg ~f:(reg reg_spec_with_clear) i.valid
     ; registers =
-        Registers.For_writeback.Of_signal.reg
-          ~enable:i.valid
-          reg_spec_no_clear
+        maybe_reg
+          ~f:(Registers.For_writeback.Of_signal.reg ~enable:i.valid reg_spec_no_clear)
           i.registers
     ; instruction =
-        Decoded_instruction.Of_signal.reg
-          ~enable:i.valid
-          reg_spec_no_clear
+        maybe_reg
+          ~f:(Decoded_instruction.Of_signal.reg ~enable:i.valid reg_spec_no_clear)
           (Decoded_instruction.of_instruction
              i.instruction
              (Registers.For_writeback.to_registers i.registers)
