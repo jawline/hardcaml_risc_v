@@ -1006,6 +1006,7 @@ module Cpu_with_no_io_controller =
       let clock_domain = clock_domain_cpu
       let register_fetch_output = true
       let register_decode_output = true
+      let register_execute_output = true
 
       module Extensions = struct
         let zmul = true
@@ -1117,6 +1118,7 @@ module Cpu_with_dma_memory =
       let clock_domain = clock_domain_cpu
       let register_fetch_output = true
       let register_decode_output = true
+      let register_execute_output = true
 
       module Extensions = struct
         let zmul = true

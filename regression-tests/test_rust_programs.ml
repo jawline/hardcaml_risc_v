@@ -5,7 +5,7 @@ open Test_base.Make (struct
     let read_latency = 1
     let share_clocks = false
     let memory_capacity = 64 * 1024
-    let register_fetch_and_decode = true
+    let register_fetch_decode_and_execute = true
   end)
 
 let%expect_test "Hello world (Rust)" =

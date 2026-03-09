@@ -6,6 +6,7 @@ module type S = sig
   val clock_domain : Custom_clock_domain.t
   val register_fetch_output : bool
   val register_decode_output : bool
+  val register_execute_output : bool
 
   module Extensions : sig
     val zmul : bool

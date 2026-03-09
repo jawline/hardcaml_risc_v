@@ -13,7 +13,7 @@ module Make (C : sig
     val read_latency : int
     val share_clocks : bool
     val memory_capacity : int
-    val register_fetch_and_decode : bool
+    val register_fetch_decode_and_execute : bool
   end) =
 struct
   let debug = C.debug
@@ -54,8 +54,9 @@ struct
         let register_width = Register_width.B32
         let num_registers = 32
         let clock_domain = clock_domain_cpu
-        let register_fetch_output = C.register_fetch_and_decode
-        let register_decode_output = C.register_fetch_and_decode
+        let register_fetch_output = C.register_fetch_decode_and_execute
+        let register_decode_output = C.register_fetch_decode_and_execute
+        let register_execute_output = C.register_fetch_decode_and_execute
 
         module Extensions = struct
           let zmul = true

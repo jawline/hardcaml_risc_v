@@ -369,13 +369,17 @@ struct
         ~ecall_transaction:i.ecall_transaction
         scope
     in
+    let maybe_register ~f t = if Hart_config.register_execute_output then f t else t in
+    let maybe_register_select a b t =
+      if Hart_config.register_execute_output then a t else b t
+    in
     let valid =
       let valid =
         List.map ~f:Table_entry.output instruction_table
         |> List.map ~f:Opcode_output.valid
         |> List.reduce_exn ~f:( |: )
       in
-      reg reg_spec_with_clear valid
+      maybe_register ~f:(reg reg_spec_with_clear) valid
     in
     let transaction =
       let opcodes_with_valid =
@@ -384,18 +388,22 @@ struct
           { With_valid.valid = output.valid; value = output.transaction })
       in
       let result = Transaction.Of_signal.onehot_select opcodes_with_valid in
-      Transaction.Of_signal.reg reg_spec_with_clear result
+      maybe_register ~f:(Transaction.Of_signal.reg reg_spec_with_clear) result
     in
     { O.valid
     ; registers =
-        Registers.For_writeback.Of_signal.reg
-          ~enable:i.valid
-          reg_spec_with_clear
+        maybe_register_select
+          (Registers.For_writeback.Of_signal.reg ~enable:i.valid reg_spec_with_clear)
+          (Registers.For_writeback.Of_signal.cut_through_reg
+             ~enable:i.valid
+             reg_spec_with_clear)
           i.registers
     ; instruction =
-        Decoded_instruction.Of_signal.reg
-          ~enable:i.valid
-          reg_spec_with_clear
+        maybe_register_select
+          (Decoded_instruction.Of_signal.reg ~enable:i.valid reg_spec_with_clear)
+          (Decoded_instruction.Of_signal.cut_through_reg
+             ~enable:i.valid
+             reg_spec_with_clear)
           i.instruction
     ; transaction
     ; error = transaction.error
