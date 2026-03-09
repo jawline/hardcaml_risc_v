@@ -58,12 +58,6 @@ struct
         { clock; valid = want_to_issue_fetch; aligned_address; read_bus; read_response }
     in
     prefetcher_ready <-- prefetcher.ready;
-    let registers =
-      Registers.For_writeback.Of_signal.cut_through_reg
-        ~enable:valid
-        reg_spec_with_clear
-        registers
-    in
     let output_valid = prefetcher.valid in
     (* Was valid guards that we only raise valid once per input valid. This gets set when we output valid and reset
        when we see valid as an input. *)
@@ -75,10 +69,13 @@ struct
         ~f:(fun t -> mux2 valid ~:output_valid (t &: ~:output_valid))
         clock
     in
+    let registers =
+      Registers.For_writeback.Of_signal.reg ~enable:valid reg_spec_with_clear registers
+    in
     { O.read_bus = prefetcher.read_bus
-    ; valid = output_valid &: (valid |: was_valid)
+    ; valid = reg reg_spec_with_clear (output_valid &: (valid |: was_valid))
     ; registers
-    ; instruction = prefetcher.value
+    ; instruction = reg reg_spec_with_clear prefetcher.value
     }
   ;;
 
