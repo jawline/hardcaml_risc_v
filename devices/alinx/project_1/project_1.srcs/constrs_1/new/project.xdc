@@ -5,11 +5,11 @@ set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
 set_property CONFIG_MODE SPIx4 [current_design] 
 set_property BITSTREAM.CONFIG.CONFIGRATE 50 [current_design] 
 
-set_property IOSTANDARD DIFF_SSTL15 [get_ports sys_clock_p]
-set_property IOSTANDARD DIFF_SSTL15 [get_ports sys_clock_n]
+set_property IOSTANDARD DIFF_SSTL15 [get_ports clock_200_p]
+set_property IOSTANDARD DIFF_SSTL15 [get_ports clock_200_n]
 
-set_property PACKAGE_PIN R4 [get_ports sys_clock_p]
-set_property PACKAGE_PIN T4 [get_ports sys_clock_n]
+set_property PACKAGE_PIN R4 [get_ports clock_200_p]
+set_property PACKAGE_PIN T4 [get_ports clock_200_n]
 
 set_property PACKAGE_PIN F15 [get_ports rst_n]
 set_property IOSTANDARD LVCMOS33 [get_ports rst_n]

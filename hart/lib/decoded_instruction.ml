@@ -7,7 +7,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
 
   module T = struct
     type 'a t =
-      { opcode : 'a Decoded_opcode.Packed.t
+      { pc : 'a [@bits register_width]
+      ; opcode : 'a Decoded_opcode.Packed.t
       ; funct3 : 'a [@bits 3]
       ; funct7 : 'a [@bits 7]
       ; argument_1 : 'a [@bits register_width]
@@ -153,7 +154,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           ; { With_valid.valid = is_store; value = s_immediate }
           ]
       in
-      { opcode = decoded_opcode
+      { pc = registers.pc
+      ; opcode = decoded_opcode
       ; funct3
       ; funct7
       ; argument_1

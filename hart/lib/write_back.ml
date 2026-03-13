@@ -23,7 +23,7 @@ struct
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   module O = struct
@@ -31,7 +31,7 @@ struct
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml]
   end
 
   let create _scope (i : _ I.t) =
@@ -48,6 +48,7 @@ struct
     { O.valid = reg reg_spec_with_clear i.valid
     ; registers =
         Registers.For_writeback.Of_signal.reg
+          ~enable:i.valid
           reg_spec_with_clear
           (commit_transaction
              ~new_pc:i.transaction.new_pc

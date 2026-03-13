@@ -50,7 +50,7 @@ module Test_machine = struct
         scope
         { Fetch.I.clock = { clock; clear }
         ; valid
-        ; registers = { (Registers.For_writeback.Of_signal.zero ()) with pc = address }
+        ; pc = address
         ; read_bus = Read_bus.Dest.Of_always.value read_bus
         ; read_response = Read_response.With_valid.Of_always.value read_response
         }

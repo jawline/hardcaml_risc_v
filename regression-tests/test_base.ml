@@ -161,7 +161,9 @@ struct
   let base_sim ~trace =
     Sim.create
       ~config:
-        (if trace then Cyclesim.Config.trace_all else Cyclesim.Config.trace `All_named)
+        (Cyclesim.Config.add_random_initialization
+           (if trace then Cyclesim.Config.trace_all else Cyclesim.Config.trace `All_named)
+           Cyclesim.Config.Random_initializer.(create randomize_all))
       (With_transmitter.create
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   ;;

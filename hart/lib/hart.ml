@@ -43,6 +43,7 @@ struct
 
   let create scope (i : _ I.t) =
     let reg_spec_with_clear = Clocking.to_spec i.clock in
+    let reg_spec_no_clear = Clocking.to_spec_no_clear i.clock in
     let%hw executor_finished = wire 1 in
     let executor_registers = Registers.For_writeback.Of_signal.wires () in
     let%hw just_cleared =
@@ -53,7 +54,7 @@ struct
       Execute_pipeline.hierarchical
         scope
         { Execute_pipeline.I.clock = i.clock
-        ; valid = executor_finished |: just_cleared
+        ; valid = executor_finished |: reg reg_spec_no_clear just_cleared
         ; registers = executor_registers
         ; instret = executor_finished
         ; ecall_transaction = i.ecall_transaction
@@ -65,12 +66,7 @@ struct
     in
     executor_finished <-- executor.valid;
     Registers.For_writeback.Of_signal.(executor_registers <-- executor.registers);
-    { O.registers =
-        Registers.For_writeback.Of_signal.reg
-          ~enable:executor.valid
-          reg_spec_with_clear
-          executor.registers
-        |> Registers.For_writeback.to_registers
+    { O.registers = executor.registers |> Registers.For_writeback.to_registers
     ; is_ecall = executor.is_ecall
     ; read_bus = executor.read_bus
     ; write_bus = executor.write_bus

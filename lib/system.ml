@@ -257,8 +257,8 @@ struct
             ~clock_domain_memory:General_config.memory_domain
             ~clock_domain_user:Video_signals_config.clock_domain
             scope
-            { Read.I.clocking_i = i.memory_clock
-            ; clocking_o = i.video_clock
+            { Read.I.clocking_i = i.video_clock
+            ; clocking_o = i.memory_clock
             ; i = read_request_i
             ; o = read_request_ack_i
             }

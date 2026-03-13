@@ -3,7 +3,8 @@ open Hardcaml
 module M (Registers : Registers_intf.S) = struct
   module type S = sig
     type 'a t =
-      { opcode : 'a Decoded_opcode.Packed.t
+      { pc : 'a
+      ; opcode : 'a Decoded_opcode.Packed.t
       ; funct3 : 'a [@bits 3]
       ; funct7 : 'a [@bits 7]
       ; argument_1 : 'a [@bits register_width]

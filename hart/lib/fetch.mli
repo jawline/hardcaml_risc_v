@@ -10,7 +10,7 @@ module Make
     type 'a t =
       { clock : 'a Clocking.t
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
+      ; pc : 'a
       ; read_bus : 'a Memory.Read_bus.Dest.t
       ; read_response : 'a Memory.Read_response.With_valid.t
       }
@@ -20,7 +20,6 @@ module Make
   module O : sig
     type 'a t =
       { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a
       ; read_bus : 'a Memory.Read_bus.Source.t
       }

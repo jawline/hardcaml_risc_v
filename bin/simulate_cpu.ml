@@ -7,8 +7,8 @@ open Test_base.Make (struct
     let debug = false
     let read_latency = 1
     let share_clocks = true
-    let memory_capacity = 1024 * 1024 * 32
-    let register_fetch_decode_and_execute = false
+    let memory_capacity = 1024 * 1024 * 128
+    let register_fetch_decode_and_execute = true
   end)
 
 let set_raw_mode fd =

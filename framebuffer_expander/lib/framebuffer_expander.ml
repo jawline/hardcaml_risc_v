@@ -116,6 +116,7 @@ struct
     | One_bit -> 1
     | Greyscale_8bit -> 8
     | RGB_8bit -> 24
+    | RGB_8bit_32bit_aligned -> 32
   ;;
 
   let bits_per_row = input_width * bits_per_pixel
@@ -175,7 +176,8 @@ struct
 
   let num_remaining_and_pixels_per_memory_cell =
     match Config.input_pixel_mode with
-    | One_bit | Greyscale_8bit -> [ 0, min_pixels_every_memory_cell ]
+    | One_bit | Greyscale_8bit | RGB_8bit_32bit_aligned ->
+      [ 0, min_pixels_every_memory_cell ]
     | RGB_8bit ->
       let bytes_per_pixel = bits_per_pixel / 8 in
       (* Find a loop of remainders from which we build our cycle schedule *)
@@ -203,7 +205,7 @@ struct
   let max_num_pixels_per_memory_cell =
     match Config.input_pixel_mode with
     | One_bit -> data_width
-    | Greyscale_8bit -> data_width / 8
+    | Greyscale_8bit | RGB_8bit_32bit_aligned -> data_width / bits_per_pixel
     | RGB_8bit -> List.reduce_exn ~f:Int.max num_pixels_per_memory_cell
   ;;
 
@@ -430,7 +432,7 @@ struct
     let request_read = current_state.is X_body &: ~:(fetched.value) in
     let%hw memory_data_including_trailing =
       match Config.input_pixel_mode with
-      | One_bit | Greyscale_8bit ->
+      | One_bit | Greyscale_8bit | RGB_8bit_32bit_aligned ->
         (* Byte aligned pixels do not need trailing data. *)
         i.memory_response.value.read_data
       | RGB_8bit ->
@@ -475,7 +477,7 @@ struct
         in
         let bit_rval = repeat ~count:8 bit in
         { Pixel.r = bit_rval; g = bit_rval; b = bit_rval }
-      | Greyscale_8bit | RGB_8bit ->
+      | Greyscale_8bit | RGB_8bit | RGB_8bit_32bit_aligned ->
         let pixel =
           mux_init
             ~f:(fun i ->
@@ -491,6 +493,13 @@ struct
            let r, g, b =
              match split_lsb ~part_width:8 pixel with
              | [ r; g; b ] -> r, g, b
+             | _ -> raise_s [%message "BUG: impossible widths"]
+           in
+           { Pixel.r; g; b }
+         | RGB_8bit_32bit_aligned ->
+           let r, g, b =
+             match split_lsb ~part_width:8 pixel with
+             | [ r; g; b; _alignment_bits ] -> r, g, b
              | _ -> raise_s [%message "BUG: impossible widths"]
            in
            { Pixel.r; g; b })

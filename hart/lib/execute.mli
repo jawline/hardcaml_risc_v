@@ -17,7 +17,6 @@ module Make
     type 'a t =
       { clock : 'a Clocking.t
       ; valid : 'a
-      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; write_bus : 'a Memory.Write_bus.Dest.t
@@ -32,7 +31,6 @@ module Make
   module O : sig
     type 'a t =
       { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       ; transaction : 'a Transaction.t
       ; is_ecall : 'a

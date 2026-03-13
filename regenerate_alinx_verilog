@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+dune exec ./bin/generate_cpu.exe -- generate-rtl-with-axi -include-video-out true -hart-frequency 100_000_000 -memory-frequency 100_000_000 -video-frequency 50_000_000 -memory-capacity-in-bytes 1073741824 -memory-id-tag-width 4 -memory-addr-width 30 -memory-width 32  -burst-length-bits 8 -framebuffer-address-in-memory 134217728 1> ./rtl/alinx.v

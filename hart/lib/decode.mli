@@ -18,7 +18,6 @@ module Make
   module O : sig
     type 'a t =
       { valid : 'a
-      ; registers : 'a Registers.For_writeback.t
       ; instruction : 'a Decoded_instruction.t
       }
     [@@deriving hardcaml]

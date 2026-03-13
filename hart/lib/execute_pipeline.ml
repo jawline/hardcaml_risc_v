@@ -59,7 +59,7 @@ struct
         scope
         { Fetch.I.clock = i.clock
         ; valid = i.valid
-        ; registers = i.registers
+        ; pc = i.registers.pc
         ; read_bus = List.nth_exn i.read_bus 1
         ; read_response = List.nth_exn i.read_response 1
         }
@@ -69,7 +69,7 @@ struct
         scope
         { Decode.I.clock = i.clock
         ; valid = fetch.valid
-        ; registers = fetch.registers
+        ; registers = i.registers
         ; instruction = fetch.instruction
         }
     in
@@ -78,7 +78,6 @@ struct
         scope
         { Execute.I.clock = i.clock
         ; valid = decode.valid
-        ; registers = decode.registers
         ; instruction = decode.instruction
         ; instret = i.instret
         ; ecall_transaction = i.ecall_transaction
@@ -93,7 +92,7 @@ struct
         scope
         { Write_back.I.clock = i.clock
         ; valid = execute.valid
-        ; registers = execute.registers
+        ; registers = i.registers
         ; instruction = execute.instruction
         ; transaction = execute.transaction
         }

@@ -11,6 +11,7 @@ module Make_base (C : sig
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
     val capacity_in_bytes : int
+    val framebuffer_address_in_memory : int
   end) =
 struct
   module Framebuffer_config = struct
@@ -18,8 +19,8 @@ struct
     let output_height = 600
     let input_width = 320
     let input_height = 200
-    let framebuffer_address = 0x8000
-    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit
+    let framebuffer_address = C.framebuffer_address_in_memory
+    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit_32bit_aligned
   end
 
   module Video_signal_generator_config = struct
@@ -66,6 +67,9 @@ struct
     end
 
     let clock_domain = C.hart_clock
+    let register_fetch_output = true
+    let register_decode_output = true
+    let register_execute_output = true
   end
 
   module Memory_config = struct
@@ -84,9 +88,11 @@ module Make_with_axi_memory (C : sig
     val memory_width : int
     val memory_address_width : int
     val capacity_in_bytes : int
+    val burst_length_bits : int
     val memory_clock : Custom_clock_domain.t
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
+    val framebuffer_address_in_memory : int
   end) =
 struct
   open Make_base (C)
@@ -95,7 +101,7 @@ struct
     let id_bits = C.memory_tag_width
     let data_bits = C.memory_width
     let addr_bits = C.memory_address_width
-    let burst_length_bits = 7
+    let burst_length_bits = C.burst_length_bits
   end
 
   module Axi4 = Axi4.Make (Axi_config)
@@ -123,6 +129,7 @@ module Make_with_bram (C : sig
     val capacity_in_bytes : int
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
+    val framebuffer_address_in_memory : int
   end) =
 struct
   open Make_base (struct
@@ -167,6 +174,11 @@ let bram =
          ~doc:"video frequency in hz for the video controller (ignored if unused)"
      and capacity_in_bytes =
        flag "memory-capacity-in-bytes" (required int) ~doc:"memory capacity in bytes"
+     and framebuffer_address_in_memory =
+       flag
+         "framebuffer-address-in-memory"
+         (required int)
+         ~doc:"location of the framebuffer in memory"
      in
      fun () ->
        let module M =
@@ -176,6 +188,7 @@ let bram =
            let capacity_in_bytes = capacity_in_bytes
            let video_clock = Custom_clock_domain.create video_frequency
            let hart_clock = Custom_clock_domain.create hart_frequency
+           let framebuffer_address_in_memory = framebuffer_address_in_memory
          end)
        in
        M.Rtl.emit ())
@@ -209,11 +222,21 @@ let axi =
        flag "memory-addr-width" (required int) ~doc:"memory address width in bits"
      and memory_width =
        flag "memory-width" (required int) ~doc:"memory read/write width in bits"
+     and burst_length_bits =
+       flag
+         "burst-length-bits"
+         (required int)
+         ~doc:"width of the burst length (AWLEN, ARLEN) in bits"
      and memory_frequency =
        flag
          "memory-frequency"
          (required int)
          ~doc:"clock frequency in hz for the memory controller"
+     and framebuffer_address_in_memory =
+       flag
+         "framebuffer-address-in-memory"
+         (required int)
+         ~doc:"location of the framebuffer in memory"
      in
      let memory_clock = Custom_clock_domain.create memory_frequency in
      let hart_clock =
@@ -237,6 +260,8 @@ let axi =
            let video_clock = video_clock
            let hart_clock = hart_clock
            let memory_clock = memory_clock
+           let burst_length_bits = burst_length_bits
+           let framebuffer_address_in_memory = framebuffer_address_in_memory
          end)
        in
        M.Rtl.emit ())
