@@ -12,11 +12,11 @@ let print_ram ?max_width sim =
     |> Option.value_exn
     |> Cyclesim.Memory.read_all
   in
-  let ram = match max_width with
-  | Some max_width -> 
-                  Array.sub ~pos:0 ~len:max_width ram
-  | None -> ram
+  let ram =
+    match max_width with
+    | Some max_width -> Array.sub ~pos:0 ~len:max_width ram
+    | None -> ram
   in
-  Array.iter ~f:(fun  v -> printf "%02x " (Bits.to_int_trunc v)) ram;
+  Array.iter ~f:(fun v -> printf "%02x " (Bits.to_int_trunc v)) ram;
   printf "\n"
 ;;

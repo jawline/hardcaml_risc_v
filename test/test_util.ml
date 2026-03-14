@@ -10,15 +10,13 @@ let print_ram ?max_width sim =
     |> Bits.concat_lsb
     |> Bits.split_lsb ~part_width:8
     |> List.map ~f:Bits.to_char
-    |> String.of_char_list
   in
-
-  let ram = match max_width with
-  | Some i -> List.take ram i
-  | None -> ram 
+  let ram =
+    match max_width with
+    | Some i -> List.take ram i
+    | None -> ram
   in
-  
- let ram =   String.of_char_list ram in
+  let ram = String.of_char_list ram in
   print_s [%message "" ~_:(ram : String.Hexdump.t)]
 ;;
 
