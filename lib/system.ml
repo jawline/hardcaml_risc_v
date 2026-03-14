@@ -236,7 +236,7 @@ struct
     [@@deriving fields ~getters]
   end
 
-  let maybe_video_out scope (i : _ I.t) =
+  let maybe_video_out ~build_mode scope (i : _ I.t) =
     match General_config.include_video_out with
     | No_video_out -> None
     | Video_out
@@ -255,6 +255,7 @@ struct
       let read_request, read_request_ack =
         let o =
           maybe_cross_read_request
+            ~build_mode
             ~clock_domain_memory:General_config.memory_domain
             ~clock_domain_user:Video_signals_config.clock_domain
             scope
@@ -268,6 +269,7 @@ struct
       in
       let read_response =
         (maybe_cross_read_response
+           ~build_mode
            ~clock_domain_memory:General_config.memory_domain
            ~clock_domain_user:Video_signals_config.clock_domain
            scope
@@ -298,6 +300,7 @@ struct
   ;;
 
   let initialize_harts
+        ~build_mode
         ~io_clear
         ~hart_ecall_transactions
         ~read_bus_per_hart
@@ -344,6 +347,7 @@ struct
             |> List.map ~f:(fun (read_request, read_request_ack) ->
               let o =
                 maybe_cross_read_request
+                  ~build_mode
                   ~clock_domain_memory:General_config.memory_domain
                   ~clock_domain_user:Hart_config.clock_domain
                   scope
@@ -361,6 +365,7 @@ struct
             |> List.map ~f:(fun (write_request, write_request_ack) ->
               let o =
                 maybe_cross_write_request
+                  ~build_mode
                   ~clock_domain_memory:General_config.memory_domain
                   ~clock_domain_user:Hart_config.clock_domain
                   scope
@@ -377,6 +382,7 @@ struct
             List.map
               ~f:(fun read_response ->
                 (maybe_cross_read_response
+                   ~build_mode
                    ~clock_domain_memory:General_config.memory_domain
                    ~clock_domain_user:Hart_config.clock_domain
                    scope
@@ -391,6 +397,7 @@ struct
             List.map
               ~f:(fun write_response ->
                 (maybe_cross_write_response
+                   ~build_mode
                    ~clock_domain_memory:General_config.memory_domain
                    ~clock_domain_user:Hart_config.clock_domain
                    scope
@@ -437,7 +444,7 @@ struct
 
   let create ~build_mode scope (i : _ I.t) =
     (* If the design has requested a video out then initialize it. *)
-    let maybe_video_out = maybe_video_out scope i in
+    let maybe_video_out = maybe_video_out ~build_mode scope i in
     (* If the design has requested a DMA controller then initialize it with a
        bunch of unconnected wires. These will be wired to the memory controller
        and harts below. *)
@@ -458,6 +465,7 @@ struct
       let open Memory_controller.Cross_clocks in
       let read_request =
         maybe_cross_read_request
+          ~build_mode
           ~clock_domain_memory:General_config.memory_domain
           ~clock_domain_user:General_config.dma_domain
           scope
@@ -469,6 +477,7 @@ struct
       in
       let write_request =
         maybe_cross_write_request
+          ~build_mode
           ~clock_domain_memory:General_config.memory_domain
           ~clock_domain_user:General_config.dma_domain
           scope
@@ -480,6 +489,7 @@ struct
       in
       let read_response =
         maybe_cross_read_response
+          ~build_mode
           ~clock_domain_memory:General_config.memory_domain
           ~clock_domain_user:General_config.dma_domain
           scope
@@ -490,6 +500,7 @@ struct
       in
       let write_response =
         maybe_cross_write_response
+          ~build_mode
           ~clock_domain_memory:General_config.memory_domain
           ~clock_domain_user:General_config.dma_domain
           scope
@@ -572,6 +583,7 @@ struct
     in
     let harts =
       initialize_harts
+        ~build_mode
         ~io_clear:(of_dma ~f:Dma.O.clear_message |> Option.value ~default:gnd)
           (* Clear harts when the DMA core pulses clear in addition to the
              global clear if a DMA controller is attached. *)
