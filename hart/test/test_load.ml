@@ -141,22 +141,22 @@ let%expect_test "lw" =
     (* Unaligned loads, we expect these to fail *)
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 4) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 7) (error 1) (finished 1))) |}];
     (try test ~address:2 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 4) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 7) (error 1) (finished 1))) |}];
     (try test ~address:3 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 4) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 7) (error 1) (finished 1))) |}];
     (try test ~address:5 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 7) (error 1) (finished 1))) |}];
     (try test ~address:6 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}];
+    [%expect {| (outputs ((new_rd 7) (error 1) (finished 1))) |}];
     (try test ~address:7 ~funct3:(Funct3.Load.to_int Funct3.Load.Lw) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 5) (error 1) (finished 1))) |}]);
+    [%expect {| (outputs ((new_rd 7) (error 1) (finished 1))) |}]);
   [%expect {| |}]
 ;;
 
@@ -184,7 +184,7 @@ let%expect_test "lh" =
     (* Unaligned loads, we expect these to fail *)
     (try test ~address:1 ~funct3:(Funct3.Load.to_int Funct3.Load.Lh) sim with
      | _ -> print_s [%message "BUG: Timed out or exception"]);
-    [%expect {| (outputs ((new_rd 0) (error 1) (finished 1))) |}]);
+    [%expect {| (outputs ((new_rd 2) (error 1) (finished 1))) |}]);
   [%expect {| |}]
 ;;
 

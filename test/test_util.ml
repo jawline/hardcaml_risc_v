@@ -1,7 +1,7 @@
 open Core
 open Hardcaml
 
-let print_ram sim =
+let print_ram ?max_width sim =
   let ram =
     Cyclesim.lookup_mem_by_name sim "main_memory_bram"
     |> Option.value_exn
@@ -12,6 +12,13 @@ let print_ram sim =
     |> List.map ~f:Bits.to_char
     |> String.of_char_list
   in
+
+  let ram = match max_width with
+  | Some i -> List.take ram i
+  | None -> ram 
+  in
+  
+ let ram =   String.of_char_list ram in
   print_s [%message "" ~_:(ram : String.Hexdump.t)]
 ;;
 

@@ -121,7 +121,8 @@ let test ~destination ~value ~funct3 sim =
      print_s [%message (outputs : Bits.t ref Test_machine.O.t)]
    with
    | _ -> print_s [%message "BUG: Timed out"]);
-  Test_util.print_ram sim
+  Test_util.print_ram ~max_width:32 sim;
+  ()
 ;;
 
 let%expect_test "store" =
@@ -137,10 +138,7 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ef be ad de ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test
@@ -153,10 +151,7 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ef be ad de ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test
@@ -169,10 +164,7 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ef be ad de ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test
@@ -185,10 +177,7 @@ let%expect_test "store" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ef be ad de 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     (* Unaligned store, we expect no change *)
@@ -198,10 +187,7 @@ let%expect_test "store" =
       (outputs
        ((error 1) (finished 1)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}]);
   [%expect {| |}]
@@ -216,10 +202,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ab ab ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:2 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -228,10 +211,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ab ed ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:4 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -240,10 +220,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ab ed ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:6 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -252,10 +229,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ab ed ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:8 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -264,10 +238,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ab ed ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     (* Test unaligned Sh, we expect these to fail *)
@@ -277,10 +248,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 1) (finished 1)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:3 ~value:0xEDAB ~funct3:(Funct3.Store.to_int Funct3.Store.Sh) sim;
@@ -289,10 +257,7 @@ let%expect_test "store halves" =
       (outputs
        ((error 1) (finished 1)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}]);
   [%expect {| |}]
@@ -307,10 +272,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:1 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -319,10 +281,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:2 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -331,10 +290,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:3 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -343,10 +299,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     [%expect {| |}];
@@ -356,10 +309,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:5 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -368,10 +318,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:6 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -380,10 +327,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     test ~destination:7 ~value:0xAA ~funct3:(Funct3.Store.to_int Funct3.Store.Sb) sim;
@@ -392,10 +336,7 @@ let%expect_test "store_byte" =
       (outputs
        ((error 0) (finished 0)
         (read_response
-         ((valid 0)
-          (value
-           ((read_data
-             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))))))
+         ((valid 0) (value ((read_data 00000000000000000000000000000000)))))))
       ff ff ff ff ff ff ff aa ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
       |}];
     [%expect {| |}]);
