@@ -95,6 +95,7 @@ struct
 
   module State = struct
     type t =
+      | Idle
       | Y_margin_start
       | Y_margin_end
       | X_margin_start
@@ -403,7 +404,8 @@ struct
     in
     let proceed =
       current_state.switch
-        [ ( State.Y_margin_start
+        [ State.Idle, []
+        ; ( State.Y_margin_start
           , if margin_y_start = 0
             then [ enter_x_line ]
             else

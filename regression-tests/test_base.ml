@@ -70,7 +70,14 @@ struct
         let include_io_controller = Io_controller_config.Uart_controller uart_config
         let dma_domain = clock_domain_cpu
         let memory_domain = clock_domain_memory
-        let include_cache = None
+
+        let include_cache =
+          Some
+            (module struct
+              let line_width = 8
+              let num_cache_lines = 64
+            end : System_intf.Cache_config)
+        ;;
 
         let include_video_out =
           Video_config.Video_out
@@ -202,13 +209,12 @@ struct
     inputs.clear := gnd
   ;;
 
-  let send_dma_message ~address ~packet sim =
+  let send_bits sim whole_packet =
+    (* Send the message through byte by byte. Uart_tx will transmit a
+         byte once every ~10 cycles (this is dependent on the number of stop
+         bits and the parity bit. *)
     let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
     let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
-    let whole_packet = dma_packet ~address packet in
-    (* Send the DMA message through byte by byte. Uart_tx will transmit a
-     byte once every ~10 cycles (this is dependent on the number of stop
-     bits and the parity bit. *)
     let rec loop_until_ready_for_next_input () =
       Cyclesim.cycle sim;
       if Bits.to_bool !(outputs.ready_for_next_input)
@@ -220,9 +226,15 @@ struct
         inputs.data_in_valid := vdd;
         inputs.data_in := of_int_trunc ~width:8 input;
         Cyclesim.cycle sim;
-        inputs.data_in_valid := gnd;
+        inputs.data_in_valid := of_int_trunc ~width:1 0;
         loop_until_ready_for_next_input ())
       whole_packet
+  ;;
+
+  let send_dma_message ~address ~packet sim =
+    (* TODO: Move this to a util section *)
+    let whole_packet = dma_packet ~address packet in
+    send_bits sim whole_packet
   ;;
 
   let flush () = Core.Out_channel.flush Stdio.stdout
@@ -280,8 +292,6 @@ struct
         sim
     =
     let inputs : _ With_transmitter.I.t = Cyclesim.inputs sim in
-    (* Send a clear signal to initialize any CPU IO controller state back to
-     default so we're ready to receive. *)
     clear_registers ~inputs sim;
     print_s [%message "constructing video emulator"];
     let video_emulator =
@@ -307,14 +317,13 @@ struct
     then (
       let ram = Cyclesim.lookup_mem_by_name sim "main_memory_bram" |> Option.value_exn in
       print_s [%message "found bram"];
-      program_ram ~ram ~program:data)
+      program_ram ~ram ~program:data;
+      (* Send a clear signal and then start the vsync logic *)
+      clear_registers ~inputs sim)
     else (
       send_dma_message ~address:0 ~packet:data sim;
-      (* Wait some arbitrary number of cycles for the actual DMA to proceed. This is hard to guess, since the memory controller can push back. *)
-      Sequence.range 0 100 |> Sequence.iter ~f:(fun _ -> Cyclesim.cycle sim));
+      send_bits sim clear_packet);
     let outputs : _ With_transmitter.O.t = Cyclesim.outputs sim in
-    (* Send a clear signal and then start the vsync logic *)
-    clear_registers ~inputs sim;
     let current_output_state = ref Result_machine.Wait_header in
     let print_state ~include_ram =
       match outputs.registers with

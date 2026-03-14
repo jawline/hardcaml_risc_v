@@ -12,6 +12,7 @@ module Make_base (C : sig
     val video_clock : Custom_clock_domain.t
     val capacity_in_bytes : int
     val framebuffer_address_in_memory : int
+    val include_cache : bool
   end) =
 struct
   module Framebuffer_config = struct
@@ -56,6 +57,17 @@ struct
 
     let memory_domain = C.memory_clock
     let dma_domain = C.hart_clock
+
+    let include_cache =
+      if C.include_cache
+      then
+        Some
+          (module struct
+            let line_width = 8
+            let num_cache_lines = 512
+          end : System_intf.Cache_config)
+      else None
+    ;;
   end
 
   module Per_hart_config = struct
@@ -95,7 +107,11 @@ module Make_with_axi_memory (C : sig
     val framebuffer_address_in_memory : int
   end) =
 struct
-  open Make_base (C)
+  open Make_base (struct
+      include C
+
+      let include_cache = true
+    end)
 
   module Axi_config = struct
     let id_bits = C.memory_tag_width
@@ -136,6 +152,7 @@ struct
       include C
 
       let memory_clock = hart_clock
+      let include_cache = false
     end)
 
   module Design_with_bram =

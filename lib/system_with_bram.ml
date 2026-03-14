@@ -9,9 +9,15 @@ module Make
     (Memory_config : System_intf.Memory_config)
     (General_config : System_intf.Config) =
 struct
+  let axi_bits =
+    match General_config.include_cache with
+    | Some (module Config : System_intf.Cache_config) -> Config.line_width * 32
+    | None -> 32
+  ;;
+
   module Axi_config = struct
     let id_bits = 8
-    let data_bits = 32
+    let data_bits = axi_bits
     let addr_bits = address_bits_for Memory_config.capacity_in_bytes
     let burst_length_bits = 1
   end

@@ -42,24 +42,36 @@ struct
     | Uart_controller _ -> 1
   ;;
 
+  let num_read_channels =
+    system_non_hart_read_memory_channels
+    + (General_config.num_harts * Hart.required_read_channels)
+  ;;
+
+  let num_write_channels =
+    system_non_hart_write_memory_channels
+    + (General_config.num_harts * Hart.required_write_channels)
+  ;;
+
   module Memory_controller =
     Memory_controller.Make
       (struct
         let capacity_in_bytes = Memory_config.capacity_in_bytes
-
-        let num_read_channels =
-          system_non_hart_read_memory_channels
-          + (General_config.num_harts * Hart.required_read_channels)
-        ;;
-
-        let num_write_channels =
-          system_non_hart_write_memory_channels
-          + (General_config.num_harts * Hart.required_write_channels)
-        ;;
-
+        let num_read_channels = num_read_channels
+        let num_write_channels = num_write_channels
         let address_width = Register_width.bits Hart_config.register_width
-        let data_bus_width = Axi4.data_width
-        let cache_memory = General_config.include_cache
+        let data_bus_width = Register_width.bits Hart_config.register_width
+
+        let cache_memory =
+          Option.map
+            ~f:(fun (module Config : System_intf.Cache_config) ->
+              (module struct
+                include Config
+
+                let num_read_channels = num_read_channels
+                let num_write_channels = num_write_channels
+              end : Hardcaml_memory_controller.Axi4_cache.Config))
+            General_config.include_cache
+        ;;
       end)
       (Axi4)
 

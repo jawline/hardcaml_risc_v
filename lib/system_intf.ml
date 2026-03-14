@@ -1,10 +1,15 @@
+module type Cache_config = sig
+  val line_width : int
+  val num_cache_lines : int
+end
+
 module type Config = sig
   val num_harts : int
   val include_io_controller : Io_controller_config.t
   val include_video_out : Video_config.t
   val dma_domain : Hardcaml_memory_controller.Custom_clock_domain.t
   val memory_domain : Hardcaml_memory_controller.Custom_clock_domain.t
-  val include_cache : (module Hardcaml_memory_controller.Axi4_cache.Config) option
+  val include_cache : (module Cache_config) option
 end
 
 module type Memory_config = sig
