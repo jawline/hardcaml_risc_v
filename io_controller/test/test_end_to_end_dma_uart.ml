@@ -4,19 +4,11 @@ open Hardcaml_test_harness
 open Hardcaml_uart
 open Hardcaml_io_framework
 open Hardcaml_io_controller
-open Hardcaml_memory_controller
 open! Bits
 
 let debug = false
 
-module Memory_controller = Bram_memory_controller.Make (struct
-    let capacity_in_bytes = 128
-    let num_write_channels = 1
-    let num_read_channels = 1
-    let address_width = 32
-    let data_bus_width = 32
-  end)
-
+module Memory_controller = Test_memory_controller
 open Memory_controller.Memory_bus
 
 let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packets =

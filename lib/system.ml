@@ -59,6 +59,7 @@ struct
 
         let address_width = Register_width.bits Hart_config.register_width
         let data_bus_width = Axi4.data_width
+        let cache_memory = General_config.include_cache
       end)
       (Axi4)
 
@@ -434,7 +435,7 @@ struct
     harts
   ;;
 
-  let create ~build_mode:_ scope (i : _ I.t) =
+  let create ~build_mode scope (i : _ I.t) =
     (* If the design has requested a video out then initialize it. *)
     let maybe_video_out = maybe_video_out scope i in
     (* If the design has requested a DMA controller then initialize it with a
@@ -550,6 +551,7 @@ struct
       Write_bus.Source.Of_signal.(dma_write_request_i <-- List.nth_exn t 0));
     let controller =
       Memory_controller.hierarchical
+        ~build_mode
         ~priority_mode:Priority_order
         scope
         { Memory_controller.I.clock = i.memory_clock

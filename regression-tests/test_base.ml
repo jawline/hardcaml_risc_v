@@ -70,6 +70,7 @@ struct
         let include_io_controller = Io_controller_config.Uart_controller uart_config
         let dma_domain = clock_domain_cpu
         let memory_domain = clock_domain_memory
+        let include_cache = None
 
         let include_video_out =
           Video_config.Video_out

@@ -4,6 +4,7 @@ module type Config = sig
   val include_video_out : Video_config.t
   val dma_domain : Hardcaml_memory_controller.Custom_clock_domain.t
   val memory_domain : Hardcaml_memory_controller.Custom_clock_domain.t
+  val include_cache : (module Hardcaml_memory_controller.Axi4_cache.Config) option
 end
 
 module type Memory_config = sig

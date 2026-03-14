@@ -1,6 +1,5 @@
 open! Core
 open Hardcaml
-open Hardcaml_memory_controller
 open Hardcaml_framebuffer_expander
 open Hardcaml_test_harness
 open! Bits
@@ -13,13 +12,7 @@ module FBC = struct
   let input_pixel_mode = Pixel_mode.RGB_8bit
 end
 
-module Memory_controller = Bram_memory_controller.Make (struct
-    let capacity_in_bytes = 64 * 32 * 4
-    let num_read_channels = 1
-    let num_write_channels = 1
-    let address_width = 32
-    let data_bus_width = 32
-  end)
+module Memory_controller = Test_memory_controller
 
 module Machine = struct
   open Signal

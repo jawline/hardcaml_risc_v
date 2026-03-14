@@ -1021,6 +1021,7 @@ module Cpu_with_no_io_controller =
       let num_harts = 1
       let include_io_controller = Io_controller_config.No_io_controller
       let include_video_out = Video_config.No_video_out
+      let include_cache = None
     end)
 
 module With_manually_programmed_ram = Make (struct
@@ -1133,6 +1134,7 @@ module Cpu_with_dma_memory =
       let num_harts = 1
       let include_io_controller = Io_controller_config.Uart_controller uart_config
       let include_video_out = Video_config.No_video_out
+      let include_cache = None
     end)
 
 module With_transmitter = struct

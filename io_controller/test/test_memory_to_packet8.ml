@@ -23,6 +23,7 @@ let test ~packets =
       let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
+      let cache_memory = None
     end)
   in
   let module Memory_to_packet8 =

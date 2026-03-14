@@ -528,6 +528,7 @@ let%expect_test "pixel test" =
       let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
+      let cache_memory = None
     end)
   in
   let print_config
@@ -599,6 +600,7 @@ let%expect_test "margins and scaling factor tests" =
       let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
+      let cache_memory = None
     end)
   in
   let print_config

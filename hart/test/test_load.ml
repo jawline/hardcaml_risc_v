@@ -3,19 +3,11 @@ open Hardcaml
 module Test_util = Util
 open Hardcaml_test_harness
 open Hardcaml_risc_v_hart
-open Hardcaml_memory_controller
 open! Bits
 
 let debug = false
 
-module Memory_controller = Bram_memory_controller.Make (struct
-    let capacity_in_bytes = 128
-    let num_write_channels = 1
-    let num_read_channels = 1
-    let address_width = 32
-    let data_bus_width = 128
-  end)
-
+module Memory_controller = Test_memory_controller
 open Memory_controller.Memory_bus
 module Load = Load.Make (Example_hart) (Memory_controller.Memory_bus)
 
