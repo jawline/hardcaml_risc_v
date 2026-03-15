@@ -21,7 +21,7 @@ struct
     let input_width = 320
     let input_height = 200
     let framebuffer_address = C.framebuffer_address_in_memory
-    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit_32bit_aligned
+    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.One_bit
   end
 
   module Video_signal_generator_config = struct

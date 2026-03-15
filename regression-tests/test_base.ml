@@ -75,7 +75,7 @@ struct
           Some
             (module struct
               let line_width = 8
-              let num_cache_lines = 64
+              let num_cache_lines = 512
             end : System_intf.Cache_config)
         ;;
 
@@ -167,11 +167,16 @@ struct
   module Sim = Cyclesim.With_interface (With_transmitter.I) (With_transmitter.O)
 
   let base_sim ~trace =
+    let base =
+      if trace then Cyclesim.Config.trace_all else Cyclesim.Config.trace `All_named
+    in
+    let _random =
+      Cyclesim.Config.add_random_initialization
+        base
+        Cyclesim.Config.Random_initializer.(create randomize_all)
+    in
     Sim.create
-      ~config:
-        (Cyclesim.Config.add_random_initialization
-           (if trace then Cyclesim.Config.trace_all else Cyclesim.Config.trace `All_named)
-           Cyclesim.Config.Random_initializer.(create randomize_all))
+      ~config:base
       (With_transmitter.create
          (Scope.create ~auto_label_hierarchical_ports:true ~flatten_design:true ()))
   ;;

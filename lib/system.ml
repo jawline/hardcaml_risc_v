@@ -575,7 +575,7 @@ struct
     let controller =
       Memory_controller.hierarchical
         ~build_mode
-        ~priority_mode:Priority_order
+        ~priority_mode:Round_robin
         scope
         { Memory_controller.I.clock = i.memory_clock
         ; read_to_controller =

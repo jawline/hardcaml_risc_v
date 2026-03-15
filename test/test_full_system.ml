@@ -989,7 +989,7 @@ module Cpu_with_no_io_controller =
         Some
           (module struct
             let line_width = 8
-            let num_cache_lines = 64
+            let num_cache_lines = 8
           end : System_intf.Cache_config)
       ;;
     end)
@@ -1108,7 +1108,7 @@ module Cpu_with_dma_memory =
         Some
           (module struct
             let line_width = 8
-            let num_cache_lines = 64
+            let num_cache_lines = 8
           end : System_intf.Cache_config)
       ;;
     end)
