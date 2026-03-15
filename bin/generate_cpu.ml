@@ -64,7 +64,7 @@ struct
         Some
           (module struct
             let line_width = 8
-            let num_cache_lines = 512
+            let num_cache_lines = 4096
           end : System_intf.Cache_config)
       else None
     ;;

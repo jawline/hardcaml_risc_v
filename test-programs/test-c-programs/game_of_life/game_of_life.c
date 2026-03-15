@@ -3,13 +3,13 @@
 #define NULL 0
 
 // Width and height must be divisible by 8
-#define WIDTH 64
-#define HEIGHT 32
+#define WIDTH 320
+#define HEIGHT 200
 
 // This is the hardware framebuffer size, changing this must also be changed in the hardware RTL.
 // Must be a multiple of hardware words * 8
-#define FRAMEBUFFER_WIDTH 64
-#define FRAMEBUFFER_HEIGHT 32
+#define FRAMEBUFFER_WIDTH 320
+#define FRAMEBUFFER_HEIGHT 200
 
 // To save memory we use a bitvector
 #define BUFFER_SIZE ((WIDTH * HEIGHT) / 8)
@@ -182,16 +182,13 @@ void program_initial_state_all(char* buffer) {
 }
 
 void initialize(char* current) {
-  send_dma_l("Programming initial state\n", 26);
   program_initial_state(current);
   // TODO: Remove
   //program_initial_state_all(current);
   expand_rows_framebuffer(current);
-  send_dma_l("Done\n", 5);
 }
 
 void c_start() {
-  send_dma_l("Starting up\n", 12);
   char* current = BUFFER1;
   char* next = BUFFER2;
 
@@ -199,15 +196,11 @@ void c_start() {
 
   send_dma_l("Entering loop\n", 14);
   for (;;) {
-    send_dma_l("S\n", 2);
     compute(next, current);
     expand_rows_framebuffer(next);
     char* tmp = current;
     current = next;
     next = tmp;
     send_dma_l("Computed row\n", 13);
-    for (unsigned int i = 0; i < 500000; i++) {
-           
-    }
   }
 }

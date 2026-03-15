@@ -121,7 +121,7 @@ let command =
        print_s [%message "Loading program" ~_:(program_filename : string)];
        let program = In_channel.read_all program_filename in
        print_s [%message "Progam length: " ~_:(String.length program : int)];
-       (* Split our program into 1024 byte chunks and send it. *)
+       (* Split our program into chunks and send it. *)
        let chunk_sz = 512 in
        String.to_list program
        |> List.chunks_of ~length:chunk_sz
