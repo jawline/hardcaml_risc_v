@@ -296,7 +296,7 @@ let%expect_test "test" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packets:[ 8, "Hello world!"; 16, "What's going on!"; 0, "Goodbye world"; 8, ":(" ]
-    ~verbose:true;
+    ~verbose:false;
   [%expect
     {|
     Printing ram (not DMA response):
@@ -360,5 +360,16 @@ let%expect_test "fuzz" =
       ~stop_bits:1
       ~packets:[ 0, test_str; 48, test_str ]
       ~verbose:false);
+  [%expect {| |}]
+;;
+
+let%expect_test "large packet" =
+  test
+    ~clock_frequency:1000
+    ~baud_rate:50
+    ~include_parity_bit:false
+    ~stop_bits:1
+    ~packets:[ 0, String.init ~f:(fun i -> Char.of_int_exn (i % 255)) 65535 ]
+    ~verbose:false;
   [%expect {| |}]
 ;;

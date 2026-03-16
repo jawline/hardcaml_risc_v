@@ -1,7 +1,7 @@
 open Hardcaml_memory_controller
 
 include Bram_memory_controller.Make (struct
-    let capacity_in_bytes = 128
+    let capacity_in_bytes = 65536
     let num_write_channels = 1
     let num_read_channels = 1
     let address_width = 32

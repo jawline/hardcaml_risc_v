@@ -21,7 +21,7 @@ struct
     let input_width = 320
     let input_height = 200
     let framebuffer_address = C.framebuffer_address_in_memory
-    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.One_bit
+    let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit_32bit_aligned
   end
 
   module Video_signal_generator_config = struct
@@ -105,12 +105,11 @@ module Make_with_axi_memory (C : sig
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
     val framebuffer_address_in_memory : int
+    val include_cache : bool
   end) =
 struct
   open Make_base (struct
       include C
-
-      let include_cache = true
     end)
 
   module Axi_config = struct
@@ -254,6 +253,8 @@ let axi =
          "framebuffer-address-in-memory"
          (required int)
          ~doc:"location of the framebuffer in memory"
+     and include_cache =
+       flag "include-cache" (required bool) ~doc:"devote board BRAM to a memory cache"
      in
      let memory_clock = Custom_clock_domain.create memory_frequency in
      let hart_clock =
@@ -279,6 +280,7 @@ let axi =
            let memory_clock = memory_clock
            let burst_length_bits = burst_length_bits
            let framebuffer_address_in_memory = framebuffer_address_in_memory
+           let include_cache = include_cache
          end)
        in
        M.Rtl.emit ())

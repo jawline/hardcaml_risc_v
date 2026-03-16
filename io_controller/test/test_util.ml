@@ -23,7 +23,7 @@ let write_packet_to_memory_32b ~packet sim =
   done
 ;;
 
-let print_ram sim =
+let print_ram ?max sim =
   let as_str =
     Cyclesim.lookup_mem_by_name sim "main_memory_bram"
     |> Option.value_exn
@@ -31,6 +31,10 @@ let print_ram sim =
     |> Array.to_list
     |> List.map ~f:(fun t -> Bits.split_lsb ~part_width:8 t |> List.map ~f:Bits.to_char)
     |> List.concat
+    |> (fun t ->
+    match max with
+    | Some max -> List.take t max
+    | None -> t)
     |> String.of_char_list
   in
   print_s [%message "" ~_:(as_str : String.Hexdump.t)]

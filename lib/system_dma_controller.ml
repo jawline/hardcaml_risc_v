@@ -108,7 +108,7 @@ struct
     let { Serial_buffer.O.out_valid = serial_buffer_valid; out_data = serial_buffer_data }
       =
       Serial_buffer.hierarchical
-        ~capacity:8096
+        ~capacity:(4096 (* 1 RAMB36 per 4096 at 8 bits *) * 1)
         scope
         { Serial_buffer.I.clock
         ; in_valid = uart_rx_valid
