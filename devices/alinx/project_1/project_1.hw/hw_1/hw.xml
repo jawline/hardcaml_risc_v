@@ -254,7 +254,7 @@
         <net name="cpu/system/hart_0/read_bus$data$address_0[30]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq32&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq32&apos;hXXXX_XXXX"/>
@@ -327,7 +327,7 @@
         <net name="cpu/system/hart_0/read_bus$data$address_1[31]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq32&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq32&apos;hXXXX_XXXX"/>
@@ -556,7 +556,7 @@
         <net name="cpu/system/hart_0/registers$pc[1]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq32&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq32&apos;hXXXX_XXXX"/>
@@ -713,7 +713,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/read_ready"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq32&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq32&apos;hXXXX_XXXX"/>
@@ -765,7 +765,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$address[0]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq2&apos;hX"/>
         <Option Id="COMPARE_VALUE.0" value="eq2&apos;hX"/>
@@ -874,7 +874,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/write_ready"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq30&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq30&apos;hXXXX_XXXX"/>
@@ -1029,7 +1029,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/memory_requester_read/finished"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq2&apos;hX"/>
         <Option Id="COMPARE_VALUE.0" value="eq2&apos;hX"/>
@@ -1093,7 +1093,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/memory_requester_read/n_0_1"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq28&apos;hXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq28&apos;hXXX_XXXX"/>
@@ -1141,7 +1141,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request$address[2]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq2&apos;hX"/>
         <Option Id="COMPARE_VALUE.0" value="eq2&apos;hX"/>
@@ -1184,7 +1184,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request$valid"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq30&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq30&apos;hXXXX_XXXX"/>
@@ -1234,7 +1234,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$address[0]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq2&apos;hX"/>
         <Option Id="COMPARE_VALUE.0" value="eq2&apos;hX"/>
@@ -1256,7 +1256,7 @@
         <net name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$id[0]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq30&apos;hXXXX_XXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq30&apos;hXXXX_XXXX"/>
@@ -2162,7 +2162,7 @@
         <net name="cpu/system/memory_controller/write_to_controller$valid_1"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq12&apos;hXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq12&apos;hXXX"/>
@@ -2194,7 +2194,7 @@
         <net name="cpu/system/system_dma_controller/serial_buffer/READ_ADDRESS_reg[0]"/>
       </nets>
     </probe>
-    <probe type="ila" busType="bus" source="netlist" spec="ILA_V2_RT">
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
       <probeOptions Id="DebugProbeParams">
         <Option Id="CAPTURE_COMPARE_VALUE" value="eq13&apos;hXXXX"/>
         <Option Id="COMPARE_VALUE.0" value="eq13&apos;hXXXX"/>
@@ -2225,6 +2225,165 @@
         <net name="cpu/system/system_dma_controller/serial_buffer/USED[2]"/>
         <net name="cpu/system/system_dma_controller/serial_buffer/USED[1]"/>
         <net name="cpu/system/system_dma_controller/serial_buffer/USED[0]"/>
+      </nets>
+    </probe>
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
+      <probeOptions Id="DebugProbeParams">
+        <Option Id="CAPTURE_COMPARE_VALUE" value="eq32&apos;hXXXX_XXXX"/>
+        <Option Id="COMPARE_VALUE.0" value="eq32&apos;hXXXX_XXXX"/>
+        <Option Id="DISPLAY_AS_ENUM" value="1"/>
+        <Option Id="DISPLAY_HINT" value=""/>
+        <Option Id="DISPLAY_RADIX" value="HEX"/>
+        <Option Id="DISPLAY_VISIBILITY" value=""/>
+        <Option Id="HW_ILA" value="hw_ila_1"/>
+        <Option Id="LINK_TO_WAVEFORM" value="1"/>
+        <Option Id="MAP" value="probe0[31:0]"/>
+        <Option Id="NAME.CUSTOM" value=""/>
+        <Option Id="NAME.SELECT" value="Long"/>
+        <Option Id="SOURCE" value="netlist"/>
+        <Option Id="TRIGGER_COMPARE_VALUE" value="eq32&apos;hXXXX_XXXX"/>
+        <Option Id="WAVEFORM_STYLE" value="Digital"/>
+      </probeOptions>
+      <nets>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[31]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[30]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[29]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[28]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[27]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[26]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[25]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[24]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[23]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[22]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[21]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[20]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[19]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[18]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[17]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[16]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[15]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[14]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[13]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[12]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[11]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[10]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[9]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[8]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[7]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[6]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[5]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[4]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[3]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[2]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[1]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$data$address[0]"/>
+      </nets>
+    </probe>
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
+      <probeOptions Id="DebugProbeParams">
+        <Option Id="CAPTURE_COMPARE_VALUE" value="eq1&apos;bX"/>
+        <Option Id="COMPARE_VALUE.0" value="eq1&apos;bX"/>
+        <Option Id="DISPLAY_AS_ENUM" value="1"/>
+        <Option Id="DISPLAY_HINT" value=""/>
+        <Option Id="DISPLAY_RADIX" value="HEX"/>
+        <Option Id="DISPLAY_VISIBILITY" value=""/>
+        <Option Id="HW_ILA" value="hw_ila_1"/>
+        <Option Id="LINK_TO_WAVEFORM" value="1"/>
+        <Option Id="MAP" value="probe2[0]"/>
+        <Option Id="NAME.CUSTOM" value=""/>
+        <Option Id="NAME.SELECT" value="Long"/>
+        <Option Id="SOURCE" value="netlist"/>
+        <Option Id="TRIGGER_COMPARE_VALUE" value="eq1&apos;bX"/>
+        <Option Id="WAVEFORM_STYLE" value="Digital"/>
+      </probeOptions>
+      <nets>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$ready"/>
+      </nets>
+    </probe>
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
+      <probeOptions Id="DebugProbeParams">
+        <Option Id="CAPTURE_COMPARE_VALUE" value="eq1&apos;bX"/>
+        <Option Id="COMPARE_VALUE.0" value="eq1&apos;bX"/>
+        <Option Id="DISPLAY_AS_ENUM" value="1"/>
+        <Option Id="DISPLAY_HINT" value=""/>
+        <Option Id="DISPLAY_RADIX" value="HEX"/>
+        <Option Id="DISPLAY_VISIBILITY" value=""/>
+        <Option Id="HW_ILA" value="hw_ila_1"/>
+        <Option Id="LINK_TO_WAVEFORM" value="1"/>
+        <Option Id="MAP" value="probe3[0]"/>
+        <Option Id="NAME.CUSTOM" value=""/>
+        <Option Id="NAME.SELECT" value="Long"/>
+        <Option Id="SOURCE" value="netlist"/>
+        <Option Id="TRIGGER_COMPARE_VALUE" value="eq1&apos;bX"/>
+        <Option Id="WAVEFORM_STYLE" value="Digital"/>
+      </probeOptions>
+      <nets>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_request$valid"/>
+      </nets>
+    </probe>
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
+      <probeOptions Id="DebugProbeParams">
+        <Option Id="CAPTURE_COMPARE_VALUE" value="eq1&apos;bX"/>
+        <Option Id="COMPARE_VALUE.0" value="eq1&apos;bX"/>
+        <Option Id="DISPLAY_AS_ENUM" value="1"/>
+        <Option Id="DISPLAY_HINT" value=""/>
+        <Option Id="DISPLAY_RADIX" value="HEX"/>
+        <Option Id="DISPLAY_VISIBILITY" value=""/>
+        <Option Id="HW_ILA" value="hw_ila_1"/>
+        <Option Id="LINK_TO_WAVEFORM" value="1"/>
+        <Option Id="MAP" value="probe4[0]"/>
+        <Option Id="NAME.CUSTOM" value=""/>
+        <Option Id="NAME.SELECT" value="Long"/>
+        <Option Id="SOURCE" value="netlist"/>
+        <Option Id="TRIGGER_COMPARE_VALUE" value="eq1&apos;bX"/>
+        <Option Id="WAVEFORM_STYLE" value="Digital"/>
+      </probeOptions>
+      <nets>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$valid"/>
+      </nets>
+    </probe>
+    <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">
+      <probeOptions Id="DebugProbeParams">
+        <Option Id="CAPTURE_COMPARE_VALUE" value="eq24&apos;hXX_XXXX"/>
+        <Option Id="COMPARE_VALUE.0" value="eq24&apos;hXX_XXXX"/>
+        <Option Id="DISPLAY_AS_ENUM" value="1"/>
+        <Option Id="DISPLAY_HINT" value=""/>
+        <Option Id="DISPLAY_RADIX" value="HEX"/>
+        <Option Id="DISPLAY_VISIBILITY" value=""/>
+        <Option Id="HW_ILA" value="hw_ila_1"/>
+        <Option Id="LINK_TO_WAVEFORM" value="1"/>
+        <Option Id="MAP" value="probe1[23:0]"/>
+        <Option Id="NAME.CUSTOM" value=""/>
+        <Option Id="NAME.SELECT" value="Long"/>
+        <Option Id="SOURCE" value="netlist"/>
+        <Option Id="TRIGGER_COMPARE_VALUE" value="eq24&apos;hXX_XXXX"/>
+        <Option Id="WAVEFORM_STYLE" value="Digital"/>
+      </probeOptions>
+      <nets>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[23]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[22]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[21]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[20]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[19]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[18]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[17]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[16]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[15]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[14]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[13]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[12]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[11]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[10]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[9]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[8]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[7]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[6]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[5]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[4]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[3]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[2]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[1]"/>
+        <net name="cpu/system/video_out/framebuffer_expander/memory_response$value$read_data[0]"/>
       </nets>
     </probe>
     <probe type="ila" busType="net" source="netlist" spec="ILA_V2_RT">

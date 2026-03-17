@@ -6,27 +6,42 @@ open Hardcaml_memory_controller
 module Report_synth = Hardcaml_xilinx_reports
 
 module Make_base (C : sig
-    val include_video_out : bool
     val memory_clock : Custom_clock_domain.t
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
     val capacity_in_bytes : int
     val framebuffer_address_in_memory : int
-    val include_cache : bool
+    val include_video_out : bool
+    val include_cache_with_n_lines : int option
   end) =
 struct
+  module Video_signal_generator_config_640_480 = struct
+    (* 25~Mhz. *)
+    let h_active = 640
+    let v_active = 480
+    let h_fp = 16
+    let h_sync = 96
+    let h_bp = 48
+    let v_fp = 10
+    let v_sync = 2
+    let v_bp = 33
+    let clock_domain = C.video_clock
+    let enable_every_n_cycles = C.video_clock.frequency / 25_000_000
+  end
+
   module Framebuffer_config = struct
-    let output_width = 1024
-    let output_height = 600
+    let output_width = Video_signal_generator_config_640_480.h_active
+    let output_height = Video_signal_generator_config_640_480.v_active
     let input_width = 320
     let input_height = 200
     let framebuffer_address = C.framebuffer_address_in_memory
     let input_pixel_mode = Hardcaml_framebuffer_expander.Pixel_mode.RGB_8bit_32bit_aligned
   end
 
-  module Video_signal_generator_config = struct
-    (* TODO: Add a clock requirement *)
+  (* 
+  module Video_signal_generator_config_1024_600 = struct
 
+          (* 50MHz *)
     let h_active = 1024
     let v_active = 600
     let h_fp = 32
@@ -36,7 +51,9 @@ struct
     let v_sync = 3
     let v_bp = 12
     let clock_domain = C.video_clock
-  end
+    let enable_every_n_cycles = 
+    C.video_clock.frequency / 25_000_000
+  end *)
 
   module General_config = struct
     let num_harts = 1
@@ -51,7 +68,7 @@ struct
       then
         Video_config.Video_out
           ( (module Framebuffer_config : Video_out_intf.Config)
-          , (module Video_signal_generator_config : Video_signals.Config) )
+          , (module Video_signal_generator_config_640_480 : Video_signals.Config) )
       else No_video_out
     ;;
 
@@ -59,14 +76,14 @@ struct
     let dma_domain = C.hart_clock
 
     let include_cache =
-      if C.include_cache
-      then
+      match C.include_cache_with_n_lines with
+      | Some num_lines ->
         Some
           (module struct
             let line_width = 8
-            let num_cache_lines = 4096
+            let num_cache_lines = num_lines
           end : System_intf.Cache_config)
-      else None
+      | None -> None
     ;;
   end
 
@@ -95,7 +112,6 @@ end
 
 (** Construct a design with a generic AXI based memory interface and no internal BRAM based main memory. *)
 module Make_with_axi_memory (C : sig
-    val include_video_out : bool
     val memory_tag_width : int
     val memory_width : int
     val memory_address_width : int
@@ -105,7 +121,8 @@ module Make_with_axi_memory (C : sig
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
     val framebuffer_address_in_memory : int
-    val include_cache : bool
+    val include_video_out : bool
+    val include_cache_with_n_lines : int option
   end) =
 struct
   open Make_base (struct
@@ -140,18 +157,18 @@ end
 
 (** Construct a design with BRAM based main memory. *)
 module Make_with_bram (C : sig
-    val include_video_out : bool
     val capacity_in_bytes : int
     val hart_clock : Custom_clock_domain.t
     val video_clock : Custom_clock_domain.t
     val framebuffer_address_in_memory : int
+    val include_video_out : bool
   end) =
 struct
   open Make_base (struct
       include C
 
       let memory_clock = hart_clock
-      let include_cache = false
+      let include_cache_with_n_lines = None
     end)
 
   module Design_with_bram =
@@ -180,7 +197,7 @@ let bram =
        flag
          "include-video-out"
          (required bool)
-         ~doc:"include logic for generating a video signal"
+         ~doc:"include logic for generating a video signal."
      and hart_frequency =
        flag "hart-frequency" (required int) ~doc:"clock frequency in hz for the hart"
      and video_frequency =
@@ -199,12 +216,12 @@ let bram =
      fun () ->
        let module M =
          Make_with_bram (struct
-           let include_video_out = include_video_out
            let hart_frequency = hart_frequency
            let capacity_in_bytes = capacity_in_bytes
            let video_clock = Custom_clock_domain.create video_frequency
            let hart_clock = Custom_clock_domain.create hart_frequency
            let framebuffer_address_in_memory = framebuffer_address_in_memory
+           let include_video_out = include_video_out
          end)
        in
        M.Rtl.emit ())
@@ -219,7 +236,9 @@ let axi =
        flag
          "include-video-out"
          (required bool)
-         ~doc:"include logic for generating a video signal"
+         ~doc:
+           "include logic for generating a video signal. integer specifies the video \
+            clock ratio."
      and video_frequency =
        flag
          "video-frequency"
@@ -254,7 +273,7 @@ let axi =
          (required int)
          ~doc:"location of the framebuffer in memory"
      and include_cache =
-       flag "include-cache" (required bool) ~doc:"devote board BRAM to a memory cache"
+       flag "include-cache" (optional int) ~doc:"devote board BRAM to a memory cache"
      in
      let memory_clock = Custom_clock_domain.create memory_frequency in
      let hart_clock =
@@ -270,7 +289,6 @@ let axi =
      fun () ->
        let module M =
          Make_with_axi_memory (struct
-           let include_video_out = include_video_out
            let memory_tag_width = memory_tag_width
            let memory_width = memory_width
            let memory_address_width = memory_address_width
@@ -280,7 +298,8 @@ let axi =
            let memory_clock = memory_clock
            let burst_length_bits = burst_length_bits
            let framebuffer_address_in_memory = framebuffer_address_in_memory
-           let include_cache = include_cache
+           let include_cache_with_n_lines = include_cache
+           let include_video_out = include_video_out
          end)
        in
        M.Rtl.emit ())

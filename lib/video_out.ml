@@ -59,10 +59,10 @@ module Make (Memory : Memory_bus_intf.S) = struct
         ~showahead:true
         ~clock:i.clock.clock
         ~clear:(i.clock.clear |: video_signals.next_frame)
-        ~capacity:512
+        ~capacity:4096
         ~wr:pre_fetch_pixel
         ~d:(concat_lsb [ expander.pixel.r; expander.pixel.g; expander.pixel.b ])
-        ~rd:video_signals.video_active
+        ~rd:(video_signals.video_clock &: video_signals.video_active)
         ()
     in
     pixel_buffer_full <-- pixel_buffer.full;

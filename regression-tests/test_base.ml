@@ -100,6 +100,7 @@ struct
                 let v_fp = 1
                 let v_sync = 8
                 let v_bp = 1
+                let enable_every_n_cycles = 1
                 let clock_domain = clock_domain_video
               end : Video_signals.Config) )
         ;;

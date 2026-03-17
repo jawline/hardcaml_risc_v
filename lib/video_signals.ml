@@ -11,12 +11,16 @@ module type Config = sig
   val v_fp : int
   val v_sync : int
   val v_bp : int
+  val enable_every_n_cycles : int
+
+  (* We can use this to drive the video signal from a faster multiple of the clock. *)
   val clock_domain : Hardcaml_memory_controller.Custom_clock_domain.t
 end
 
 module Video_signals = struct
   type 'a t =
-    { video_active : 'a
+    { video_clock : 'a
+    ; video_active : 'a
     ; v_sync : 'a
     ; h_sync : 'a
     ; next_frame : 'a
@@ -37,8 +41,19 @@ module Make (Config : Config) = struct
   let create _scope (i : _ I.t) =
     (* This is pretty inefficient in comparisons and could be done with rollovers instead. *)
     let reg_spec = Clocking.to_spec i.clock in
+    let enable_this_cycle =
+      if Config.enable_every_n_cycles = 1
+      then vdd
+      else
+        reg_fb
+          ~width:(address_bits_for Config.enable_every_n_cycles)
+          ~f:(mod_counter ~max:(Config.enable_every_n_cycles - 1))
+          reg_spec
+        ==:. 0
+    in
     let h_cnt =
       reg_fb
+        ~enable:enable_this_cycle
         ~width:(num_bits_to_represent (h_total_pixels - 1))
         ~f:(fun t -> mod_counter ~max:(h_total_pixels - 1) t)
         reg_spec
@@ -51,12 +66,15 @@ module Make (Config : Config) = struct
     in
     let v_cnt =
       reg_fb
+        ~enable:enable_this_cycle
         ~width:(num_bits_to_represent (v_total_lines - 1))
         ~f:(fun t -> mux2 is_end_of_line (mod_counter ~max:(v_total_lines - 1) t) t)
         reg_spec
     in
     (* Pre-cache last-line to simplify the path a little. *)
-    let last_line = reg reg_spec (v_cnt ==:. v_total_lines - 1) in
+    let last_line =
+      reg ~enable:enable_this_cycle reg_spec (v_cnt ==:. v_total_lines - 1)
+    in
     let next_frame = is_end_of_line &: last_line in
     let last_beat_of_vertical_front_porch = v_cnt ==:. Config.v_fp - 1 in
     let last_beat_of_vertical_sync = v_cnt ==:. Config.v_fp + Config.v_sync - 1 in
@@ -67,6 +85,7 @@ module Make (Config : Config) = struct
     (* Inside the real horizontal area of the signal rather than the margins *)
     let h_active =
       reg_fb
+        ~enable:enable_this_cycle
         ~width:1
         ~f:(fun t ->
           mux2 last_beat_of_horizontal_back_porch vdd (mux2 is_end_of_line gnd t))
@@ -75,6 +94,7 @@ module Make (Config : Config) = struct
     (* Inside the real vertical area of the signal rather than the margins *)
     let v_active =
       reg_fb
+        ~enable:enable_this_cycle
         ~width:1
         ~f:(fun t ->
           mux2
@@ -87,6 +107,7 @@ module Make (Config : Config) = struct
       (* The horizontal line signal is
          [data] [ front porch ] [ sync ] [ back porch ] *)
       reg_fb
+        ~enable:enable_this_cycle
         ~width:1
         ~f:(fun t ->
           mux2
@@ -97,6 +118,7 @@ module Make (Config : Config) = struct
     in
     let v_sync =
       reg_fb
+        ~enable:enable_this_cycle
         ~width:1
         ~f:(fun t ->
           let start =
@@ -108,7 +130,7 @@ module Make (Config : Config) = struct
     in
     (* We are draining data now and not margin *)
     let video_active = v_active &: h_active in
-    { O.h_sync; v_sync; video_active; next_frame }
+    { O.video_clock = enable_this_cycle; h_sync; v_sync; video_active; next_frame }
   ;;
 
   let hierarchical (scope : Scope.t) =

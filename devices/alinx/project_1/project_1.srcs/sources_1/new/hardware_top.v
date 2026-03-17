@@ -108,7 +108,7 @@ top cpu (
     .dma_clock$clear(clear),
     .memory_clock$clock(hart_clock),
     .memory_clock$clear(clear),
-    .video_clock$clock(video_clock),
+    .video_clock$clock(hart_clock),
     .video_clock$clear(clear),
     .uart_rx(uart_rx),
 
@@ -152,6 +152,7 @@ top cpu (
 
 assign uart_tx = cpu.uart_tx;
 
+assign vout_clk = cpu.video_out$video_signals$video_clock;
 assign vout_data = cpu.video_out$video_data$vdata;
 assign vout_hs = cpu.video_out$video_signals$h_sync;
 assign vout_vs = cpu.video_out$video_signals$v_sync;
@@ -264,7 +265,6 @@ assign led1 = rst_n;
 assign led2 = ~uart_rx;
 assign led3 = ~cpu.uart_rx_valid;
 
-assign vout_clk = video_clock;
 assign hdmi_nreset = locked;
 
 endmodule

@@ -135,7 +135,7 @@ struct
     whole_component + if ratio_component <> 0 then 1 else 0
   ;;
 
-  (* In RGB mode we might have some pixels that don't align with read widths. E.g.,  
+  (* In RGB (unaligned) mode we might have some pixels that don't align with read widths. E.g.,  
      
        32 bits
        [ R; G; B; R ]  [ G ; B; R ; G ] [ B; R; G: B ] -> 1 bit misaligned

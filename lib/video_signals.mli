@@ -13,12 +13,14 @@ module type Config = sig
   val v_fp : int
   val v_sync : int
   val v_bp : int
+  val enable_every_n_cycles : int
   val clock_domain : Custom_clock_domain.t
 end
 
 module Video_signals : sig
   type 'a t =
-    { video_active : 'a
+    { video_clock : 'a
+    ; video_active : 'a
     ; v_sync : 'a
     ; h_sync : 'a
     ; next_frame : 'a
