@@ -990,6 +990,8 @@ module Cpu_with_no_io_controller =
           (module struct
             let line_width = 8
             let num_cache_lines = 8
+            let register_responses = true
+            let register_axi_requests = true
           end : System_intf.Cache_config)
       ;;
     end)
@@ -1109,6 +1111,8 @@ module Cpu_with_dma_memory =
           (module struct
             let line_width = 8
             let num_cache_lines = 8
+            let register_responses = true
+            let register_axi_requests = true
           end : System_intf.Cache_config)
       ;;
     end)
@@ -1324,7 +1328,7 @@ module With_dma_ram = struct
     [%expect
       {|
       ("PC: " 24 REG:
-       (0 11 8000000 2 29 18500000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+       (0 12 8500000 2 31 20000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         0 0))
       |}]
   ;;

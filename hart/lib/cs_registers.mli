@@ -33,5 +33,10 @@ module Make (Hart_config : Hart_config_intf.S) : sig
     [@@deriving hardcaml]
   end
 
-  val hierarchical : clock_frequency:int -> Scope.t -> Signal.t I.t -> Signal.t O.t
+  val hierarchical
+    :  initialize_registers_to:Bits.t (* Used for testing *)
+    -> clock_frequency:int
+    -> Scope.t
+    -> Signal.t I.t
+    -> Signal.t O.t
 end

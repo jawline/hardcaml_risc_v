@@ -106,8 +106,7 @@ let command =
     (let open Command.Let_syntax in
      let open Command.Param in
      let%map device_filename = anon ("device-filename" %: string)
-     and program_filename = anon ("program-filename" %: string)
-     and just_clear = anon ("clear" %: bool) in
+     and program_filename = anon ("program-filename" %: string) in
      fun () ->
        printf "Opening device\n";
        (* Pick an arbitrary clock frequency, it doesn't matter for stty settings. *)
@@ -119,24 +118,22 @@ let command =
            ~parity_bit:settings.include_parity_bit
            ~device_filename
        in
-       if not just_clear
-       then (
-         print_s [%message "Loading program" ~_:(program_filename : string)];
-         let program = In_channel.read_all program_filename in
-         print_s [%message "Progam length: " ~_:(String.length program : int)];
-         (* Split our program into chunks and send it. *)
-         let chunk_sz = 4096 in
-         String.to_list program
-         |> List.chunks_of ~length:chunk_sz
-         |> List.map ~f:String.of_char_list
-         |> List.mapi ~f:(fun i t -> i, t)
-         |> List.rev
-            (* Send in reverse order, this is just to prevent the program sort of running while it gets loaded. *)
-         |> List.iter ~f:(fun (index, chunk) ->
-           let address = index * chunk_sz in
-           print_s [%message "Sending chunk" (index : int) (address : int)];
-           send_chunk ~writer ~address ~chunk;
-           ()));
+       print_s [%message "Loading program" ~_:(program_filename : string)];
+       let program = In_channel.read_all program_filename in
+       print_s [%message "Progam length: " ~_:(String.length program : int)];
+       (* Split our program into chunks and send it. *)
+       let chunk_sz = 4096 in
+       String.to_list program
+       |> List.chunks_of ~length:chunk_sz
+       |> List.map ~f:String.of_char_list
+       |> List.mapi ~f:(fun i t -> i, t)
+       |> List.rev
+          (* Send in reverse order, this is just to prevent the program sort of running while it gets loaded. *)
+       |> List.iter ~f:(fun (index, chunk) ->
+         let address = index * chunk_sz in
+         print_s [%message "Sending chunk" (index : int) (address : int)];
+         send_chunk ~writer ~address ~chunk;
+         ());
        (* Send a clear signal to the device. *)
        print_s [%message "Sending clear signal via DMA"];
        do_write ~ch:writer clear_packet;

@@ -253,6 +253,7 @@ struct
       in
       let csr =
         Csr.hierarchical
+          ~initialize_registers_to:(Bits.zero 64)
           scope
           { Csr.I.clock; valid; instruction = decoded_instruction; instret }
       in

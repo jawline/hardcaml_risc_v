@@ -29,11 +29,13 @@ module Make (Hart_config : Hart_config_intf.S) (Bank_config : Bank_config) = str
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create _scope { I.clock = _; enable; is_write; address; write_value } =
+  let create scope { I.clock = _; enable; is_write; address; write_value } =
+    let%hw enable = enable in
+    let%hw bank_address = address in
     let result =
       Bank_config.register_io
         ~valid:enable
-        ~address
+        ~address:bank_address
         ~also_write:is_write
         ~value:write_value
     in

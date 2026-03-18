@@ -23,5 +23,9 @@ module Make
     [@@deriving hardcaml]
   end
 
-  val hierarchical : Scope.t -> Signal.t I.t -> Signal.t O.t
+  val hierarchical
+    :  initialize_registers_to:Bits.t
+    -> Scope.t
+    -> Signal.t I.t
+    -> Signal.t O.t
 end

@@ -6,7 +6,7 @@ open Hardcaml_io_framework
 open Hardcaml_io_controller
 open! Bits
 
-let debug = false
+let debug = true
 
 module Memory_controller = Test_memory_controller
 open Memory_controller.Memory_bus
@@ -177,6 +177,8 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
        inputs.clear := vdd;
        Cyclesim.cycle sim;
        inputs.clear := gnd;
+       Cyclesim.cycle sim;
+       Cyclesim.cycle sim;
        Cyclesim.cycle sim;
        List.iter
          ~f:(fun (address, packet) ->
@@ -787,6 +789,7 @@ let%expect_test "test" =
     Doing a DMA read:
     ("00000000  51 00 07 47 6f 6f 64 62  79 65                    |Q..Goodbye|")
     2002
+    Saved waves to /var/home/blake/waves//_test.hardcamlwaveform
     |}];
   test
     ~clock_frequency:1000
@@ -795,7 +798,7 @@ let%expect_test "test" =
     ~stop_bits:1
     ~packets:[ 8, "Hello world!"; 16, "What's going on!"; 0, "Goodbye world"; 8, ":(" ]
     ~verbose:false;
-  [%expect {| |}]
+  [%expect {| Saved waves to /var/home/blake/waves//_test_1.hardcamlwaveform |}]
 ;;
 
 let%expect_test "fuzz" =
@@ -807,35 +810,100 @@ let%expect_test "fuzz" =
       ~stop_bits:1
       ~packets:[ 0, test_str; 48, test_str ]
       ~verbose:false);
-  [%expect {| |}]
+  [%expect
+    {|
+    Saved waves to /var/home/blake/waves//_fuzz.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_1.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_2.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_3.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_4.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_5.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_6.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_7.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_8.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_9.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_10.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_11.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_12.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_13.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_14.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_15.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_16.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_17.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_18.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_19.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_20.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_21.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_22.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_23.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_24.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_25.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_26.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_27.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_28.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_29.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_30.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_31.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_32.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_33.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_34.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_35.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_36.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_37.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_38.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_39.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_40.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_41.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_42.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_43.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_44.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_45.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_46.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_47.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_48.hardcamlwaveform
+    Saved waves to /var/home/blake/waves//_fuzz_49.hardcamlwaveform
+    |}]
 ;;
 
 let%expect_test "large packet" =
   test
-    ~clock_frequency:1000
-    ~baud_rate:50
+    ~clock_frequency:4
+    ~baud_rate:2
     ~include_parity_bit:false
     ~stop_bits:1
-    ~packets:[ 0, String.init ~f:(fun i -> Char.of_int_exn (i % 255)) 65535 ]
+    ~packets:[ 0, String.init ~f:(fun i -> Char.of_int_exn (i % 255)) 2048 ]
     ~verbose:false;
   [%expect.unreachable]
 [@@expect.uncaught_exn
-  {|
+  {xxx|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
-  ("[of_unsigned_int] input value is too large for given width" (width 16)
-    (max_value 65535) (x 65539))
+  ("BUG: Packet differs"
+    (received
+      "\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128\128")
+    (packet
+       "\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007\b\t\
+      \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007"))
   Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
   Called from Base__Error.raise_s in file "src/error.ml" (inlined), line 24, characters 48-72
-  Called from Hardcaml__Comb.Make.of_unsigned in file "src/comb.ml", lines 235-240, characters 6-24
-  Called from Hardcaml__Comb.Make.of_unsigned_int in file "src/comb.ml" (inlined), line 290, characters 24-61
-  Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.test.(fun) in file "io_controller/test/test_end_to_end_dma_uart.ml", line 187, characters 15-65
+  Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.test.(fun).issue_read in file "io_controller/test/test_end_to_end_dma_uart.ml", line 247, characters 15-88
   Called from Base__List0.iter.loop in file "src/list0.ml", line 94, characters 6-9
   Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
   Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
   Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
-  Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.(fun) in file "io_controller/test/test_end_to_end_dma_uart.ml", lines 367-373, characters 2-18
+  Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.(fun) in file "io_controller/test/test_end_to_end_dma_uart.ml", lines 869-875, characters 2-18
   Called from Ppx_expect_runtime__Test_block.Configured.dump_backtrace in file "runtime/test_block.ml", line 350, characters 10-25
-  |}]
+
+  Trailing output
+  ---------------
+  Saved waves to /var/home/blake/waves//_large_packet.hardcamlwaveform
+  |xxx}]
 ;;

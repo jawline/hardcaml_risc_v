@@ -40,7 +40,7 @@ module hardware_top(
 );
 
 // Clocks
-clk_wiz_0 ( .clk_in1_p(clock_200_p), .clk_in1_n(clock_200_n), .memory_clock(memory_reference_clock), .video_clock(video_clock), .i2c_clock(i2c_clock), .reset(~rst_n), .locked(locked) );
+clk_wiz_0 ( .clk_in1_p(clock_200_p), .clk_in1_n(clock_200_n), .memory_clock(memory_reference_clock), .video_clock(video_clock), .usr_clk_200(usr_clk_200), .reset(~rst_n), .locked(locked) );
 
 // Video signalling
 wire                       video_hs;
@@ -67,8 +67,8 @@ wire        axi_valid_w;
 wire        axi_ready_w; // Slave to Master
 
 // Write Data Channel
-wire [255:0] axi_wdata;
-wire [31:0]  axi_wstrb;
+wire [127:0] axi_wdata;
+wire [15:0]  axi_wstrb;
 wire        axi_wlast;
 wire        axi_wvalid;
 wire        axi_wready; // Slave to Master
@@ -94,7 +94,7 @@ wire        axi_ready_r; // Slave to Master
 
 // Read Data Channel (Slave to Master)
 wire         axi_rid;
-wire [255:0] axi_rdata;
+wire [127:0] axi_rdata;
 wire [1:0]  axi_rresp;
 wire        axi_rlast;
 wire        axi_rvalid;
@@ -161,6 +161,7 @@ assign vout_de = cpu.video_out$video_signals$video_active;
 // Memory instantiation
 ddr3 u_ddr3 (
     .sys_clk_i                      (memory_reference_clock),
+    .clk_ref_i                      (usr_clk_200),
     .sys_rst                        (rst_n),
     .aresetn                        (rst_n),
     .app_sr_req(1'b0),
@@ -240,7 +241,7 @@ wire[31:0]                 lut_data;
 
 i2c_config i2c_config_m0(
         .rst                        (~locked                  ),
-        .clk                        (i2c_clock                ),
+        .clk                        (usr_clk_200              ),
         .clk_div_cnt                (16'd500                  ),
         .i2c_addr_2byte             (1'b0                     ),
         .lut_index                  (lut_index                ),
@@ -259,7 +260,7 @@ lut_hdmi lut_hdmi_m0(
 );
 
 
-assign clear = ~(done_9134);
+assign clear = ~init_calib_complete;
 
 assign led1 = rst_n;
 assign led2 = ~uart_rx;

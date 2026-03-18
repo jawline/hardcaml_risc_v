@@ -29,11 +29,16 @@ struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create scope ({ clock; valid; instruction; instret } : _ I.t) =
+  let create
+        ~initialize_registers_to
+        scope
+        ({ clock; valid; instruction; instret } : _ I.t)
+    =
     (* TODO: Send a zero / sign extend signal too so the bank can decide how to expand bank signals smaller than the Hart register with. *)
     let csrrw = instruction.funct3 ==:. Funct3.System.to_int Csrrw in
     let register_io =
       Cs_registers.hierarchical
+        ~initialize_registers_to
         ~clock_frequency:Hart_config.clock_domain.frequency
         scope
         { Cs_registers.I.clock
@@ -48,8 +53,8 @@ struct
     { O.valid = register_io.valid; value = register_io.value }
   ;;
 
-  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~initialize_registers_to (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"csr" create input
+    H.hierarchical ~scope ~name:"csr" (create ~initialize_registers_to) input
   ;;
 end

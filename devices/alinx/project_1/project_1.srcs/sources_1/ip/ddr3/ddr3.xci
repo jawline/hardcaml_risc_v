@@ -7,7 +7,7 @@
     "gen_directory": "../../../../ddr3_test.gen/sources_1/ip/ddr3",
     "parameters": {
       "component_parameters": {
-        "XML_INPUT_FILE": [ { "value": "mig_a.prj", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
+        "XML_INPUT_FILE": [ { "value": "mig_b.prj", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "RESET_BOARD_INTERFACE": [ { "value": "Custom", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "MIG_DONT_TOUCH_PARAM": [ { "value": "Custom", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "BOARD_MIG_PARAM": [ { "value": "Custom", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
@@ -16,7 +16,7 @@
       "model_parameters": {
         "NoOfControllers": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "COMBINED_INTERFACE": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "REFCLK_TYPE": [ { "value": "NONE", "resolve_type": "generated", "usage": "all" } ],
+        "REFCLK_TYPE": [ { "value": "NOBUF", "resolve_type": "generated", "usage": "all" } ],
         "MEM_TYPE": [ { "value": "DDR3", "resolve_type": "generated", "usage": "all" } ],
         "TEMP_MON_CONTROL": [ { "value": "INTERNAL", "resolve_type": "generated", "usage": "all" } ],
         "POLARITY": [ { "value": "ACTIVE_LOW", "resolve_type": "generated", "usage": "all" } ],
@@ -77,7 +77,7 @@
         "DDRX_nCK_PER_CLK": [ { "value": "2", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "DDRX_DATA_WIDTH": [ { "value": "8", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "DDR3_ADDR_WIDTH": [ { "value": "29", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "DDR3_nCK_PER_CLK": [ { "value": "4", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "DDR3_nCK_PER_CLK": [ { "value": "2", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "DDR3_DATA_WIDTH": [ { "value": "32", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "DDR2_ADDR_WIDTH": [ { "value": "8", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "DDR2_nCK_PER_CLK": [ { "value": "2", "resolve_type": "generated", "format": "long", "usage": "all" } ],
@@ -85,10 +85,10 @@
         "LPDDR2_ADDR_WIDTH": [ { "value": "8", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "LPDDR2_nCK_PER_CLK": [ { "value": "2", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "LPDDR2_DATA_WIDTH": [ { "value": "8", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "FREQ_HZ": [ { "value": "100000000", "resolve_type": "generated", "format": "float", "usage": "all" } ],
+        "FREQ_HZ": [ { "value": "160000000", "resolve_type": "generated", "format": "float", "usage": "all" } ],
         "PHASE": [ { "value": "0.000", "resolve_type": "generated", "format": "float", "usage": "all" } ],
         "UI_EXTRA_CLOCKS": [ { "value": "FALSE", "resolve_type": "generated", "usage": "all" } ],
-        "MMCM_VCO": [ { "value": "800", "resolve_type": "generated", "format": "float", "usage": "all" } ],
+        "MMCM_VCO": [ { "value": "640", "resolve_type": "generated", "format": "float", "usage": "all" } ],
         "MMCM_CLKOUT0_FREQ": [ { "value": "10.0", "resolve_type": "generated", "format": "float", "usage": "all" } ],
         "MMCM_CLKOUT1_FREQ": [ { "value": "10", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "MMCM_CLKOUT2_FREQ": [ { "value": "10", "resolve_type": "generated", "format": "long", "usage": "all" } ],
@@ -104,7 +104,7 @@
         "C_S_AXI_CTRL_ADDR_WIDTH": [ { "value": "32", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_S_AXI_CTRL_MEM_SIZE": [ { "value": "1048576", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_S_AXI_ID_WIDTH": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "C_S_AXI_DATA_WIDTH": [ { "value": "256", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "C_S_AXI_DATA_WIDTH": [ { "value": "128", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_S_AXI_ADDR_WIDTH": [ { "value": "30", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_S_AXI_MEM_SIZE": [ { "value": "1073741824", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "QDRIIP_NUM_DEVICES": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
@@ -1189,6 +1189,7 @@
     "boundary": {
       "ports": {
         "sys_rst": [ { "direction": "in" } ],
+        "clk_ref_i": [ { "direction": "in", "display_name": "Clock P", "description": "Clock P" } ],
         "ddr3_dq": [ { "direction": "inout", "size_left": "31", "size_right": "0", "display_name": "Data", "description": "Data" } ],
         "ddr3_dqs_p": [ { "direction": "inout", "size_left": "3", "size_right": "0", "display_name": "Data Strobe", "description": "Data Strobe" } ],
         "ddr3_dqs_n": [ { "direction": "inout", "size_left": "3", "size_right": "0", "display_name": "Data Strobe", "description": "Data Strobe" } ],
@@ -1217,8 +1218,8 @@
         "s_axi_awqos": [ { "direction": "in", "size_left": "3", "size_right": "0", "driver_value": "0" } ],
         "s_axi_awvalid": [ { "direction": "in" } ],
         "s_axi_awready": [ { "direction": "out" } ],
-        "s_axi_wdata": [ { "direction": "in", "size_left": "255", "size_right": "0" } ],
-        "s_axi_wstrb": [ { "direction": "in", "size_left": "31", "size_right": "0" } ],
+        "s_axi_wdata": [ { "direction": "in", "size_left": "127", "size_right": "0" } ],
+        "s_axi_wstrb": [ { "direction": "in", "size_left": "15", "size_right": "0" } ],
         "s_axi_wlast": [ { "direction": "in" } ],
         "s_axi_wvalid": [ { "direction": "in" } ],
         "s_axi_wready": [ { "direction": "out" } ],
@@ -1239,7 +1240,7 @@
         "s_axi_arready": [ { "direction": "out" } ],
         "s_axi_rready": [ { "direction": "in" } ],
         "s_axi_rid": [ { "direction": "out", "size_left": "0", "size_right": "0" } ],
-        "s_axi_rdata": [ { "direction": "out", "size_left": "255", "size_right": "0" } ],
+        "s_axi_rdata": [ { "direction": "out", "size_left": "127", "size_right": "0" } ],
         "s_axi_rresp": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
         "s_axi_rlast": [ { "direction": "out" } ],
         "s_axi_rvalid": [ { "direction": "out" } ],
@@ -1260,6 +1261,24 @@
           },
           "port_maps": {
             "RST": [ { "physical_name": "sys_rst" } ]
+          }
+        },
+        "CLK_REF_I": {
+          "vlnv": "xilinx.com:signal:clock:1.0",
+          "abstraction_type": "xilinx.com:signal:clock_rtl:1.0",
+          "mode": "slave",
+          "parameters": {
+            "FREQ_HZ": [ { "value": "100000000", "resolve_type": "generated", "format": "long", "is_static_object": false } ],
+            "FREQ_TOLERANCE_HZ": [ { "value": "0", "resolve_type": "generated", "format": "long", "is_static_object": false } ],
+            "PHASE": [ { "value": "0.0", "resolve_type": "generated", "format": "float", "is_static_object": false } ],
+            "CLK_DOMAIN": [ { "value": "", "resolve_type": "generated", "is_static_object": false } ],
+            "ASSOCIATED_BUSIF": [ { "value": "", "resolve_type": "generated", "is_static_object": false } ],
+            "ASSOCIATED_PORT": [ { "value": "", "resolve_type": "generated", "is_static_object": false } ],
+            "ASSOCIATED_RESET": [ { "value": "", "resolve_type": "generated", "is_static_object": false } ],
+            "INSERT_VIP": [ { "value": "0", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_static_object": false } ]
+          },
+          "port_maps": {
+            "CLK": [ { "physical_name": "clk_ref_i" } ]
           }
         },
         "DDR3": {
@@ -1371,7 +1390,7 @@
           "abstraction_type": "xilinx.com:signal:clock_rtl:1.0",
           "mode": "master",
           "parameters": {
-            "FREQ_HZ": [ { "value": "100000000", "resolve_type": "dependent", "format": "float", "usage": "all" } ],
+            "FREQ_HZ": [ { "value": "160000000", "resolve_type": "dependent", "format": "float", "usage": "all" } ],
             "ASSOCIATED_BUSIF": [ { "value": "S_AXI:S_AXI_CTRL", "value_src": "constant", "usage": "all" } ],
             "ASSOCIATED_RESET": [ { "value": "aresetn:ui_clk_sync_rst", "value_src": "constant", "usage": "all" } ],
             "PHASE": [ { "value": "0", "resolve_type": "dependent", "format": "float", "usage": "all" } ],
@@ -1470,8 +1489,8 @@
           "mode": "slave",
           "memory_map_ref": "memmap",
           "parameters": {
-            "FREQ_HZ": [ { "value": "100000000", "resolve_type": "dependent", "format": "float", "usage": "all" } ],
-            "DATA_WIDTH": [ { "value": "256", "value_src": "auto", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "FREQ_HZ": [ { "value": "160000000", "resolve_type": "dependent", "format": "float", "usage": "all" } ],
+            "DATA_WIDTH": [ { "value": "128", "value_src": "auto", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
             "PROTOCOL": [ { "value": "AXI4", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
             "ID_WIDTH": [ { "value": "1", "value_src": "auto", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
             "ADDR_WIDTH": [ { "value": "30", "value_src": "auto", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
@@ -1659,5 +1678,5 @@
       }
     }
   },
-  "checksum": "64cf87e8"
+  "checksum": "27e90e40"
 }

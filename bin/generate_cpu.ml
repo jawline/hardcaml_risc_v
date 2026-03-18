@@ -15,7 +15,10 @@ module Make_base (C : sig
     val include_cache_with_n_lines : int option
   end) =
 struct
-  module Video_signal_generator_config_640_480 = struct
+  let round_nearest_div x y = Int.round x ~to_multiple_of:y ~dir:`Nearest / y
+
+  (*
+  module Video_signal_generator_config_640_480_60hz = struct
     (* 25~Mhz. *)
     let h_active = 640
     let v_active = 480
@@ -26,12 +29,36 @@ struct
     let v_sync = 2
     let v_bp = 33
     let clock_domain = C.video_clock
-    let enable_every_n_cycles = C.video_clock.frequency / 25_000_000
+    let enable_every_n_cycles = round_nearest_div C.video_clock.frequency 25_000_000
+    let _ = enable_every_n_cycles (* TODO: MLI so this doesn't get marked as unused *)
   end
 
+  module Video_signal_generator_config_640_480_30hz = struct
+    include Video_signal_generator_config_640_480_60hz
+
+    let enable_every_n_cycles = round_nearest_div C.video_clock.frequency 12_500_000
+  end *)
+
+  module Video_signal_generator_config_800_600_60hz = struct
+    (* 40.000 Mhz. *)
+    let h_active = 800
+    let v_active = 600
+    let h_fp = 40
+    let h_sync = 128
+    let h_bp = 88
+    let v_fp = 1
+    let v_sync = 4
+    let v_bp = 23
+    let clock_domain = C.video_clock
+    let enable_every_n_cycles = round_nearest_div C.video_clock.frequency 40_000_000
+    let _ = enable_every_n_cycles
+  end
+
+  module Used_video = Video_signal_generator_config_800_600_60hz
+
   module Framebuffer_config = struct
-    let output_width = Video_signal_generator_config_640_480.h_active
-    let output_height = Video_signal_generator_config_640_480.v_active
+    let output_width = Used_video.h_active
+    let output_height = Used_video.v_active
     let input_width = 320
     let input_height = 200
     let framebuffer_address = C.framebuffer_address_in_memory
@@ -68,7 +95,7 @@ struct
       then
         Video_config.Video_out
           ( (module Framebuffer_config : Video_out_intf.Config)
-          , (module Video_signal_generator_config_640_480 : Video_signals.Config) )
+          , (module Used_video : Video_signals.Config) )
       else No_video_out
     ;;
 
@@ -80,8 +107,16 @@ struct
       | Some num_lines ->
         Some
           (module struct
-            let line_width = 8
+            let () =
+              Core.eprint_s
+                [%message
+                  "Remember to set this to 16 and make memory requester multi beat\n"]
+            ;;
+
+            let line_width = 4
             let num_cache_lines = num_lines
+            let register_responses = true (* TODO: Make this configurable *)
+            let register_axi_requests = true
           end : System_intf.Cache_config)
       | None -> None
     ;;

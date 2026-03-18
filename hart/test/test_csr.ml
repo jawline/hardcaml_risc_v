@@ -8,8 +8,16 @@ module Decoded_instruction = Decoded_instruction.Make (Example_hart) (Registers)
 module Csr = Csr.Make (Example_hart) (Registers) (Decoded_instruction)
 module Harness = Cyclesim_harness.Make (Csr.I) (Csr.O)
 
+let debug = false
+let waves_config = Waves_config.to_home_subdirectory_when debug
+
 let create_sim f =
-  Harness.run ~create:Csr.hierarchical (fun ~inputs:_ ~outputs:_ sim -> f sim)
+  Harness.run
+    ~waves_config
+    ~create:
+      (Csr.hierarchical
+         ~initialize_registers_to:(Bits.of_unsigned_int ~width:64 0x0000FFFF_FFFFFFFF))
+    (fun ~inputs:_ ~outputs:_ sim -> f sim)
 ;;
 
 let print (outputs : _ Csr.O.t) =
@@ -45,6 +53,14 @@ let%expect_test "read registers test" =
     print (Csr.O.map ~f:(fun t -> !t) outputs);
     read_register ~address:0xC80 sim;
     print (Csr.O.map ~f:(fun t -> !t) outputs);
+    [%expect
+      {|
+      Cycle
+      ((valid 1) (value 99))
+      ((valid 1) (value 65536))
+      ((valid 1) (value 101))
+      ((valid 1) (value 65536))
+      |}];
     print_s [%message "Time"];
     read_register ~address:0xC01 sim;
     print (Csr.O.map ~f:(fun t -> !t) outputs);
@@ -54,6 +70,14 @@ let%expect_test "read registers test" =
     print (Csr.O.map ~f:(fun t -> !t) outputs);
     read_register ~address:0xC81 sim;
     print (Csr.O.map ~f:(fun t -> !t) outputs);
+    [%expect
+      {|
+      Time
+      ((valid 1) (value 2079))
+      ((valid 1) (value 65536))
+      ((valid 1) (value 2119))
+      ((valid 1) (value 65536))
+      |}];
     print_s [%message "Instret"];
     let inputs : _ Csr.I.t = Cyclesim.inputs sim in
     inputs.instret := vdd;
@@ -68,20 +92,10 @@ let%expect_test "read registers test" =
     print (Csr.O.map ~f:(fun t -> !t) outputs));
   [%expect
     {|
-    Cycle
-    ((valid 1) (value 100))
-    ((valid 1) (value 0))
-    ((valid 1) (value 102))
-    ((valid 1) (value 0))
-    Time
-    ((valid 1) (value 2080))
-    ((valid 1) (value 0))
-    ((valid 1) (value 2120))
-    ((valid 1) (value 0))
     Instret
-    ((valid 1) (value 25))
-    ((valid 1) (value 0))
-    ((valid 1) (value 27))
-    ((valid 1) (value 0))
+    ((valid 1) (value 24))
+    ((valid 1) (value 65536))
+    ((valid 1) (value 26))
+    ((valid 1) (value 65536))
     |}]
 ;;
