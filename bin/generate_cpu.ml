@@ -113,7 +113,7 @@ struct
                   "Remember to set this to 16 and make memory requester multi beat\n"]
             ;;
 
-            let line_width = 4
+            let line_width = 16
             let num_cache_lines = num_lines
             let register_responses = true (* TODO: Make this configurable *)
             let register_axi_requests = true
