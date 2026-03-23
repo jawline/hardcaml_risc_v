@@ -107,11 +107,6 @@ struct
       | Some num_lines ->
         Some
           (module struct
-            let () =
-              Core.eprint_s
-                [%message
-                  "Remember to set this to 16 and make memory requester multi beat\n"]
-            ;;
 
             let line_width = 16
             let num_cache_lines = num_lines
