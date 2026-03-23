@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-dune exec ./bin/generate_cpu.exe -- generate-rtl-with-axi -hart-frequency 160_000_000 -memory-frequency 160_000_000 -video-frequency 160_000_000 -memory-capacity-in-bytes 1073741824 -memory-id-tag-width 1 -memory-addr-width 30 -memory-width 128 -burst-length-bits 8 -framebuffer-address-in-memory 134217728 -include-video-out true  -include-cache 2048 1> ./rtl/alinx.v
+echo "TODO: Remember to swap back the cache size"
+dune exec ./bin/generate_cpu.exe -- generate-rtl-with-axi -hart-frequency 160_000_000 -memory-frequency 160_000_000 -video-frequency 160_000_000 -memory-capacity-in-bytes 1073741824 -memory-id-tag-width 1 -memory-addr-width 30 -memory-width 128 -burst-length-bits 8 -framebuffer-address-in-memory 134217728 -include-video-out true  -include-cache 512 1> ./rtl/alinx.v
