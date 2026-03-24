@@ -17,7 +17,6 @@ module Make_base (C : sig
 struct
   let round_nearest_div x y = Int.round x ~to_multiple_of:y ~dir:`Nearest / y
 
-  (*
   module Video_signal_generator_config_640_480_60hz = struct
     (* 25~Mhz. *)
     let h_active = 640
@@ -33,11 +32,12 @@ struct
     let _ = enable_every_n_cycles (* TODO: MLI so this doesn't get marked as unused *)
   end
 
+  (*
   module Video_signal_generator_config_640_480_30hz = struct
     include Video_signal_generator_config_640_480_60hz
 
     let enable_every_n_cycles = round_nearest_div C.video_clock.frequency 12_500_000
-  end *)
+  end 
 
   module Video_signal_generator_config_800_600_60hz = struct
     (* 40.000 Mhz. *)
@@ -52,9 +52,9 @@ struct
     let clock_domain = C.video_clock
     let enable_every_n_cycles = round_nearest_div C.video_clock.frequency 40_000_000
     let _ = enable_every_n_cycles
-  end
+  end  *)
 
-  module Used_video = Video_signal_generator_config_800_600_60hz
+  module Used_video = Video_signal_generator_config_640_480_60hz
 
   module Framebuffer_config = struct
     let output_width = Used_video.h_active
