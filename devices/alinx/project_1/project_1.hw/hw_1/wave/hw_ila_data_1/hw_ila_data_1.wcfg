@@ -10,14 +10,23 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0"></ZoomStartTime>
-      <ZoomEndTime time="21"></ZoomEndTime>
-      <Cursor1Time time="505"></Cursor1Time>
+      <ZoomEndTime time="1,025"></ZoomEndTime>
+      <Cursor1Time time="512"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="826"></NameColumnWidth>
-      <ValueColumnWidth column_width="255"></ValueColumnWidth>
+      <ValueColumnWidth column_width="251"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="56" />
+   <WVObjectSize size="43" />
+   <wave_markers>
+   </wave_markers>
+   <wvobject type="logic" fp_name="c">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">c</obj_property>
+      <obj_property name="ObjectShortName">c</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
    <wvobject type="logic" fp_name="cpu/system/hart_0/execute_pipeline/fetch/clock$clear">
       <obj_property name="DisplayName">FullPathName</obj_property>
       <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/clock$clear</obj_property>
@@ -29,14 +38,6 @@
       <obj_property name="DisplayName">FullPathName</obj_property>
       <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/input_valid</obj_property>
       <obj_property name="ObjectShortName">input_valid</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/hart_0/execute_pipeline/fetch/read_bus$data$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/read_bus$data$address[30:0]</obj_property>
-      <obj_property name="ObjectShortName">read_bus$data$address[30:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
@@ -54,100 +55,18 @@
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/hart_0/execute_pipeline/fetch/read_response$valid">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/read_response$valid</obj_property>
+      <obj_property name="ObjectShortName">read_response$valid</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
    <wvobject type="array" fp_name="cpu/system/hart_0/execute_pipeline/fetch/read_response$value$read_data">
       <obj_property name="DisplayName">FullPathName</obj_property>
       <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/read_response$value$read_data[31:0]</obj_property>
       <obj_property name="ObjectShortName">read_response$value$read_data[31:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/hart_0/execute_pipeline/fetch/valid">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/valid</obj_property>
-      <obj_property name="ObjectShortName">valid</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/downstream_locked">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/downstream_locked</obj_property>
-      <obj_property name="ObjectShortName">downstream_locked</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/read_ready">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/read_ready</obj_property>
-      <obj_property name="ObjectShortName">read_ready</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$address[31:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$address[31:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$cache_cell_one_hot">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$cache_cell_one_hot[15:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$cache_cell_one_hot[15:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$id">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$id[1:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$id[1:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$is_write">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$is_write</obj_property>
-      <obj_property name="ObjectShortName">selected$is_write</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/write_ready">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/write_ready</obj_property>
-      <obj_property name="ObjectShortName">write_ready</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/cache_ram/meta$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/cache_ram/meta$address[27:0]</obj_property>
-      <obj_property name="ObjectShortName">meta$address[27:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/cache_ram/meta$dirty">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/cache_ram/meta$dirty</obj_property>
-      <obj_property name="ObjectShortName">meta$dirty</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/cache_ram/read$cache_address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/cache_ram/read$cache_address[8:0]</obj_property>
-      <obj_property name="ObjectShortName">read$cache_address[8:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/cache_ram/write$cell_valid">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/cache_ram/write$cell_valid</obj_property>
-      <obj_property name="ObjectShortName">write$cell_valid</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
@@ -159,86 +78,193 @@
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/address_transferred">
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$address">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/address_transferred</obj_property>
-      <obj_property name="ObjectShortName">address_transferred</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARADDR">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARADDR[29:6]</obj_property>
-      <obj_property name="ObjectShortName">axi$ARADDR[29:6]</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$address[27:0]</obj_property>
+      <obj_property name="ObjectShortName">ram_read$meta$address[27:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARREADY">
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$dirty">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARREADY</obj_property>
-      <obj_property name="ObjectShortName">axi$ARREADY</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$dirty</obj_property>
+      <obj_property name="ObjectShortName">ram_read$meta$dirty</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARVALID">
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$strb">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARVALID</obj_property>
-      <obj_property name="ObjectShortName">axi$ARVALID</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$RDATA">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$RDATA[127:0]</obj_property>
-      <obj_property name="ObjectShortName">axi$RDATA[127:0]</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$strb[63:0]</obj_property>
+      <obj_property name="ObjectShortName">ram_read$meta$strb[63:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$RVALID">
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$valid">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$RVALID</obj_property>
-      <obj_property name="ObjectShortName">axi$RVALID</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_read$meta$valid</obj_property>
+      <obj_property name="ObjectShortName">ram_read$meta$valid</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/finished">
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_write$address">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/finished</obj_property>
-      <obj_property name="ObjectShortName">finished</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request$address[29:6]</obj_property>
-      <obj_property name="ObjectShortName">request$address[29:6]</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_write$address[27:9]</obj_property>
+      <obj_property name="ObjectShortName">ram_write$address[27:9]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request$id">
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_write$cache_address">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request$id[1:0]</obj_property>
-      <obj_property name="ObjectShortName">request$id[1:0]</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_write$cache_address[5:0]</obj_property>
+      <obj_property name="ObjectShortName">ram_write$cache_address[5:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$address">
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_write$dirty">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$address[29:6]</obj_property>
-      <obj_property name="ObjectShortName">request_reg$address[29:6]</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_write$dirty</obj_property>
+      <obj_property name="ObjectShortName">ram_write$dirty</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/ram_write$valid">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/ram_write$valid</obj_property>
+      <obj_property name="ObjectShortName">ram_write$valid</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/read_request$address">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/read_request$address[29:6]</obj_property>
+      <obj_property name="ObjectShortName">read_request$address[29:6]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$id">
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/read_request$id">
       <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$id[1:0]</obj_property>
-      <obj_property name="ObjectShortName">request_reg$id[1:0]</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/read_request$id[1:0]</obj_property>
+      <obj_property name="ObjectShortName">read_request$id[1:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/read_request$valid">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/read_request$valid</obj_property>
+      <obj_property name="ObjectShortName">read_request$valid</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/read_response$address">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/read_response$address[29:6]</obj_property>
+      <obj_property name="ObjectShortName">read_response$address[29:6]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/read_response$finished">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/read_response$finished</obj_property>
+      <obj_property name="ObjectShortName">read_response$finished</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/read_response$id">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/read_response$id[1:0]</obj_property>
+      <obj_property name="ObjectShortName">read_response$id[1:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$address">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$address[31:0]</obj_property>
+      <obj_property name="ObjectShortName">selected$address[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$cache_cell_one_hot">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$cache_cell_one_hot[15:0]</obj_property>
+      <obj_property name="ObjectShortName">selected$cache_cell_one_hot[15:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$id">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$id[1:0]</obj_property>
+      <obj_property name="ObjectShortName">selected$id[1:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$is_write">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$is_write</obj_property>
+      <obj_property name="ObjectShortName">selected$is_write</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$line_strb">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$line_strb[63:0]</obj_property>
+      <obj_property name="ObjectShortName">selected$line_strb[63:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$valid">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$valid</obj_property>
+      <obj_property name="ObjectShortName">selected$valid</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$write_data">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$write_data[31:0]</obj_property>
+      <obj_property name="ObjectShortName">selected$write_data[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/write_request$address">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/write_request$address[29:6]</obj_property>
+      <obj_property name="ObjectShortName">write_request$address[29:6]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/write_request$valid">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/write_request$valid</obj_property>
+      <obj_property name="ObjectShortName">write_request$valid</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/write_request$wstrb">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/write_request$wstrb[63:0]</obj_property>
+      <obj_property name="ObjectShortName">write_request$wstrb[63:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/write_response$finished">
+      <obj_property name="DisplayName">FullPathName</obj_property>
+      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/write_response$finished</obj_property>
+      <obj_property name="ObjectShortName">write_response$finished</obj_property>
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
@@ -308,99 +334,11 @@
       <obj_property name="LABELRADIX">true</obj_property>
       <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_write/request$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_write/request$address[29:6]</obj_property>
-      <obj_property name="ObjectShortName">request$address[29:6]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_write/request_reg$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_write/request_reg$address[29:6]</obj_property>
-      <obj_property name="ObjectShortName">request_reg$address[29:6]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$address">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$address[31:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$address[31:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$cache_cell_one_hot">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$cache_cell_one_hot[15:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$cache_cell_one_hot[15:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$id">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$id[1:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$id[1:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$write_data">
-      <obj_property name="DisplayName">FullPathName</obj_property>
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$write_data[31:0]</obj_property>
-      <obj_property name="ObjectShortName">selected$write_data[31:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="LABELRADIX">true</obj_property>
-      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/hart_0/execute_pipeline/fetch/read_response$valid">
-      <obj_property name="ElementShortName">cpu/system/hart_0/execute_pipeline/fetch/read_response$valid</obj_property>
-      <obj_property name="ObjectShortName">read_response$valid</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$valid">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/axi4_cache_arb/selected$valid</obj_property>
-      <obj_property name="ObjectShortName">selected$valid</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/cache_ram/meta$valid">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/cache_ram/meta$valid</obj_property>
-      <obj_property name="ObjectShortName">meta$valid</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/cache_ram/write$valid">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/cache_ram/write$valid</obj_property>
-      <obj_property name="ObjectShortName">write$valid</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARADDR">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/axi$ARADDR[29:6]</obj_property>
-      <obj_property name="ObjectShortName">axi$ARADDR[29:6]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request$address">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request$address[29:6]</obj_property>
-      <obj_property name="ObjectShortName">request$address[29:6]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request$valid">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request$valid</obj_property>
-      <obj_property name="ObjectShortName">request$valid</obj_property>
-   </wvobject>
-   <wvobject type="array" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$address">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_read/request_reg$address[29:6]</obj_property>
-      <obj_property name="ObjectShortName">request_reg$address[29:6]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
    <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/memory_requester_write/request$valid">
+      <obj_property name="DisplayName">FullPathName</obj_property>
       <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/memory_requester_write/request$valid</obj_property>
       <obj_property name="ObjectShortName">request$valid</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$is_write">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$is_write</obj_property>
-      <obj_property name="ObjectShortName">selected$is_write</obj_property>
-   </wvobject>
-   <wvobject type="logic" fp_name="cpu/system/memory_controller/axi4_cache/request_stage/selected$valid">
-      <obj_property name="ElementShortName">cpu/system/memory_controller/axi4_cache/request_stage/selected$valid</obj_property>
-      <obj_property name="ObjectShortName">selected$valid</obj_property>
+      <obj_property name="LABELRADIX">true</obj_property>
+      <obj_property name="WaveformStyle">STYLE_DIGITAL</obj_property>
    </wvobject>
 </wave_config>

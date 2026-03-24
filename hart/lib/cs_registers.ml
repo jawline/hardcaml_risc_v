@@ -38,18 +38,38 @@ module Make (Hart_config : Hart_config_intf.S) = struct
         ~width:64
         ~f:(fun t -> t +:. 1)
     in
-    let ns_per_cycle =
-      let ns_per_second = 1_000_000_000 in
-      if ns_per_second % clock_frequency <> 0
-      then
-        eprint_s
-          [%message
-            "WARNING: The clock incrementer does not support non-integer ns per second \
-             values. This will lead to a particularly unreliable ns clock on the device."
-              (clock_frequency : int)
-              (ns_per_second / clock_frequency : int)
-              (ns_per_second % clock_frequency : int)];
-      ns_per_second / clock_frequency
+    let ns_per_second = 1_000_000_000 in
+    let ns_per_cycle = ns_per_second / clock_frequency in
+    let clock_adjustment =
+      let open Float in
+      let real_ns_per_cycle = of_int ns_per_second / of_int clock_frequency in
+      let missing_portion_of_clock = real_ns_per_cycle - of_int ns_per_cycle in
+      if missing_portion_of_clock <> 0.
+      then (
+        let adjust_ctr = 1. / missing_portion_of_clock in
+        if not (Float.is_integer adjust_ctr)
+        then
+          eprint_s
+            [%message
+              "WARNING: The clock incrementer cannot correctly adjust time for the clock \
+               of this device. This will lead to a particularly unreliable ns clock on \
+               the device."
+                (clock_frequency : int)
+                (ns_per_second : int)
+                (real_ns_per_cycle : float)
+                (adjust_ctr : float)];
+        Some (to_int adjust_ctr))
+      else None
+    in
+    let clock_adjust_ctr =
+      match clock_adjustment with
+      | Some clock_adjustment ->
+        Some
+          (reg_fb
+             ~width:(address_bits_for clock_adjustment)
+             ~f:(mod_counter ~max:(clock_adjustment - 1))
+             spec)
+      | None -> None
     in
     let time =
       (* Increment on cycle by ns per cycle *)
@@ -58,7 +78,12 @@ module Make (Hart_config : Hart_config_intf.S) = struct
         ~initialize_to:initialize_registers_to
         spec
         ~width:64
-        ~f:(fun t -> t +:. ns_per_cycle)
+        ~f:(fun t ->
+          let result_base = t +:. ns_per_cycle in
+          match clock_adjust_ctr with
+          | Some clock_adjust_ctr ->
+            result_base +: mux2 (clock_adjust_ctr ==:. 0) (one (width t)) (zero (width t))
+          | None -> result_base)
     in
     let instret =
       reg_fb

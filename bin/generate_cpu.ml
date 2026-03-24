@@ -107,7 +107,6 @@ struct
       | Some num_lines ->
         Some
           (module struct
-
             let line_width = 16
             let num_cache_lines = num_lines
             let register_responses = true (* TODO: Make this configurable *)
