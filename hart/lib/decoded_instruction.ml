@@ -97,13 +97,13 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       let funct7_bit_other_than_switch_is_selected = funct7 &:. 0b1011_111 <>:. 0 in
       let%hw.Alu_operation.Onehot.Of_signal decoded_alu_operation =
         (* The ALU unit is used to implement several instructions including
-         Op, Op_imm, Lui and Auipc. For Op and Op_imm the operation is
-         decided by funct3. For other instructions the ALU always acts as
-         an add. *)
+         Op, Op_imm, Lui and Auipc. For Op and Op_imm the operation is decided
+         by a combination of funct3 and funct7. For other instructions the ALU
+         always acts as an add. *)
         let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
-        let is_zba_funct7_switch = funct7.:(4) in
-        let is_op_imm_or_not_funct7 = test_opcode Op_imm |: ~:is_zba_funct7_switch in
-        let is_op_and_funct7_switch = test_opcode Op &: is_zba_funct7_switch in
+        let is_sh_add_funct7 = funct7 ==:. 0b0010000 in
+        let is_op_imm_or_not_funct7 = test_opcode Op_imm |: ~:is_sh_add_funct7 in
+        let is_op_and_funct7_switch = test_opcode Op &: is_sh_add_funct7 in
         let op_mode =
           let if_zba v = if Hart_config.Extensions.zba then v else gnd in
           Alu_operation.Onehot.construct_onehot ~f:(fun op ->

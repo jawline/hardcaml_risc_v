@@ -267,6 +267,16 @@ struct
     [%expect {| |}]
   ;;
 
+  let%expect_test "slt" =
+    op_helper
+      ~name:"slt_qcheck"
+      ~funct3:Funct3.Op.Slt_or_sh1add
+      ~funct7:0
+      ~f:(fun l r -> if l < r then 1 else 0)
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
   let%expect_test "xor" =
     op_helper
       ~name:"not_qcheck"
@@ -287,12 +297,32 @@ struct
     [%expect {| |}]
   ;;
 
-  let%expect_test "slt" =
+  let%expect_test "sh1add" =
     op_helper
-      ~name:"slt_qcheck"
+      ~name:"sh1add_qcheck"
       ~funct3:Funct3.Op.Slt_or_sh1add
-      ~funct7:0
-      ~f:(fun l r -> if l < r then 1 else 0)
+      ~funct7:0b0010000
+      ~f:(fun l r -> (l lsl 1) + r)
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "sh2add" =
+    op_helper
+      ~name:"sh1add_qcheck"
+      ~funct3:Funct3.Op.Xor_or_sh2add
+      ~funct7:0b0010000
+      ~f:(fun l r -> (l lsl 2) + r)
+      ~small_rs2_range:false;
+    [%expect {| |}]
+  ;;
+
+  let%expect_test "sh3add" =
+    op_helper
+      ~name:"sh1add_qcheck"
+      ~funct3:Funct3.Op.Or_or_sh3add
+      ~funct7:0b0010000
+      ~f:(fun l r -> (l lsl 3) + r)
       ~small_rs2_range:false;
     [%expect {| |}]
   ;;
