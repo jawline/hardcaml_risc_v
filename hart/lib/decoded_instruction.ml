@@ -101,8 +101,9 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
          decided by funct3. For other instructions the ALU always acts as
          an add. *)
         let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
-        let is_op_imm_or_not_funct7 = test_opcode Op_imm |: ~:funct7_switch in
-        let is_op_and_funct7_switch = test_opcode Op &: funct7_switch in
+        let is_zba_funct7_switch = funct7.:(4) in
+        let is_op_imm_or_not_funct7 = test_opcode Op_imm |: ~:is_zba_funct7_switch in
+        let is_op_and_funct7_switch = test_opcode Op &: is_zba_funct7_switch in
         let op_mode =
           let if_zba v = if Hart_config.Extensions.zba then v else gnd in
           Alu_operation.Onehot.construct_onehot ~f:(fun op ->
