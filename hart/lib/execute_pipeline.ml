@@ -5,9 +5,6 @@ open! Core
 open Hardcaml
 open Hardcaml_memory_controller
 
-let required_read_channels = 2
-let required_write_channels = 1
-
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
@@ -31,12 +28,12 @@ struct
       ; registers : 'a Registers.For_writeback.t [@rtlprefix "input_"]
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; instret : 'a
-      ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
-      ; write_response : 'a Memory.Write_response.With_valid.t list
-            [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Dest.t list [@length required_read_channels]
-      ; read_response : 'a Memory.Read_response.With_valid.t list
-            [@length required_read_channels]
+      ; read_instruction : 'a Memory.Read_bus.Dest.t
+      ; read_instruction_response : 'a Memory.Read_response.With_valid.t
+      ; read_data : 'a Memory.Read_bus.Dest.t
+      ; read_data_response : 'a Memory.Read_response.With_valid.t
+      ; write_data : 'a Memory.Write_bus.Dest.t
+      ; write_data_response : 'a Memory.Write_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -46,9 +43,10 @@ struct
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
-      ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
       ; fault : 'a
+      ; read_instruction : 'a Memory.Read_bus.Source.t
+      ; read_data : 'a Memory.Read_bus.Source.t
+      ; write_data : 'a Memory.Write_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
@@ -60,8 +58,8 @@ struct
         { Fetch.I.clock = i.clock
         ; valid = i.valid
         ; pc = i.registers.pc
-        ; read_bus = List.nth_exn i.read_bus 1
-        ; read_response = List.nth_exn i.read_response 1
+        ; read_bus = i.read_instruction
+        ; read_response = i.read_instruction_response
         }
     in
     let decode =
@@ -81,10 +79,10 @@ struct
         ; instruction = decode.instruction
         ; instret = i.instret
         ; ecall_transaction = i.ecall_transaction
-        ; read_bus = List.nth_exn i.read_bus 0
-        ; read_response = List.nth_exn i.read_response 0
-        ; write_bus = List.nth_exn i.write_bus 0
-        ; write_response = List.nth_exn i.write_response 0
+        ; read_bus = i.read_data
+        ; read_response = i.read_data_response
+        ; write_bus = i.write_data
+        ; write_response = i.write_data_response
         }
     in
     let write_back =
@@ -99,8 +97,9 @@ struct
     in
     { O.valid = write_back.valid
     ; registers = write_back.registers
-    ; read_bus = [ execute.read_bus; fetch.read_bus ]
-    ; write_bus = [ execute.write_bus ]
+    ; read_instruction = fetch.read_bus
+    ; read_data = execute.read_bus
+    ; write_data = execute.write_bus
     ; is_ecall = execute.is_ecall
     ; fault = execute.error
     }

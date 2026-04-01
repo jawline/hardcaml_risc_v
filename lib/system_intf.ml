@@ -1,8 +1,17 @@
 module type Cache_config = sig
   val line_width : int
-  val num_cache_lines : int
-  val register_responses : bool
-  val register_axi_requests : bool
+
+  module Instruction_cache : sig
+    val num_cache_lines : int
+    val register_responses : bool
+    val register_axi_requests : bool
+  end
+
+  module Data_cache : sig
+    val num_cache_lines : int
+    val register_responses : bool
+    val register_axi_requests : bool
+  end
 end
 
 module type Config = sig

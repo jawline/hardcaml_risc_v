@@ -3,9 +3,6 @@ open Hardcaml
 open Hardcaml_memory_controller
 open Signal
 
-let required_read_channels = Execute_pipeline.required_read_channels
-let required_write_channels = Execute_pipeline.required_write_channels
-
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
@@ -21,12 +18,12 @@ struct
     type 'a t =
       { clock : 'a Clocking.t
       ; ecall_transaction : 'a Transaction.With_valid.t
-      ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
-      ; write_response : 'a Memory.Write_response.With_valid.t list
-            [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Dest.t list [@length required_read_channels]
-      ; read_response : 'a Memory.Read_response.With_valid.t list
-            [@length required_read_channels]
+      ; read_instruction : 'a Memory.Read_bus.Dest.t
+      ; read_instruction_response : 'a Memory.Read_response.With_valid.t
+      ; read_data : 'a Memory.Read_bus.Dest.t
+      ; read_data_response : 'a Memory.Read_response.With_valid.t
+      ; write_data : 'a Memory.Write_bus.Dest.t
+      ; write_data_response : 'a Memory.Write_response.With_valid.t
       }
     [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
   end
@@ -35,8 +32,9 @@ struct
     type 'a t =
       { registers : 'a Registers.t
       ; is_ecall : 'a
-      ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
+      ; read_instruction : 'a Memory.Read_bus.Source.t
+      ; read_data : 'a Memory.Read_bus.Source.t
+      ; write_data : 'a Memory.Write_bus.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
   end
@@ -58,18 +56,21 @@ struct
         ; registers = executor_registers
         ; instret = executor_finished
         ; ecall_transaction = i.ecall_transaction
-        ; read_bus = i.read_bus
-        ; read_response = i.read_response
-        ; write_bus = i.write_bus
-        ; write_response = i.write_response
+        ; read_instruction = i.read_instruction
+        ; read_instruction_response = i.read_instruction_response
+        ; read_data = i.read_data
+        ; read_data_response = i.read_data_response
+        ; write_data = i.write_data
+        ; write_data_response = i.write_data_response
         }
     in
     executor_finished <-- executor.valid;
     Registers.For_writeback.Of_signal.(executor_registers <-- executor.registers);
     { O.registers = executor.registers |> Registers.For_writeback.to_registers
     ; is_ecall = executor.is_ecall
-    ; read_bus = executor.read_bus
-    ; write_bus = executor.write_bus
+    ; read_instruction = executor.read_instruction
+    ; read_data = executor.read_data
+    ; write_data = executor.write_data
     }
   ;;
 

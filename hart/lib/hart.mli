@@ -7,9 +7,6 @@ open! Core
 open Hardcaml
 open Hardcaml_memory_controller
 
-val required_read_channels : int
-val required_write_channels : int
-
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
@@ -23,12 +20,12 @@ module Make
         (* When is_ecall is high the opcode will be considered finished when
              ecall_transaction is finished. If a user wants custom behaviour on ecall
              they should hold ecall finished low, do the work, then raise finished. *)
-      ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
-      ; write_response : 'a Memory.Write_response.With_valid.t list
-            [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Dest.t list [@length required_read_channels]
-      ; read_response : 'a Memory.Read_response.With_valid.t list
-            [@length required_read_channels]
+      ; read_instruction : 'a Memory.Read_bus.Dest.t
+      ; read_instruction_response : 'a Memory.Read_response.With_valid.t
+      ; read_data : 'a Memory.Read_bus.Dest.t
+      ; read_data_response : 'a Memory.Read_response.With_valid.t
+      ; write_data : 'a Memory.Write_bus.Dest.t
+      ; write_data_response : 'a Memory.Write_response.With_valid.t
       }
     [@@deriving hardcaml, fields ~getters]
   end
@@ -39,8 +36,9 @@ module Make
       ; is_ecall : 'a
         (** Set high when the hart is in an ecall and is delagating behaviour to
           the user design. *)
-      ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
+      ; read_instruction : 'a Memory.Read_bus.Source.t
+      ; read_data : 'a Memory.Read_bus.Source.t
+      ; write_data : 'a Memory.Write_bus.Source.t
       }
     [@@deriving hardcaml, fields ~getters]
   end

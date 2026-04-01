@@ -12,9 +12,6 @@ open! Core
 open Hardcaml
 open Hardcaml_memory_controller
 
-val required_read_channels : int
-val required_write_channels : int
-
 module Make
     (Hart_config : Hart_config_intf.S)
     (Memory : Memory_bus_intf.S)
@@ -28,12 +25,12 @@ module Make
       ; registers : 'a Registers.For_writeback.t
       ; ecall_transaction : 'a Transaction.With_valid.t
       ; instret : 'a
-      ; write_bus : 'a Memory.Write_bus.Dest.t list [@length required_write_channels]
-      ; write_response : 'a Memory.Write_response.With_valid.t list
-            [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Dest.t list [@length required_read_channels]
-      ; read_response : 'a Memory.Read_response.With_valid.t list
-            [@length required_read_channels]
+      ; read_instruction : 'a Memory.Read_bus.Dest.t
+      ; read_instruction_response : 'a Memory.Read_response.With_valid.t
+      ; read_data : 'a Memory.Read_bus.Dest.t
+      ; read_data_response : 'a Memory.Read_response.With_valid.t
+      ; write_data : 'a Memory.Write_bus.Dest.t
+      ; write_data_response : 'a Memory.Write_response.With_valid.t
       }
     [@@deriving hardcaml]
   end
@@ -43,9 +40,10 @@ module Make
       { valid : 'a
       ; registers : 'a Registers.For_writeback.t
       ; is_ecall : 'a
-      ; write_bus : 'a Memory.Write_bus.Source.t list [@length required_write_channels]
-      ; read_bus : 'a Memory.Read_bus.Source.t list [@length required_read_channels]
       ; fault : 'a
+      ; read_instruction : 'a Memory.Read_bus.Source.t
+      ; read_data : 'a Memory.Read_bus.Source.t
+      ; write_data : 'a Memory.Write_bus.Source.t
       }
     [@@deriving hardcaml]
   end
