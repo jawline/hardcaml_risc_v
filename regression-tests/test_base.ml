@@ -60,6 +60,7 @@ struct
 
         module Extensions = struct
           let zmul = true
+          let zba = true
         end
       end)
       (struct

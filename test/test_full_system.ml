@@ -92,19 +92,27 @@ struct
   ;;
 
   let%expect_test "xor" =
-    opi_helper ~name:"xor_qcheck" ~funct3:Funct3.Op.Xor ~f:( lxor ) ~small_imm_range:false;
+    opi_helper
+      ~name:"xor_qcheck"
+      ~funct3:Funct3.Op.Xor_or_sh2add
+      ~f:( lxor )
+      ~small_imm_range:false;
     [%expect {| |}]
   ;;
 
   let%expect_test "or" =
-    opi_helper ~name:"or_qcheck" ~funct3:Funct3.Op.Or ~f:( lor ) ~small_imm_range:false;
+    opi_helper
+      ~name:"or_qcheck"
+      ~funct3:Funct3.Op.Or_or_sh3add
+      ~f:( lor )
+      ~small_imm_range:false;
     [%expect {| |}]
   ;;
 
   let%expect_test "slt" =
     opi_helper
       ~name:"slt_qcheck"
-      ~funct3:Funct3.Op.Slt
+      ~funct3:Funct3.Op.Slt_or_sh1add
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_imm_range:false;
     [%expect {| |}]
@@ -118,6 +126,8 @@ struct
       ~small_imm_range:false;
     [%expect {| |}]
   ;;
+
+  (* TODO: Add Sh1, Sh2, Sh3add tests *)
 
   let muldiv_helper ~name ~f ~funct3 ~small_rs2_range =
     let sim = create_sim name in
@@ -260,7 +270,7 @@ struct
   let%expect_test "xor" =
     op_helper
       ~name:"not_qcheck"
-      ~funct3:Funct3.Op.Xor
+      ~funct3:Funct3.Op.Xor_or_sh2add
       ~funct7:0
       ~f:( lxor )
       ~small_rs2_range:false;
@@ -270,7 +280,7 @@ struct
   let%expect_test "or" =
     op_helper
       ~name:"or_qcheck"
-      ~funct3:Funct3.Op.Or
+      ~funct3:Funct3.Op.Or_or_sh3add
       ~funct7:0
       ~f:( lor )
       ~small_rs2_range:false;
@@ -280,7 +290,7 @@ struct
   let%expect_test "slt" =
     op_helper
       ~name:"slt_qcheck"
-      ~funct3:Funct3.Op.Slt
+      ~funct3:Funct3.Op.Slt_or_sh1add
       ~funct7:0
       ~f:(fun l r -> if l < r then 1 else 0)
       ~small_rs2_range:false;
@@ -777,8 +787,8 @@ struct
       |}];
     test
       ~instructions:
-        [ op_imm ~funct3:Funct3.Op.Xor ~rs1:0 ~rd:1 ~immediate:0b0101
-        ; op_imm ~funct3:Funct3.Op.Xor ~rs1:1 ~rd:1 ~immediate:0b1010
+        [ op_imm ~funct3:Funct3.Op.Xor_or_sh2add ~rs1:0 ~rd:1 ~immediate:0b0101
+        ; op_imm ~funct3:Funct3.Op.Xor_or_sh2add ~rs1:1 ~rd:1 ~immediate:0b1010
         ]
       sim;
     [%expect
@@ -800,7 +810,7 @@ struct
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:0b101010
-        ; op_imm ~funct3:Funct3.Op.Or ~rs1:1 ~rd:1 ~immediate:0b010101
+        ; op_imm ~funct3:Funct3.Op.Or_or_sh3add ~rs1:1 ~rd:1 ~immediate:0b010101
         ]
       sim;
     [%expect
@@ -823,8 +833,8 @@ struct
     test
       ~instructions:
         [ op_imm ~funct3:Funct3.Op.Add_or_sub ~rs1:0 ~rd:1 ~immediate:10
-        ; op_imm ~funct3:Funct3.Op.Slt ~rs1:1 ~rd:2 ~immediate:5
-        ; op_imm ~funct3:Funct3.Op.Slt ~rs1:1 ~rd:3 ~immediate:15
+        ; op_imm ~funct3:Funct3.Op.Slt_or_sh1add ~rs1:1 ~rd:2 ~immediate:5
+        ; op_imm ~funct3:Funct3.Op.Slt_or_sh1add ~rs1:1 ~rd:3 ~immediate:15
         ]
       sim;
     [%expect
@@ -973,6 +983,7 @@ module Cpu_with_no_io_controller =
 
       module Extensions = struct
         let zmul = true
+        let zba = true
       end
     end)
     (struct
@@ -1094,6 +1105,7 @@ module Cpu_with_dma_memory =
 
       module Extensions = struct
         let zmul = true
+        let zba = true
       end
     end)
     (struct

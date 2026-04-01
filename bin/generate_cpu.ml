@@ -122,6 +122,7 @@ struct
 
     module Extensions = struct
       let zmul = true
+      let zba = true
     end
 
     let clock_domain = C.hart_clock

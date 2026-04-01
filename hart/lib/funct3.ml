@@ -7,10 +7,10 @@ module Op = struct
          clarity in use. *)
         Add_or_sub
       | Sll
-      | Slt
-      | Xor
+      | Slt_or_sh1add
+      | Xor_or_sh2add
       | Sltu
-      | Or
+      | Or_or_sh3add
       | And
       | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
         Srl_or_sra
@@ -20,10 +20,10 @@ module Op = struct
       match t with
       | Add_or_sub -> 0b000
       | Sll -> 0b001
-      | Slt -> 0b010
-      | Xor -> 0b100
+      | Slt_or_sh1add -> 0b010
+      | Xor_or_sh2add -> 0b100
       | Sltu -> 0b011
-      | Or -> 0b110
+      | Or_or_sh3add -> 0b110
       | And -> 0b111
       | Srl_or_sra -> 0b101
     ;;
@@ -32,10 +32,10 @@ module Op = struct
       match i with
       | 0b000 -> Some Add_or_sub
       | 0b001 -> Some Sll
-      | 0b010 -> Some Slt
-      | 0b100 -> Some Xor
+      | 0b010 -> Some Slt_or_sh1add
+      | 0b100 -> Some Xor_or_sh2add
       | 0b011 -> Some Sltu
-      | 0b110 -> Some Or
+      | 0b110 -> Some Or_or_sh3add
       | 0b111 -> Some And
       | 0b101 -> Some Srl_or_sra
       | _ -> None

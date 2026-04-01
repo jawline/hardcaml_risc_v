@@ -2,16 +2,17 @@ open! Core
 
 module Op : sig
   type t =
-    | Add_or_sub
-    (** Depending on the funct7 switch bit this is either add
-        or sub. For immediate it is always add. *)
+    | (* These seem identical to the op_imm versions but I'll leave it for
+         clarity in use. *)
+      Add_or_sub
     | Sll
-    | Slt
-    | Xor
+    | Slt_or_sh1add (* Switch on upper 7 bits *)
+    | Xor_or_sh2add (* Switch on upper 7 bits *)
     | Sltu
-    | Or
+    | Or_or_sh3add (* Switch on upper 7 bits *)
     | And
-    | Srl_or_sra (** Depending on the funct7 switch bit this is either srl or sra *)
+    | (* Depending on the upper 7 bits of the imm this is either SRAI or SRLI *)
+      Srl_or_sra
   [@@deriving equal, enumerate, variants]
 
   val to_int : t -> int

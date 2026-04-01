@@ -23,6 +23,17 @@ module Make (Hart_config : Hart_config_intf.S) = struct
     [@@deriving hardcaml]
   end
 
+  let () =
+    if Hart_config.Extensions.zba && register_width <> 32
+    then raise_s [%message "BUG: Op does not support all 64 bit ZBA instructions."]
+  ;;
+
+  let support_if_zba result =
+    if Hart_config.Extensions.zba then result else zero register_width
+  ;;
+
+  let sh_add ~by lhs rhs = rhs +: sll ~by lhs |> support_if_zba
+
   let create _scope ({ I.valid; op; lhs; rhs } : _ I.t) =
     let rd =
       Alu_operation.Onehot.switch
@@ -36,7 +47,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
           | Or -> lhs |: rhs
           | And -> lhs &: rhs
           | Srl -> log_shift ~f:srl ~by:(sel_bottom ~width:6 rhs) lhs
-          | Sra -> log_shift ~f:sra ~by:(sel_bottom ~width:6 rhs) lhs)
+          | Sra -> log_shift ~f:sra ~by:(sel_bottom ~width:6 rhs) lhs
+          | Sh1_add -> sh_add ~by:1 lhs rhs
+          | Sh2_add -> sh_add ~by:2 lhs rhs
+          | Sh3_add -> sh_add ~by:3 lhs rhs)
         op
     in
     { O.valid; rd }

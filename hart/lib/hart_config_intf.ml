@@ -10,5 +10,6 @@ module type S = sig
 
   module Extensions : sig
     val zmul : bool
+    val zba : bool
   end
 end

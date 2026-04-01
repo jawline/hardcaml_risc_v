@@ -101,7 +101,10 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
          decided by funct3. For other instructions the ALU always acts as
          an add. *)
         let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
+        let is_op_imm_or_not_funct7 = test_opcode Op_imm |: ~:funct7_switch in
+        let is_op_and_funct7_switch = test_opcode Op &: funct7_switch in
         let op_mode =
+          let if_zba v = if Hart_config.Extensions.zba then v else gnd in
           Alu_operation.Onehot.construct_onehot ~f:(fun op ->
             match op with
             | Alu_operation.Add ->
@@ -115,11 +118,14 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
             | Srl -> test_funct3 Srl_or_sra &: ~:funct7_switch
             | Sra -> test_funct3 Srl_or_sra &: funct7_switch
             | Sll -> test_funct3 Sll
-            | Slt -> test_funct3 Slt
-            | Xor -> test_funct3 Xor
+            | Slt -> test_funct3 Slt_or_sh1add &: is_op_imm_or_not_funct7
+            | Xor -> test_funct3 Xor_or_sh2add &: is_op_imm_or_not_funct7
             | Sltu -> test_funct3 Sltu
-            | Or -> test_funct3 Or
-            | And -> test_funct3 And)
+            | Or -> test_funct3 Or_or_sh3add &: is_op_imm_or_not_funct7
+            | And -> test_funct3 And
+            | Sh1_add -> if_zba (test_funct3 Slt_or_sh1add &: is_op_and_funct7_switch)
+            | Sh2_add -> if_zba (test_funct3 Xor_or_sh2add &: is_op_and_funct7_switch)
+            | Sh3_add -> if_zba (test_funct3 Or_or_sh3add &: is_op_and_funct7_switch))
         in
         let add =
           Alu_operation.Onehot.construct_onehot ~f:(function

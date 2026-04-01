@@ -9,4 +9,5 @@ let register_execute_output = true
 
 module Extensions = struct
   let zmul = false
+  let zba = true
 end
