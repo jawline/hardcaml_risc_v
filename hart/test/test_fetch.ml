@@ -54,17 +54,20 @@ module Test_machine = struct
         ~read_latency:4
         scope
         { Memory_controller.I.clock = { clock; clear }
-        ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
-        ; read_to_controller = [ fetch.read_bus ]
+        ; instruction = { read_to_controller = []; write_to_controller = [] }
+        ; data =
+            { write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
+            ; read_to_controller = [ fetch.read_bus ]
+            }
         }
     in
     compile
       [ Read_bus.Dest.Of_always.assign
           read_bus
-          (List.nth_exn controller.read_to_controller 0)
+          (List.nth_exn controller.data.read_to_controller 0)
       ; Read_response.With_valid.Of_always.assign
           read_response
-          (List.nth_exn controller.read_response 0)
+          (List.nth_exn controller.data.read_response 0)
       ];
     { O.valid = fetch.valid; value = fetch.instruction }
   ;;

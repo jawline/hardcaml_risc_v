@@ -63,24 +63,27 @@ module Test_machine = struct
         ~read_latency:1
         scope
         { Memory_controller.I.clock = { clock; clear }
-        ; write_to_controller = [ store.write_bus ]
-        ; read_to_controller =
-            [ (* Hardcaml doesn't like having a RAM that never gets read, so we add a dummy channel. *)
-              Read_bus.Source.Of_signal.of_int_trunc 0
-            ]
+        ; instruction = { read_to_controller = []; write_to_controller = [] }
+        ; data =
+            { write_to_controller = [ store.write_bus ]
+            ; read_to_controller =
+                [ (* Hardcaml doesn't like having a RAM that never gets read, so we add a dummy channel. *)
+                  Read_bus.Source.Of_signal.of_int_trunc 0
+                ]
+            }
         }
     in
     compile
       [ Write_bus.Dest.Of_always.assign
           write_bus
-          (List.nth_exn controller.write_to_controller 0)
+          (List.nth_exn controller.data.write_to_controller 0)
       ; Write_response.With_valid.Of_always.assign
           write_response
-          (List.nth_exn controller.write_response 0)
+          (List.nth_exn controller.data.write_response 0)
       ];
     { O.error = store.error
     ; finished = store.finished
-    ; read_response = List.nth_exn controller.read_response 0
+    ; read_response = List.nth_exn controller.data.read_response 0
     }
   ;;
 end
