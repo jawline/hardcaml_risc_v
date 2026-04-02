@@ -333,7 +333,8 @@ struct
         ~build_mode
         ~io_clear
         ~hart_ecall_transactions
-        ~read_bus_per_hart
+        ~read_instruction_bus_per_hart
+        ~read_data_bus_per_hart
         ~write_bus_per_hart
         ~(memory_controller : _ Memory_controller.O.t)
         scope
@@ -507,8 +508,9 @@ struct
     List.iteri
       ~f:(fun i h ->
         Read_bus.Source.Of_signal.(
-          List.nth_exn (List.nth_exn read_bus_per_hart i) 0 <-- Hart.O.read_instruction h;
-          List.nth_exn (List.nth_exn read_bus_per_hart i) 1 <-- Hart.O.read_data h);
+          List.nth_exn (List.nth_exn read_instruction_bus_per_hart i) 0
+          <-- Hart.O.read_instruction h;
+          List.nth_exn (List.nth_exn read_data_bus_per_hart i) 0 <-- Hart.O.read_data h);
         Write_bus.Source.Of_signal.(
           List.nth_exn (List.nth_exn write_bus_per_hart i) 0 <-- Hart.O.write_data h))
       harts;
@@ -611,7 +613,13 @@ struct
     (* Initialize the memory controller and allocate some wires for channels.
        Any non-hart memory channels will occupy the start of the memory
        controller, followed by the memory channels of each hart. *)
-    let read_bus_per_hart =
+    let read_instruction_bus_per_hart =
+      List.init
+        ~f:(fun _which_hart ->
+          List.init ~f:(fun _i -> Read_bus.Source.Of_signal.wires ()) 1)
+        General_config.num_harts
+    in
+    let read_data_bus_per_hart =
       List.init
         ~f:(fun _which_hart ->
           List.init ~f:(fun _i -> Read_bus.Source.Of_signal.wires ()) 1)
@@ -636,7 +644,7 @@ struct
         scope
         { Memory_controller.I.clock = i.memory_clock
         ; instruction =
-            { read_to_controller = List.concat read_bus_per_hart
+            { read_to_controller = List.concat read_instruction_bus_per_hart
             ; write_to_controller = []
             }
         ; data =
@@ -645,7 +653,7 @@ struct
                  |> Option.value ~default:[])
                 @ (of_dma ~f:(fun _dma -> [ dma_read_request ])
                    |> Option.value ~default:[])
-                @ List.concat read_bus_per_hart
+                @ List.concat read_data_bus_per_hart
             ; write_to_controller =
                 (of_dma ~f:(fun _dma -> [ dma_write_request ]) |> Option.value ~default:[])
                 @ List.concat write_bus_per_hart
@@ -666,7 +674,8 @@ struct
              global clear if a DMA controller is attached. *)
         ~hart_ecall_transactions
         ~write_bus_per_hart
-        ~read_bus_per_hart
+        ~read_instruction_bus_per_hart
+        ~read_data_bus_per_hart
         ~memory_controller:controller
         scope
         i
