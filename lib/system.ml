@@ -23,9 +23,6 @@ struct
   module Registers = Registers.Make (Hart_config)
   module Decoded_instruction = Decoded_instruction.Make (Hart_config) (Registers)
 
-  let required_read_channels_per_hart = Hart.required_read_channels
-  let required_write_channels_per_hart = Hart.required_write_channels
-
   let system_non_hart_read_memory_channels =
     (match General_config.include_io_controller with
      | No_io_controller -> 0
@@ -42,65 +39,82 @@ struct
     | Uart_controller _ -> 1
   ;;
 
-  let num_read_channels =
-    system_non_hart_read_memory_channels
-    + (General_config.num_harts * Hart.required_read_channels)
+  let num_instruction_read_channels = General_config.num_harts
+  let num_instruction_write_channels = 0
+
+  let num_data_read_channels =
+    system_non_hart_read_memory_channels + General_config.num_harts
   ;;
 
-  let num_write_channels =
-    system_non_hart_write_memory_channels
-    + (General_config.num_harts * Hart.required_write_channels)
+  let num_data_write_channels =
+    system_non_hart_write_memory_channels + General_config.num_harts
   ;;
 
   module Memory_controller =
     Memory_controller.Make
       (struct
         let capacity_in_bytes = Memory_config.capacity_in_bytes
-        let num_read_channels = num_read_channels
-        let num_write_channels = num_write_channels
         let address_width = Register_width.bits Hart_config.register_width
         let data_bus_width = Register_width.bits Hart_config.register_width
 
-        let cache_memory =
-          let open General_config in
-          match include_instruction_cache, include_data_cache with
-          | Some (module I_config), Some (module D_config) ->
-            Some
-              (module struct
-                let line_width = I_config.line_width
-                let num_cache_lines = I_config.num_cache_lines
-                let register_responses = I_config.register_responses
-                let register_axi_requests = I_config.register_axi_requests
-                let num_read_channels = num_read_channels
-                let num_write_channels = num_write_channels
-              end : Hardcaml_memory_controller.Axi4_cache.Config)
-          | _ -> None
-        ;;
+        module Instruction_config = struct
+          let num_read_channels = num_instruction_read_channels
+          let num_write_channels = num_instruction_write_channels
+
+          let cache_memory =
+            let open General_config in
+            Option.map
+              ~f:(fun (module Config : System_intf.Cache_config) ->
+                (module struct
+                  include Config
+
+                  let num_read_channels = num_instruction_read_channels
+                  let num_write_channels = num_instruction_write_channels
+                end : Hardcaml_memory_controller.Axi4_cache.Config))
+              include_instruction_cache
+          ;;
+        end
+
+        module Data_config = struct
+          let num_read_channels = num_data_read_channels
+          let num_write_channels = num_data_write_channels
+
+          let cache_memory =
+            let open General_config in
+            Option.map
+              ~f:(fun (module Config : System_intf.Cache_config) ->
+                (module struct
+                  include Config
+
+                  let num_read_channels = num_read_channels
+                  let num_write_channels = num_write_channels
+                end : Hardcaml_memory_controller.Axi4_cache.Config))
+              include_data_cache
+          ;;
+        end
       end)
+      (Axi4)
       (Axi4)
 
   module Memory_bus = Memory_controller.Memory_bus
   include Memory_bus
 
-  let write_ch_start_offset which_hart =
-    system_non_hart_write_memory_channels + (which_hart * required_read_channels_per_hart)
-  ;;
+  let _instruction_ch_start_offset which_hart = which_hart
+  let data_ch_start_offset which_hart = system_non_hart_read_memory_channels + which_hart
 
-  let read_ch_start_offset which_hart =
-    system_non_hart_read_memory_channels + (which_hart * required_read_channels_per_hart)
-  ;;
-
-  let select arr ch sz =
+  let _select arr ch sz =
     let start = List.drop arr ch in
     List.take start sz
   ;;
 
-  let select_rd_chs_for_hart which_hart arr =
-    select arr (read_ch_start_offset which_hart) required_read_channels_per_hart
+  let select_instruction_rd_chs_for_hart which_hart arr = List.nth_exn arr which_hart
+
+  let select_data_rd_chs_for_hart which_hart arr =
+    List.nth_exn arr (data_ch_start_offset which_hart)
   ;;
 
-  let select_wr_chs_for_hart which_hart arr =
-    select arr (write_ch_start_offset which_hart) required_write_channels_per_hart
+  let select_data_wr_chs_for_hart which_hart arr =
+    List.nth_exn arr (system_non_hart_write_memory_channels + which_hart)
   ;;
 
   module Transaction = Transaction.Make (Hart_config) (Memory_controller.Memory_bus)
@@ -342,119 +356,162 @@ struct
              that we need to be consistent. As we do not handshake responses,
              that is unconditional. *)
           let open Memory_controller.Cross_clocks in
-          let read_request_ack, write_request_ack, read_response, write_response =
-            ( select_rd_chs_for_hart which_hart memory_controller.read_to_controller
-            , select_wr_chs_for_hart which_hart memory_controller.write_to_controller
-            , select_rd_chs_for_hart which_hart memory_controller.read_response
-            , select_wr_chs_for_hart which_hart memory_controller.write_response )
+          let instruction_read_request_ack, instruction_read_response =
+            ( select_instruction_rd_chs_for_hart
+                which_hart
+                memory_controller.instruction.read_to_controller
+            , select_instruction_rd_chs_for_hart
+                which_hart
+                memory_controller.instruction.read_response )
           in
-          let read_request_i =
-            List.init
-              ~f:(fun _ -> Read_bus.Source.Of_signal.wires ())
-              (List.length read_request_ack)
+          let ( data_read_request_ack
+              , data_write_request_ack
+              , data_read_response
+              , data_write_response )
+            =
+            ( select_data_rd_chs_for_hart
+                which_hart
+                memory_controller.data.read_to_controller
+            , select_data_wr_chs_for_hart
+                which_hart
+                memory_controller.data.write_to_controller
+            , select_data_rd_chs_for_hart which_hart memory_controller.data.read_response
+            , select_data_wr_chs_for_hart which_hart memory_controller.data.write_response
+            )
           in
-          let write_request_i =
-            List.init
-              ~f:(fun _ -> Write_bus.Source.Of_signal.wires ())
-              (List.length write_request_ack)
-          in
-          let read_request, read_request_ack =
-            List.zip_exn read_request_i read_request_ack
-            |> List.map ~f:(fun (read_request, read_request_ack) ->
-              let o =
-                maybe_cross_read_request
-                  ~build_mode
-                  ~clock_domain_memory:General_config.memory_domain
-                  ~clock_domain_user:Hart_config.clock_domain
-                  scope
-                  { Read.I.clocking_i = hart_clock
-                  ; clocking_o = memory_clock
-                  ; i = read_request
-                  ; o = read_request_ack
-                  }
-              in
-              o.i, o.o)
+          let instruction_read_request_i = [ Read_bus.Source.Of_signal.wires () ] in
+          let data_read_request_i = [ Read_bus.Source.Of_signal.wires () ] in
+          let data_write_request_i = [ Write_bus.Source.Of_signal.wires () ] in
+          let instruction_read_request, instruction_read_request_ack =
+            let read_request_ack = instruction_read_request_ack in
+            List.map
+              ~f:(fun read_request ->
+                let o =
+                  maybe_cross_read_request
+                    ~build_mode
+                    ~clock_domain_memory:General_config.memory_domain
+                    ~clock_domain_user:Hart_config.clock_domain
+                    scope
+                    { Read.I.clocking_i = hart_clock
+                    ; clocking_o = memory_clock
+                    ; i = read_request
+                    ; o = read_request_ack
+                    }
+                in
+                o.i, o.o)
+              instruction_read_request_i
             |> List.unzip
           in
-          let write_request, write_request_ack =
-            List.zip_exn write_request_i write_request_ack
-            |> List.map ~f:(fun (write_request, write_request_ack) ->
-              let o =
-                maybe_cross_write_request
-                  ~build_mode
-                  ~clock_domain_memory:General_config.memory_domain
-                  ~clock_domain_user:Hart_config.clock_domain
-                  scope
-                  { Write.I.clocking_i = hart_clock
-                  ; clocking_o = memory_clock
-                  ; i = write_request
-                  ; o = write_request_ack
-                  }
-              in
-              o.i, o.o)
+          let data_read_request, data_read_request_ack =
+            let read_request_ack = data_read_request_ack in
+            List.map
+              ~f:(fun read_request ->
+                let o =
+                  maybe_cross_read_request
+                    ~build_mode
+                    ~clock_domain_memory:General_config.memory_domain
+                    ~clock_domain_user:Hart_config.clock_domain
+                    scope
+                    { Read.I.clocking_i = hart_clock
+                    ; clocking_o = memory_clock
+                    ; i = read_request
+                    ; o = read_request_ack
+                    }
+                in
+                o.i, o.o)
+              data_read_request_i
             |> List.unzip
           in
-          let read_response =
+          let data_write_request, data_write_request_ack =
+            let write_request_ack = data_write_request_ack in
             List.map
-              ~f:(fun read_response ->
-                (maybe_cross_read_response
-                   ~build_mode
-                   ~clock_domain_memory:General_config.memory_domain
-                   ~clock_domain_user:Hart_config.clock_domain
-                   scope
-                   { Read_response.I.clocking_i = memory_clock
-                   ; clocking_o = hart_clock
-                   ; i = read_response
-                   })
-                  .i)
-              read_response
+              ~f:(fun write_request ->
+                let o =
+                  maybe_cross_write_request
+                    ~build_mode
+                    ~clock_domain_memory:General_config.memory_domain
+                    ~clock_domain_user:Hart_config.clock_domain
+                    scope
+                    { Write.I.clocking_i = hart_clock
+                    ; clocking_o = memory_clock
+                    ; i = write_request
+                    ; o = write_request_ack
+                    }
+                in
+                o.i, o.o)
+              data_write_request_i
+            |> List.unzip
           in
-          let write_response =
-            List.map
-              ~f:(fun write_response ->
-                (maybe_cross_write_response
-                   ~build_mode
-                   ~clock_domain_memory:General_config.memory_domain
-                   ~clock_domain_user:Hart_config.clock_domain
-                   scope
-                   { Write_response.I.clocking_i = memory_clock
-                   ; clocking_o = hart_clock
-                   ; i = write_response
-                   })
-                  .i)
-              write_response
+          let instruction_read_response =
+            let read_response = instruction_read_response in
+            maybe_cross_read_response
+              ~build_mode
+              ~clock_domain_memory:General_config.memory_domain
+              ~clock_domain_user:Hart_config.clock_domain
+              scope
+              { Read_response.I.clocking_i = memory_clock
+              ; clocking_o = hart_clock
+              ; i = read_response
+              }
+          in
+          let data_read_response =
+            let read_response = data_read_response in
+            maybe_cross_read_response
+              ~build_mode
+              ~clock_domain_memory:General_config.memory_domain
+              ~clock_domain_user:Hart_config.clock_domain
+              scope
+              { Read_response.I.clocking_i = memory_clock
+              ; clocking_o = hart_clock
+              ; i = read_response
+              }
+          in
+          let data_write_response =
+            let write_response = data_write_response in
+            maybe_cross_write_response
+              ~build_mode
+              ~clock_domain_memory:General_config.memory_domain
+              ~clock_domain_user:Hart_config.clock_domain
+              scope
+              { Write_response.I.clocking_i = memory_clock
+              ; clocking_o = hart_clock
+              ; i = write_response
+              }
           in
           let hart =
             Hart.hierarchical
               ~instance:[%string "hart_%{which_hart#Int}"]
               scope
               { Hart.I.clock = hart_clock
-              ; read_bus = read_request_ack
-              ; write_bus = write_request_ack
-              ; read_response
-              ; write_response
+              ; read_instruction = List.hd_exn instruction_read_request_ack
+              ; read_data = List.hd_exn data_read_request_ack
+              ; write_data = List.hd_exn data_write_request_ack
+              ; read_instruction_response = instruction_read_response.i
+              ; read_data_response = data_read_response.i
+              ; write_data_response = data_write_response.i
               ; ecall_transaction = List.nth_exn hart_ecall_transactions which_hart
               }
           in
-          List.iter2_exn
-            ~f:Read_bus.Source.Of_signal.( <-- )
-            read_request_i
-            (Hart.O.read_bus hart);
-          List.iter2_exn
-            ~f:Write_bus.Source.Of_signal.( <-- )
-            write_request_i
-            (Hart.O.write_bus hart);
-          { hart with read_bus = read_request; write_bus = write_request })
+          Read_bus.Source.Of_signal.(
+            List.hd_exn instruction_read_request_i <-- Hart.O.read_instruction hart;
+            List.hd_exn data_read_request_i <-- Hart.O.read_data hart);
+          Write_bus.Source.Of_signal.(
+            List.hd_exn data_write_request_i <-- Hart.O.write_data hart);
+          { hart with
+            read_instruction = List.hd_exn instruction_read_request
+          ; read_data = List.hd_exn data_read_request
+          ; write_data = List.hd_exn data_write_request
+          })
         General_config.num_harts
     in
-    List.iter2_exn
-      ~f:(List.iter2_exn ~f:Read_bus.Source.Of_signal.( <-- ))
-      read_bus_per_hart
-      (List.map ~f:Hart.O.read_bus harts);
-    List.iter2_exn
-      ~f:(List.iter2_exn ~f:Write_bus.Source.Of_signal.( <-- ))
-      write_bus_per_hart
-      (List.map ~f:Hart.O.write_bus harts);
+    List.iteri
+      ~f:(fun i h ->
+        Read_bus.Source.Of_signal.(
+          List.nth_exn (List.nth_exn read_bus_per_hart i) 0 <-- Hart.O.read_instruction h;
+          List.nth_exn (List.nth_exn read_bus_per_hart i) 1 <-- Hart.O.read_data h);
+        Write_bus.Source.Of_signal.(
+          List.nth_exn (List.nth_exn write_bus_per_hart i) 0 <-- Hart.O.write_data h))
+      harts;
     harts
   ;;
 
@@ -557,17 +614,13 @@ struct
     let read_bus_per_hart =
       List.init
         ~f:(fun _which_hart ->
-          List.init
-            ~f:(fun _i -> Read_bus.Source.Of_signal.wires ())
-            required_read_channels_per_hart)
+          List.init ~f:(fun _i -> Read_bus.Source.Of_signal.wires ()) 1)
         General_config.num_harts
     in
     let write_bus_per_hart =
       List.init
         ~f:(fun _which_hart ->
-          List.init
-            ~f:(fun _i -> Write_bus.Source.Of_signal.wires ())
-            required_write_channels_per_hart)
+          List.init ~f:(fun _i -> Write_bus.Source.Of_signal.wires ()) 1)
         General_config.num_harts
     in
     of_dma ~f:(fun dma -> [ dma.read_request ])
@@ -582,13 +635,21 @@ struct
         ~priority_mode:Priority_order
         scope
         { Memory_controller.I.clock = i.memory_clock
-        ; read_to_controller =
-            (of_video_out ~f:(fun vd -> [ vd.memory_request ]) |> Option.value ~default:[])
-            @ (of_dma ~f:(fun _dma -> [ dma_read_request ]) |> Option.value ~default:[])
-            @ List.concat read_bus_per_hart
-        ; write_to_controller =
-            (of_dma ~f:(fun _dma -> [ dma_write_request ]) |> Option.value ~default:[])
-            @ List.concat write_bus_per_hart
+        ; instruction =
+            { read_to_controller = List.concat read_bus_per_hart
+            ; write_to_controller = []
+            }
+        ; data =
+            { read_to_controller =
+                (of_video_out ~f:(fun vd -> [ vd.memory_request ])
+                 |> Option.value ~default:[])
+                @ (of_dma ~f:(fun _dma -> [ dma_read_request ])
+                   |> Option.value ~default:[])
+                @ List.concat read_bus_per_hart
+            ; write_to_controller =
+                (of_dma ~f:(fun _dma -> [ dma_write_request ]) |> Option.value ~default:[])
+                @ List.concat write_bus_per_hart
+            }
         ; memory = i.memory
         }
     in
@@ -623,23 +684,24 @@ struct
       ~f:(fun video_out ->
         Read_bus.Dest.Of_signal.(
           video_out.memory_request_ack
-          <-- List.nth_exn controller.read_to_controller video_out_read_slot);
+          <-- List.nth_exn controller.data.read_to_controller video_out_read_slot);
         Read_response.With_valid.Of_signal.(
           video_out.memory_response
-          <-- List.nth_exn controller.read_response video_out_read_slot))
+          <-- List.nth_exn controller.data.read_response video_out_read_slot))
       maybe_video_out;
     (match maybe_dma_controller with
      | Some _ ->
        Read_bus.Dest.Of_signal.(
          dma_read_request_ack_i
-         <-- List.nth_exn controller.read_to_controller dma_read_slot);
+         <-- List.nth_exn controller.data.read_to_controller dma_read_slot);
        Read_response.With_valid.Of_signal.(
-         dma_read_response_i <-- List.nth_exn controller.read_response dma_read_slot);
+         dma_read_response_i <-- List.nth_exn controller.data.read_response dma_read_slot);
        Write_bus.Dest.Of_signal.(
          dma_write_request_ack_i
-         <-- List.nth_exn controller.write_to_controller dma_write_slot);
+         <-- List.nth_exn controller.data.write_to_controller dma_write_slot);
        Write_response.With_valid.Of_signal.(
-         dma_write_response_i <-- List.nth_exn controller.write_response dma_write_slot)
+         dma_write_response_i
+         <-- List.nth_exn controller.data.write_response dma_write_slot)
      | None -> ());
     { O.registers = List.map ~f:(fun o -> o.registers) harts
     ; uart_tx = of_dma ~f:Dma.O.uart_tx
