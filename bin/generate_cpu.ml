@@ -102,18 +102,20 @@ struct
     let memory_domain = C.memory_clock
     let dma_domain = C.hart_clock
 
-    let include_cache =
+    let include_instruction_cache =
       match C.include_cache_with_n_lines with
       | Some num_lines ->
         Some
           (module struct
             let line_width = 16
             let num_cache_lines = num_lines
-            let register_responses = true (* TODO: Make this configurable *)
+            let register_responses = true
             let register_axi_requests = true
           end : System_intf.Cache_config)
       | None -> None
     ;;
+
+    let include_data_cache = include_instruction_cache
   end
 
   module Per_hart_config = struct

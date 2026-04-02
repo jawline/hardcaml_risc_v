@@ -10,9 +10,11 @@ module Make
     (General_config : System_intf.Config) =
 struct
   let axi_bits =
-    match General_config.include_cache with
-    | Some (module Config : System_intf.Cache_config) -> Config.line_width * 32
-    | None -> 32
+    let open General_config in
+    match include_instruction_cache, include_data_cache with
+    | Some (module Config : System_intf.Cache_config), _
+    | _, Some (module Config : System_intf.Cache_config) -> Config.line_width * 32
+    | None, None -> 32
   ;;
 
   module Axi_config = struct

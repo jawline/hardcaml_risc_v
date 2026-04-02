@@ -62,15 +62,19 @@ struct
         let data_bus_width = Register_width.bits Hart_config.register_width
 
         let cache_memory =
-          Option.map
-            ~f:(fun (module Config : System_intf.Cache_config) ->
+          let open General_config in
+          match include_instruction_cache, include_data_cache with
+          | Some (module I_config), Some (module D_config) ->
+            Some
               (module struct
-                include Config
-
+                let line_width = I_config.line_width
+                let num_cache_lines = I_config.num_cache_lines
+                let register_responses = I_config.register_responses
+                let register_axi_requests = I_config.register_axi_requests
                 let num_read_channels = num_read_channels
                 let num_write_channels = num_write_channels
-              end : Hardcaml_memory_controller.Axi4_cache.Config))
-            General_config.include_cache
+              end : Hardcaml_memory_controller.Axi4_cache.Config)
+          | _ -> None
         ;;
       end)
       (Axi4)

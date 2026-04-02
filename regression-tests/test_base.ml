@@ -72,7 +72,7 @@ struct
         let dma_domain = clock_domain_cpu
         let memory_domain = clock_domain_memory
 
-        let include_cache =
+        let include_instruction_cache =
           Some
             (module struct
               let line_width = 8
@@ -81,6 +81,8 @@ struct
               let register_axi_requests = true
             end : System_intf.Cache_config)
         ;;
+
+        let include_data_cache = include_instruction_cache
 
         let include_video_out =
           Video_config.Video_out

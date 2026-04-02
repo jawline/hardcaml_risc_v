@@ -1026,7 +1026,7 @@ module Cpu_with_no_io_controller =
       let include_io_controller = Io_controller_config.No_io_controller
       let include_video_out = Video_config.No_video_out
 
-      let include_cache =
+      let include_instruction_cache =
         Some
           (module struct
             let line_width = 8
@@ -1035,6 +1035,8 @@ module Cpu_with_no_io_controller =
             let register_axi_requests = true
           end : System_intf.Cache_config)
       ;;
+
+      let include_data_cache = include_instruction_cache
     end)
 
 module With_manually_programmed_ram = Make (struct
@@ -1148,7 +1150,7 @@ module Cpu_with_dma_memory =
       let include_io_controller = Io_controller_config.Uart_controller uart_config
       let include_video_out = Video_config.No_video_out
 
-      let include_cache =
+      let include_instruction_cache =
         Some
           (module struct
             let line_width = 8
@@ -1157,6 +1159,8 @@ module Cpu_with_dma_memory =
             let register_axi_requests = true
           end : System_intf.Cache_config)
       ;;
+
+      let include_data_cache = include_instruction_cache
     end)
 
 module With_transmitter = struct
