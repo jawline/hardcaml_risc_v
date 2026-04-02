@@ -15,15 +15,27 @@ module Packet = struct
     }
 end
 
+module Instruction_config : Shared_access_ports_intf.Config = struct
+  let num_read_channels = 0
+  let num_write_channels = 0
+  let cache_memory = None
+end
+
+module Data_config : Shared_access_ports_intf.Config = struct
+  let num_read_channels = 1
+  let num_write_channels = 1
+  let cache_memory = None
+end
+
 let test ~packets =
   let module Memory_controller =
     Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
-      let num_write_channels = 1
-      let num_read_channels = 1
       let address_width = 32
       let data_bus_width = 32
-      let cache_memory = None
+
+      module Instruction_config = Instruction_config
+      module Data_config = Data_config
     end)
   in
   let module Memory_to_packet8 =
@@ -59,8 +71,11 @@ let test ~packets =
           ~priority_mode:Priority_order
           scope
           { Memory_controller.I.clock = { clock; clear }
-          ; read_to_controller = [ Read_bus.Source.Of_always.value ch_to_controller ]
-          ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
+          ; instruction = { read_to_controller = []; write_to_controller = [] }
+          ; data =
+              { read_to_controller = [ Read_bus.Source.Of_always.value ch_to_controller ]
+              ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
+              }
           }
       in
       let output =
@@ -69,8 +84,8 @@ let test ~packets =
           { Memory_to_packet8.I.clock = { clock; clear }
           ; enable = { valid = enable; value = { address; length } }
           ; output_packet = { tready = Signal.vdd }
-          ; memory = List.nth_exn controller.read_to_controller 0
-          ; memory_response = List.nth_exn controller.read_response 0
+          ; memory = List.nth_exn controller.data.read_to_controller 0
+          ; memory_response = List.nth_exn controller.data.read_response 0
           }
       in
       Always.compile [ Read_bus.Source.Of_always.assign ch_to_controller output.memory ];

@@ -147,24 +147,27 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
           ~read_latency:1
           scope
           { Memory_controller.I.clock = { clock; clear }
-          ; read_to_controller = [ Read_bus.Source.Of_signal.zero () ]
-          ; write_to_controller = [ dma.out ]
+          ; instruction = { read_to_controller = []; write_to_controller = [] }
+          ; data =
+              { read_to_controller = [ Read_bus.Source.Of_signal.zero () ]
+              ; write_to_controller = [ dma.out ]
+              }
           }
       in
       compile
         [ Write_bus.Dest.Of_always.assign
             dma_to_memory_controller
-            (List.nth_exn controller.write_to_controller 0)
+            (List.nth_exn controller.data.write_to_controller 0)
         ; Write_response.With_valid.Of_always.assign
             memory_controller_to_dma
-            (List.nth_exn controller.write_response 0)
+            (List.nth_exn controller.data.write_response 0)
         ];
       (* We echo the read and write responses to avoid dead code elimination
          deleting the entire BRAM *)
       { O.parity_error
       ; ready_for_next_input
-      ; write_response = List.nth_exn controller.write_response 0
-      ; read_response = List.nth_exn controller.read_response 0
+      ; write_response = List.nth_exn controller.data.write_response 0
+      ; read_response = List.nth_exn controller.data.read_response 0
       }
     ;;
   end
