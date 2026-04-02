@@ -61,12 +61,17 @@ module Machine = struct
         ~read_latency:1
         scope
         { Memory_controller.I.clock = { clock; clear }
-        ; read_to_controller = [ frame.memory_request ]
-        ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
+        ; instruction = { read_to_controller = []; write_to_controller = [] }
+        ; data =
+            { read_to_controller = [ frame.memory_request ]
+            ; write_to_controller = [ Write_bus.Source.Of_signal.zero () ]
+            }
         }
     in
-    Read_bus.Dest.Of_signal.(request_ack <-- List.hd_exn controller.read_to_controller);
-    Read_response.With_valid.Of_signal.(response <-- List.hd_exn controller.read_response);
+    Read_bus.Dest.Of_signal.(
+      request_ack <-- List.hd_exn controller.data.read_to_controller);
+    Read_response.With_valid.Of_signal.(
+      response <-- List.hd_exn controller.data.read_response);
     { O.r = frame.pixel.r; g = frame.pixel.g; b = frame.pixel.b }
   ;;
 end
