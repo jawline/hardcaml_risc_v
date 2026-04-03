@@ -688,6 +688,7 @@ struct
         ~priority_mode:Priority_order
         scope
         { Memory_controller.I.clock = i.memory_clock
+        ; flush = gnd
         ; instruction =
             { read_to_controller = List.concat read_instruction_bus_per_hart
             ; write_to_controller = []

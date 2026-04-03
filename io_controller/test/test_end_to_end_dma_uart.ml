@@ -142,6 +142,7 @@ let test ~verbose ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~pa
           ~read_latency:1
           scope
           { Memory_controller.I.clock = { clock; clear }
+          ; flush = Signal.gnd
           ; instruction = { read_to_controller = []; write_to_controller = [] }
           ; data =
               { read_to_controller = [ dma_out.memory ]
@@ -824,8 +825,7 @@ let%expect_test "large packet" =
     ~packets:[ 0, String.init ~f:(fun i -> Char.of_int_exn (i % 255)) 2048 ]
     ~verbose:false;
   [%expect.unreachable]
-[@@expect.uncaught_exn
-  {xxx|
+[@@expect.uncaught_exn {xxx|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
@@ -844,7 +844,7 @@ let%expect_test "large packet" =
       \n\011\012\r\014\015\016\017\018\019\020\021\022\023\024\025\026\027\028\029\030\031 !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\127\128\129\130\131\132\133\134\135\136\137\138\139\140\141\142\143\144\145\146\147\148\149\150\151\152\153\154\155\156\157\158\159\160\161\162\163\164\165\166\167\168\169\170\171\172\173\174\175\176\177\178\179\180\181\182\183\184\185\186\187\188\189\190\191\192\193\194\195\196\197\198\199\200\201\202\203\204\205\206\207\208\209\210\211\212\213\214\215\216\217\218\219\220\221\222\223\224\225\226\227\228\229\230\231\232\233\234\235\236\237\238\239\240\241\242\243\244\245\246\247\248\249\250\251\252\253\254\000\001\002\003\004\005\006\007"))
   Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
   Called from Base__Error.raise_s in file "src/error.ml" (inlined), line 24, characters 48-72
-  Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.test.(fun).issue_read in file "io_controller/test/test_end_to_end_dma_uart.ml", line 250, characters 15-88
+  Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.test.(fun).issue_read in file "io_controller/test/test_end_to_end_dma_uart.ml", line 251, characters 15-88
   Called from Base__List0.iter.loop in file "src/list0.ml", line 94, characters 6-9
   Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
   Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50

@@ -63,6 +63,7 @@ module Test_machine = struct
         ~read_latency:1
         scope
         { Memory_controller.I.clock = { clock; clear }
+        ; flush = Signal.gnd
         ; instruction = { read_to_controller = []; write_to_controller = [] }
         ; data =
             { write_to_controller = [ store.write_bus ]

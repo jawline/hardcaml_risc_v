@@ -147,6 +147,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
           ~read_latency:1
           scope
           { Memory_controller.I.clock = { clock; clear }
+          ; flush = Signal.gnd
           ; instruction = { read_to_controller = []; write_to_controller = [] }
           ; data =
               { read_to_controller = [ Read_bus.Source.Of_signal.zero () ]
