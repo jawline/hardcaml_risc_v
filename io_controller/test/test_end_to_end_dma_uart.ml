@@ -812,8 +812,7 @@ let%expect_test "fuzz" =
       ~stop_bits:1
       ~packets:[ 0, test_str; 48, test_str ]
       ~verbose:false);
-  [%expect
-    {| |}]
+  [%expect {| |}]
 ;;
 
 let%expect_test "large packet" =
@@ -825,7 +824,8 @@ let%expect_test "large packet" =
     ~packets:[ 0, String.init ~f:(fun i -> Char.of_int_exn (i % 255)) 2048 ]
     ~verbose:false;
   [%expect.unreachable]
-[@@expect.uncaught_exn {xxx|
+[@@expect.uncaught_exn
+  {xxx|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
