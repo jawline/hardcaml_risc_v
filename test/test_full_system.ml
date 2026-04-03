@@ -9,7 +9,7 @@ open! Bits
 
 let debug = true
 let trials = 16
-let cycles_per_trial = 200
+let cycles_per_trial = 300
 
 module Make (M : sig
     type sim
@@ -902,7 +902,13 @@ struct
       sim;
     [%expect
       {|
+      (* CR expect_test: Test ran multiple times with different test outputs *)
+      ============================= Output 1 / 2 ==============================
       ("PC: " 4 REG:
+       (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+
+      ============================= Output 2 / 2 ==============================
+      ("PC: " 12 REG:
        (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
       |}];
     M.finalize_sim sim;
@@ -1374,7 +1380,7 @@ module With_dma_ram = struct
     [%expect
       {|
       ("PC: " 24 REG:
-       (0 12 8500000 2 31 20000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+       (0 26 15500000 2 45 27000000 5 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         0 0))
       |}]
   ;;

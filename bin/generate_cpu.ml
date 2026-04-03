@@ -5,6 +5,14 @@ open Hardcaml_risc_v_hart
 open Hardcaml_memory_controller
 module Report_synth = Hardcaml_xilinx_reports
 
+module Cache_parameters = struct
+  type t =
+    { lines_instruction : int
+    ; lines_data : int
+    }
+  [@@deriving sexp]
+end
+
 module Make_base (C : sig
     val memory_clock : Custom_clock_domain.t
     val hart_clock : Custom_clock_domain.t
@@ -12,7 +20,7 @@ module Make_base (C : sig
     val capacity_in_bytes : int
     val framebuffer_address_in_memory : int
     val include_video_out : bool
-    val include_cache_with_n_lines : int option
+    val include_cache_with_n_lines : Cache_parameters.t option
   end) =
 struct
   let round_nearest_div x y = Int.round x ~to_multiple_of:y ~dir:`Nearest / y
@@ -104,18 +112,29 @@ struct
 
     let include_instruction_cache =
       match C.include_cache_with_n_lines with
-      | Some num_lines ->
+      | Some { Cache_parameters.lines_instruction = lines; _ } ->
         Some
           (module struct
             let line_width = 16
-            let num_cache_lines = num_lines
+            let num_cache_lines = lines
             let register_responses = true
             let register_axi_requests = true
           end : System_intf.Cache_config)
       | None -> None
     ;;
 
-    let include_data_cache = include_instruction_cache
+    let include_data_cache =
+      match C.include_cache_with_n_lines with
+      | Some { Cache_parameters.lines_data = lines; _ } ->
+        Some
+          (module struct
+            let line_width = 16
+            let num_cache_lines = lines
+            let register_responses = true
+            let register_axi_requests = true
+          end : System_intf.Cache_config)
+      | None -> None
+    ;;
   end
 
   module Per_hart_config = struct
@@ -154,7 +173,7 @@ module Make_with_axi_memory (C : sig
     val video_clock : Custom_clock_domain.t
     val framebuffer_address_in_memory : int
     val include_video_out : bool
-    val include_cache_with_n_lines : int option
+    val include_cache_with_n_lines : Cache_parameters.t option
   end) =
 struct
   open Make_base (struct
@@ -305,7 +324,7 @@ let axi =
          (required int)
          ~doc:"location of the framebuffer in memory"
      and include_cache =
-       flag "include-cache" (optional int) ~doc:"devote board BRAM to a memory cache"
+       flag "include-cache" (optional string) ~doc:"devote board BRAM to a memory cache"
      in
      let memory_clock = Custom_clock_domain.create memory_frequency in
      let hart_clock =
@@ -330,7 +349,14 @@ let axi =
            let memory_clock = memory_clock
            let burst_length_bits = burst_length_bits
            let framebuffer_address_in_memory = framebuffer_address_in_memory
-           let include_cache_with_n_lines = include_cache
+
+           let include_cache_with_n_lines =
+             Option.map
+               ~f:(fun include_cache ->
+                 Sexp.of_string include_cache |> Cache_parameters.t_of_sexp)
+               include_cache
+           ;;
+
            let include_video_out = include_video_out
          end)
        in

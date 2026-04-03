@@ -682,13 +682,17 @@ struct
     of_dma ~f:(fun dma -> [ dma.write_request ])
     |> Option.iter ~f:(fun t ->
       Write_bus.Source.Of_signal.(dma_write_request_i <-- List.nth_exn t 0));
+    let io_clear = of_dma ~f:Dma.O.clear_message |> Option.value ~default:gnd in
     let controller =
       Memory_controller.hierarchical
         ~build_mode
         ~priority_mode:Priority_order
         scope
         { Memory_controller.I.clock = i.memory_clock
-        ; flush = gnd
+        ; flush =
+            reg (Clocking.to_spec_no_clear i.dma_clock) io_clear
+            (* On a DMA clear we flush the memory controller as this signal
+               indicates the program has been rewritten. *)
         ; instruction =
             { read_to_controller = List.concat read_instruction_bus_per_hart
             ; write_to_controller = []
@@ -715,7 +719,7 @@ struct
     let harts =
       initialize_harts
         ~build_mode
-        ~io_clear:(of_dma ~f:Dma.O.clear_message |> Option.value ~default:gnd)
+        ~io_clear
           (* Clear harts when the DMA core pulses clear in addition to the
              global clear if a DMA controller is attached. *)
         ~hart_ecall_transactions
