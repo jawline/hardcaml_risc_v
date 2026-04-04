@@ -7,8 +7,11 @@ module Report_synth = Hardcaml_xilinx_reports
 
 module Cache_parameters = struct
   type t =
-    { lines_instruction : int
+    { line_width : int
+    ; lines_instruction : int
     ; lines_data : int
+    ; register_responses_instruction : bool
+    ; register_responses_data : bool
     }
   [@@deriving sexp]
 end
@@ -112,12 +115,12 @@ struct
 
     let include_instruction_cache =
       match C.include_cache_with_n_lines with
-      | Some { Cache_parameters.lines_instruction = lines; _ } ->
+      | Some { Cache_parameters.line_width ; lines_instruction = lines; register_responses_instruction = register_responses ; _ } ->
         Some
           (module struct
-            let line_width = 16
+            let line_width = line_width  
             let num_cache_lines = lines
-            let register_responses = true
+            let register_responses = register_responses 
             let register_axi_requests = true
           end : System_intf.Cache_config)
       | None -> None
@@ -125,12 +128,12 @@ struct
 
     let include_data_cache =
       match C.include_cache_with_n_lines with
-      | Some { Cache_parameters.lines_data = lines; _ } ->
+      | Some { Cache_parameters.line_width ; lines_data = lines; register_responses_data = register_responses ; _ } ->
         Some
           (module struct
-            let line_width = 16
+            let line_width = line_width
             let num_cache_lines = lines
-            let register_responses = true
+            let register_responses = register_responses
             let register_axi_requests = true
           end : System_intf.Cache_config)
       | None -> None
