@@ -26,7 +26,7 @@ module Event_ring_state = struct
     | "PageUp" -> Some 0xC9
     | "PageDown" -> Some 0xD1
     | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" -> Char.to_int (String.get key 0) |> Some
-    | "B" | "C" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" |  "R" |  "T" | "U" | "V" | "X" | "Y" | "Z" -> String.get key 0 |> Char.to_int |> Some
+    | "B" | "C" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" |  "R" |  "T" | "U" | "V" | "X" | "Y" | "Z" -> String.get key 0 |> Char.lowercase |> Char.to_int |> Some
     | "Left Ctrl" | "Right Ctrl" -> Some 0xa3 (* Shooty shooty *)
     | _ ->
       print_s [%message "Unmapped key" (key : string)];
