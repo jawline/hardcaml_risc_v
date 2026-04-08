@@ -23,6 +23,10 @@ module Event_ring_state = struct
     | "Escape" -> Some 27
     | "Tab" -> Some 9
     | "Return" -> Some 13
+    | "PageUp" -> Some 0xC9
+    | "PageDown" -> Some 0xD1
+    | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" -> Char.to_int (String.get key 0) |> Some
+    | "B" | "C" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" |  "R" |  "T" | "U" | "V" | "X" | "Y" | "Z" -> String.get key 0 |> Char.to_int |> Some
     | "Left Ctrl" | "Right Ctrl" -> Some 0xa3 (* Shooty shooty *)
     | _ ->
       print_s [%message "Unmapped key" (key : string)];
@@ -110,7 +114,7 @@ let command =
        let ring =
          { Event_ring_state.base_address = 134216704
          ; next_ring_event = 0
-         ; ring_size = 64
+         ; ring_size = 128
          ; writer
          }
        in
