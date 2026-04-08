@@ -1,11 +1,12 @@
 (executables
- (names generate_cpu program_cpu uart_loopback simulate_cpu)
+ (names generate_cpu program_cpu uart_loopback simulate_cpu key_map)
  (preprocess
   (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect))
  (libraries
   core
   core_unix
   async
+  tsdl
   hardcaml_risc_v
   hardcaml_risc_v_hart
   hardcaml_xilinx_reports

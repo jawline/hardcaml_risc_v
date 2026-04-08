@@ -115,12 +115,17 @@ struct
 
     let include_instruction_cache =
       match C.include_cache_with_n_lines with
-      | Some { Cache_parameters.line_width ; lines_instruction = lines; register_responses_instruction = register_responses ; _ } ->
+      | Some
+          { Cache_parameters.line_width
+          ; lines_instruction = lines
+          ; register_responses_instruction = register_responses
+          ; _
+          } ->
         Some
           (module struct
-            let line_width = line_width  
+            let line_width = line_width
             let num_cache_lines = lines
-            let register_responses = register_responses 
+            let register_responses = register_responses
             let register_axi_requests = true
           end : System_intf.Cache_config)
       | None -> None
@@ -128,7 +133,12 @@ struct
 
     let include_data_cache =
       match C.include_cache_with_n_lines with
-      | Some { Cache_parameters.line_width ; lines_data = lines; register_responses_data = register_responses ; _ } ->
+      | Some
+          { Cache_parameters.line_width
+          ; lines_data = lines
+          ; register_responses_data = register_responses
+          ; _
+          } ->
         Some
           (module struct
             let line_width = line_width
