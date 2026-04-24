@@ -74,6 +74,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       ; is_load : 'a
       ; is_store : 'a
       ; is_system : 'a
+      ; is_ecall : 'a
+      ; is_csr : 'a
       ; decoded : 'a Decoded_opcode.Packed.t
       }
     [@@deriving hardcaml]
@@ -82,6 +84,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       let test_opcode op =
         Instruction_parts.opcode instruction ==:. Opcodes.to_int_repr op
       in
+      let%hw funct3 = Instruction_parts.funct3 instruction in
       let%hw is_op = test_opcode Op in
       let%hw is_op_imm = test_opcode Op_imm in
       let%hw is_auipc = test_opcode Auipc in
@@ -101,6 +104,11 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           | Store -> is_store
           | System -> is_system)
       in
+      let%hw is_ecall = funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak in
+      let%hw is_csr =
+        let f t = funct3 ==:. Funct3.System.to_int t in
+        f Funct3.System.Csrrw |: f Funct3.System.Csrrs |: f Funct3.System.Csrrc
+      in
       { is_op
       ; is_op_imm
       ; is_auipc
@@ -111,6 +119,8 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       ; is_load
       ; is_store
       ; is_system
+      ; is_ecall
+      ; is_csr
       ; decoded
       }
     ;;
@@ -129,7 +139,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
           ~(reg_indices : _ Reg_indices.t)
           ~(registers : _ Registers.t)
           scope
-          instruction
       =
       let rs1 = reg_indices.rs1 in
       let rs2 = reg_indices.rs2 in
@@ -227,55 +236,32 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let of_instruction instruction registers scope =
       let rd_index = Instruction_parts.rd instruction in
       let%hw.Opcodes.Of_signal opcodes = Opcodes.decode scope instruction in
-      let%hw.Reg_indices.Of_signal decoded_reg_indices =
+      let%hw.Reg_indices.Of_signal reg_indices =
         Reg_indices.decode ~registers scope instruction
       in
       let alu_operation =
-        decode_alu_operation instruction is_op_imm is_op is_lui is_auipc
+        decode_alu_operation
+          instruction
+          opcodes.is_op_imm
+          opcodes.is_op
+          opcodes.is_lui
+          opcodes.is_auipc
       in
-      let rs1 = decoded_reg_indices.rs1 in
-      let rs2 = decoded_reg_indices.rs2 in
-      let%hw argument_1 =
-        onehot_select_with_default
-          ~default:rs1
-          [ { With_valid.valid = is_jal |: is_auipc; value = registers.pc }
-          ; { With_valid.valid = is_lui; value = u_immediate }
-          ]
+      let immediates = Immediates.decode scope instruction in
+      let decoded_arguments =
+        Arguments.decode ~opcodes ~immediates ~registers ~reg_indices scope
       in
-      let%hw argument_2 =
-        onehot_select_with_default
-          ~default:rs2
-          [ { With_valid.valid = is_op_imm |: is_jalr; value = i_immediate }
-          ; { With_valid.valid = is_jal; value = j_immediate }
-          ; { With_valid.valid = is_auipc; value = u_immediate }
-          ; { With_valid.valid = is_lui; value = zero register_width }
-          ]
-      in
-      let%hw argument_3 =
-        onehot_select
-          [ { With_valid.valid = is_branch; value = b_immediate }
-          ; { With_valid.valid = is_load; value = i_immediate }
-          ; { With_valid.valid = is_store; value = s_immediate }
-          ]
-      in
-      let decoded_arguments = { Arguments.argument_1; argument_2; argument_3 } in
       let%hw funct3 = Instruction_parts.funct3 instruction in
       let%hw funct7 = Instruction_parts.funct7 instruction in
-      let%hw rd_value = decoded_reg_indices.rd in
-      let%hw is_ecall = funct3 ==:. Funct3.System.to_int Funct3.System.Ecall_or_ebreak in
-      let%hw is_csr =
-        let f t = funct3 ==:. Funct3.System.to_int t in
-        f Funct3.System.Csrrw |: f Funct3.System.Csrrs |: f Funct3.System.Csrrc
-      in
       let%hw error =
-        packed_opcode.packed ==:. 0 |: (is_op &: (funct7 &:. 0b1011_111 <>:. 0))
+        opcodes.decoded.packed ==:. 0 |: (opcodes.is_op &: (funct7 &:. 0b1011_111 <>:. 0))
       in
       let muldiv_operation, is_muldiv =
         if Hart_config.Extensions.zmul
         then (
           let test_funct3 op = funct3 ==:. Funct3.Muldiv.to_int op in
           ( Some (Funct3.Muldiv.Onehot.construct_onehot ~f:test_funct3)
-          , Some (funct7.:(0) &: is_op) ))
+          , Some (funct7.:(0) &: opcodes.is_op) ))
         else None, None
       in
       let branch_onehot =
@@ -291,17 +277,21 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
         Funct3.Store.Onehot.construct_onehot ~f:test_funct3
       in
       { pc = registers.pc
-      ; opcode = packed_opcode
+      ; opcode = opcodes.decoded
       ; funct3
       ; funct7
       ; argument_1 = decoded_arguments.argument_1
       ; argument_2 = decoded_arguments.argument_2
       ; argument_3 = decoded_arguments.argument_3
-      ; rd = mux2 (is_system &: is_ecall) (of_unsigned_int ~width:5 5) rd_index
-      ; rd_value
-      ; csr
-      ; is_ecall
-      ; is_csr
+      ; rd =
+          mux2
+            (opcodes.is_system &: opcodes.is_ecall)
+            (of_unsigned_int ~width:5 5)
+            rd_index
+      ; rd_value = reg_indices.rd
+      ; csr = immediates.csr
+      ; is_ecall = opcodes.is_ecall
+      ; is_csr = opcodes.is_csr
       ; alu_operation
       ; muldiv_operation
       ; is_muldiv
