@@ -107,7 +107,8 @@ struct
       { Opcode_output.valid
       ; read_bus = None
       ; write_bus = None
-      ; transaction = { Transaction.set_rd = vdd; new_rd; error = gnd; new_pc = next_instruction pc  }
+      ; transaction =
+          { Transaction.set_rd = vdd; new_rd; error = gnd; new_pc = next_instruction pc }
       }
     ;;
 
@@ -130,7 +131,7 @@ struct
       ; write_bus = None
       ; transaction =
           { Transaction.set_rd = vdd
-          ; new_rd = next_instruction decoded_instruction.pc 
+          ; new_rd = next_instruction decoded_instruction.pc
           ; new_pc
           ; error = gnd
           }
@@ -224,7 +225,7 @@ struct
           { Transaction.set_rd = gnd
           ; new_rd = zero register_width
           ; error
-          ; new_pc = next_instruction decoded_instruction.pc 
+          ; new_pc = next_instruction decoded_instruction.pc
           }
       ; read_bus = None
       ; write_bus = Some write_bus
@@ -246,7 +247,7 @@ struct
         { Transaction.set_rd = vdd
         ; new_rd = t
         ; error = gnd
-        ; new_pc = next_instruction decoded_instruction.pc 
+        ; new_pc = next_instruction decoded_instruction.pc
         }
       in
       let%hw is_ecall =
