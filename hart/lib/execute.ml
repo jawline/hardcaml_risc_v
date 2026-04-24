@@ -18,6 +18,8 @@ struct
   module Store = Store.Make (Hart_config) (Memory)
 
   let register_width = Register_width.bits Hart_config.register_width
+  let instruction_size_in_bytes = 4
+  let next_instruction = incr ~by:instruction_size_in_bytes
 
   module I = struct
     type 'a t =
@@ -105,7 +107,7 @@ struct
       { Opcode_output.valid
       ; read_bus = None
       ; write_bus = None
-      ; transaction = { Transaction.set_rd = vdd; new_rd; error = gnd; new_pc = pc +:. 4 }
+      ; transaction = { Transaction.set_rd = vdd; new_rd; error = gnd; new_pc = next_instruction pc  }
       }
     ;;
 
@@ -128,7 +130,7 @@ struct
       ; write_bus = None
       ; transaction =
           { Transaction.set_rd = vdd
-          ; new_rd = decoded_instruction.pc +:. 4
+          ; new_rd = next_instruction decoded_instruction.pc 
           ; new_pc
           ; error = gnd
           }
@@ -188,7 +190,7 @@ struct
           { Transaction.set_rd = vdd
           ; new_rd
           ; error
-          ; new_pc = decoded_instruction.pc +:. 4
+          ; new_pc = next_instruction decoded_instruction.pc
           }
       }
     ;;
@@ -222,7 +224,7 @@ struct
           { Transaction.set_rd = gnd
           ; new_rd = zero register_width
           ; error
-          ; new_pc = decoded_instruction.pc +:. 4
+          ; new_pc = next_instruction decoded_instruction.pc 
           }
       ; read_bus = None
       ; write_bus = Some write_bus
@@ -244,7 +246,7 @@ struct
         { Transaction.set_rd = vdd
         ; new_rd = t
         ; error = gnd
-        ; new_pc = decoded_instruction.pc +:. 4
+        ; new_pc = next_instruction decoded_instruction.pc 
         }
       in
       let%hw is_ecall =
