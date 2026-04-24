@@ -263,9 +263,9 @@ struct
       ; hart_clock : 'a Clocking.t
       ; dma_clock : 'a Clocking.t
       ; uart_rx : 'a option [@exists include_uart_wires]
-      ; memory : 'a Axi4.I.t [@rtlprefix "axi_i$"]
+      ; memory : 'a Axi4.I.t [@rtlprefix "axi_i_"]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"_"]
   end
 
   module O = struct
@@ -274,9 +274,9 @@ struct
       ; uart_tx : 'a option [@exists include_uart_wires]
       ; uart_rx_valid : 'a option [@exists include_uart_wires]
       ; video_out : 'a Video_out_with_memory.O.t option [@exists include_video_out]
-      ; memory : 'a Axi4.O.t [@rtlprefix "axi_o$"]
+      ; memory : 'a Axi4.O.t [@rtlprefix "axi_o_"]
       }
-    [@@deriving hardcaml ~rtlmangle:"$"]
+    [@@deriving hardcaml ~rtlmangle:"_"]
   end
 
   let default_transaction (hart : _ Hart.O.t) =
@@ -639,10 +639,9 @@ struct
     let maybe_dma_controller =
       match General_config.include_io_controller with
       | No_io_controller -> None
-      | Uart_controller config ->
+      | Uart_controller _ ->
         Some
           (Dma.hierarchical
-             ~uart_config:config
              scope
              { Dma.I.clock = i.dma_clock
              ; uart_rx = Option.value_exn i.uart_rx

@@ -7,12 +7,10 @@ module Make (Hart_config : Hart_config_intf.S) = struct
 
   type 'a t =
     { pc : 'a [@bits register_width]
-    ; general : 'a list
-          [@bits register_width]
-          [@length Hart_config.num_registers]
-          [@rtlprefix "general$"]
+    ; general : 'a list [@bits register_width] [@length Hart_config.num_registers]
     }
-  [@@deriving hardcaml ~rtlmangle:"$"]
+  [@@deriving hardcaml ~rtlmangle:"_"]
+  (* Mangled as $ breaks the Zynq Block IP rubbish *)
 
   let set_pc t new_pc = { t with pc = new_pc }
 

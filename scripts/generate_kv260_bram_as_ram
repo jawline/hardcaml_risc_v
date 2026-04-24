@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+dune exec ./bin/generate_cpu.exe  -- generate-rtl-with-bram -include-video-out false -hart-frequency 300_000_000 -video-frequency 300_000_000 -memory-capacity-in-bytes 65536 -framebuffer-address-in-memory 0 1> ./rtl/kv260.v

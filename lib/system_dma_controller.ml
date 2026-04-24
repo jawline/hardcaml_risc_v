@@ -9,13 +9,11 @@ open Signal
 
 (* TODO: This file does too much wiring. Split it out and clean it up. *)
 
-module Make
+module Types
     (General_config : System_intf.Config)
     (Memory : Memory_bus_intf.S)
     (Memory_to_packet8 : Memory_to_packet8_intf.M(Memory)(Axi8).S) =
 struct
-  module Write_dpath = Datapath_register.Make (Memory.Write)
-
   module I = struct
     type 'a t =
       { clock : 'a Clocking.t
@@ -40,26 +38,64 @@ struct
       }
     [@@deriving hardcaml ~rtlmangle:"$", fields ~getters]
   end
+end
 
-  type 'a t =
-    { write_request : Signal.t Memory.Write_bus.Source.t
-    ; read_request : Signal.t Memory.Read_bus.Source.t
-    ; read_response : Signal.t Memory.Read_response.With_valid.t
-    ; write_response : Signal.t Memory.Write_response.With_valid.t
-    ; write_bus : Signal.t Memory.Write_bus.Dest.t
-    ; read_bus : Signal.t Memory.Read_bus.Dest.t
-    ; uart_rx_valid : 'a
-    ; tx_input : Signal.t Memory_to_packet8.Input.With_valid.t
-    ; dma_tx_ready : 'a
-    ; uart_tx : Signal.t
-    ; parity_error : 'a
-    ; serial_to_packet_valid : 'a
-    ; clear_message : 'a
-    }
-  [@@deriving fields]
+module Create_empty
+    (General_config : System_intf.Config)
+    (Memory : Memory_bus_intf.S)
+    (Memory_to_packet8 : Memory_to_packet8_intf.M(Memory)(Axi8).S) =
+struct
+  let create _scope _ =
+    raise_s
+      [%message "BUG: This design cannot initialize a DMA controller - wiring error"]
+  ;;
+end
+
+module Create
+    (General_config : System_intf.Config)
+    (Memory : Memory_bus_intf.S)
+    (Memory_to_packet8 : Memory_to_packet8_intf.M(Memory)(Axi8).S) =
+struct
+  open Types (General_config) (Memory) (Memory_to_packet8)
+
+  module Config = struct
+    let config =
+      match General_config.include_io_controller with
+      | Uart_controller config -> config
+      | _ ->
+        raise_s
+          [%message
+            "BUG: Cannot construct a DMA controller with a config that specifies no DMA \
+             controller"]
+    ;;
+  end
+
+  module Packet_to_memory = Packet_to_memory.Make (Memory) (Axi8)
+  module Uart_tx = Uart_tx.Make (Config)
+  module Uart_rx = Uart_rx.Make (Config)
+
+  module Serial_buffer = Serial_buffer.Make (struct
+      let serial_input_width = 8
+    end)
+
+  module Serial_to_packet =
+    Serial_to_packet.Make
+      (struct
+        let header = 'Q'
+      end)
+      (Axi8)
+
+  module Router =
+    Router.Make
+      (struct
+        let num_tags = 2
+      end)
+      (Axi8)
+
+  module Pulse = Pulse.Make (Axi8)
+  module Write_dpath = Datapath_register.Make (Memory.Write)
 
   let create
-        ~uart_config
         scope
         { I.clock
         ; uart_rx
@@ -70,33 +106,6 @@ struct
         ; write_response
         }
     =
-    let module Config = struct
-      let config = uart_config
-    end
-    in
-    let module Packet_to_memory = Packet_to_memory.Make (Memory) (Axi8) in
-    let module Uart_tx = Uart_tx.Make (Config) in
-    let module Uart_rx = Uart_rx.Make (Config) in
-    let module Serial_buffer =
-      Serial_buffer.Make (struct
-        let serial_input_width = 8
-      end)
-    in
-    let module Serial_to_packet =
-      Serial_to_packet.Make
-        (struct
-          let header = 'Q'
-        end)
-        (Axi8)
-    in
-    let module Router =
-      Router.Make
-        (struct
-          let num_tags = 2
-        end)
-        (Axi8)
-    in
-    let module Pulse = Pulse.Make (Axi8) in
     let { Uart_rx.O.data_out_valid = uart_rx_valid
         ; data_out = uart_rx_data
         ; parity_error = _
@@ -214,14 +223,44 @@ struct
     ; dma_tx_ready = dma_out.ready
     }
   ;;
+end
 
-  let hierarchical ?instance ~uart_config (scope : Scope.t) (input : Signal.t I.t) =
+module Make
+    (General_config : System_intf.Config)
+    (Memory : Memory_bus_intf.S)
+    (Memory_to_packet8 : Memory_to_packet8_intf.M(Memory)(Axi8).S) =
+struct
+  include Types (General_config) (Memory) (Memory_to_packet8)
+
+  type 'a t =
+    { write_request : Signal.t Memory.Write_bus.Source.t
+    ; read_request : Signal.t Memory.Read_bus.Source.t
+    ; read_response : Signal.t Memory.Read_response.With_valid.t
+    ; write_response : Signal.t Memory.Write_response.With_valid.t
+    ; write_bus : Signal.t Memory.Write_bus.Dest.t
+    ; read_bus : Signal.t Memory.Read_bus.Dest.t
+    ; uart_rx_valid : 'a
+    ; tx_input : Signal.t Memory_to_packet8.Input.With_valid.t
+    ; dma_tx_ready : 'a
+    ; uart_tx : Signal.t
+    ; parity_error : 'a
+    ; serial_to_packet_valid : 'a
+    ; clear_message : 'a
+    }
+  [@@deriving fields]
+
+  let create =
+    match General_config.include_io_controller with
+    | Uart_controller _ ->
+      let open Create (General_config) (Memory) (Memory_to_packet8) in
+      create
+    | No_io_controller ->
+      let open Create_empty (General_config) (Memory) (Memory_to_packet8) in
+      create
+  ;;
+
+  let hierarchical ?instance (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical
-      ?instance
-      ~scope
-      ~name:"system_dma_controller"
-      (create ~uart_config)
-      input
+    H.hierarchical ?instance ~scope ~name:"system_dma_controller" create input
   ;;
 end

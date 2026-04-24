@@ -1,0 +1,22 @@
+{
+   "ActiveEmotionalView":"Default View",
+   "Default View_ScaleFactor":"1.0",
+   "Default View_TopLeft":"-2059,342",
+   "ExpandedHierarchyInLayout":"",
+   "guistr":"# # String gsaved with Nlview 7.8.0 2024-04-26 e1825d835c VDI=44 GEI=38 GUI=JA:21.0 TLS
+#  -string -flagsOSRD
+preplace inst zynq_ultra_ps_e_0 -pg 1 -lvl 1 -x -1120 -y 1156 -defaultsOSRD
+preplace inst util_vector_logic_0 -pg 1 -lvl 2 -x -560 -y 840 -defaultsOSRD
+preplace inst top_0 -pg 1 -lvl 3 -x 190 -y 1120 -defaultsOSRD
+preplace netloc zynq_ultra_ps_e_0_pl_resetn0 1 1 1 -820 840n
+preplace netloc util_vector_logic_0_Res 1 2 1 -30 840n
+preplace netloc zynq_ultra_ps_e_0_pl_clk0 1 1 2 N 1196 -20J
+preplace netloc zynq_ultra_ps_e_0_emio_uart1_txd 1 1 2 -830 1040 NJ
+preplace netloc top_0_uart_tx 1 1 3 -840 720 NJ 720 400
+levelinfo -pg 1 -1440 -1120 -560 190 440
+pagesize -pg 1 -db -bbox -sgen -1440 -400 1020 1520
+"
+}
+{
+   "da_zynq_ultra_ps_e_cnt":"1"
+}

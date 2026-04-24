@@ -36,17 +36,7 @@ struct
       [@@deriving hardcaml, fields ~getters]
     end
 
-    val create
-      :  uart_config:Hardcaml_uart.Config.t
-      -> Scope.t
-      -> Signal.t I.t
-      -> Signal.t O.t
-
-    val hierarchical
-      :  ?instance:string
-      -> uart_config:Hardcaml_uart.Config.t
-      -> Scope.t
-      -> Signal.t I.t
-      -> Signal.t O.t
+    val create : Scope.t -> Signal.t I.t -> Signal.t O.t
+    val hierarchical : ?instance:string -> Scope.t -> Signal.t I.t -> Signal.t O.t
   end
 end
