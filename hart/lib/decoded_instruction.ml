@@ -6,16 +6,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
   let register_width = Register_width.bits Hart_config.register_width
   let select_register (registers : _ Registers.t) slot = mux slot registers.general
 
-  module type To_int = sig
-    type t
-
-    val to_int : t -> int
-  end
-
-  let test_funct3 (type a) ~funct3 (module C : To_int with type t = a) (op : a) =
-    funct3 ==:. C.to_int op
-  ;;
-
   let onehot_select_with_default ~default args =
     let all_valids = List.map ~f:(fun (arg : _ With_valid.t) -> arg.valid) args in
     let default_valid = ~:(List.reduce_exn ~f:( |: ) all_valids) in
@@ -212,7 +202,7 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
     let decode_alu_operation instruction is_op_imm is_op is_lui is_auipc =
       let funct3 = Instruction_parts.funct3 instruction in
       let funct7 = Instruction_parts.funct7 instruction in
-      let test_funct3 = test_funct3 ~funct3 (module Funct3.Op) in
+      let test_funct3 op = funct3 ==:. Funct3.Op.to_int op in
       let is_sh_add_funct7 = funct7 ==:. 0b0010000 in
       let funct7_switch = funct7.:(5) in
       let is_op_imm_or_not_funct7 = is_op_imm |: ~:is_sh_add_funct7 in
@@ -268,23 +258,23 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       in
       let muldiv_operation, is_muldiv =
         if Hart_config.Extensions.zmul
-        then
-          ( Some
-              (Funct3.Muldiv.Onehot.construct_onehot
-                 ~f:(test_funct3 ~funct3 (module Funct3.Muldiv)))
-          , Some (funct7.:(0) &: opcodes.is_op) )
+        then (
+          let test_funct3 op = funct3 ==:. Funct3.Muldiv.to_int op in
+          ( Some (Funct3.Muldiv.Onehot.construct_onehot ~f:test_funct3)
+          , Some (funct7.:(0) &: opcodes.is_op) ))
         else None, None
       in
       let branch_onehot =
-        Funct3.Branch.Onehot.construct_onehot
-          ~f:(test_funct3 ~funct3 (module Funct3.Branch))
+        let test_funct3 op = funct3 ==:. Funct3.Branch.to_int op in
+        Funct3.Branch.Onehot.construct_onehot ~f:test_funct3
       in
       let load_onehot =
-        Funct3.Load.Onehot.construct_onehot ~f:(test_funct3 ~funct3 (module Funct3.Load))
+        let test_funct3 op = funct3 ==:. Funct3.Load.to_int op in
+        Funct3.Load.Onehot.construct_onehot ~f:test_funct3
       in
       let store_onehot =
-        Funct3.Store.Onehot.construct_onehot
-          ~f:(test_funct3 ~funct3 (module Funct3.Store))
+        let test_funct3 op = funct3 ==:. Funct3.Store.to_int op in
+        Funct3.Store.Onehot.construct_onehot ~f:test_funct3
       in
       { pc = registers.pc
       ; opcode = opcodes.decoded
