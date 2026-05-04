@@ -825,8 +825,7 @@ let%expect_test "large packet" =
     ~packets:[ 0, String.init ~f:(fun i -> Char.of_int_exn (i % 255)) 2048 ]
     ~verbose:false;
   [%expect.unreachable]
-[@@expect.uncaught_exn
-  {xxx|
+[@@expect.uncaught_exn {xxx|
   (* CR expect_test_collector: This test expectation appears to contain a backtrace.
      This is strongly discouraged as backtraces are fragile.
      Please change this test to not include a backtrace. *)
@@ -846,7 +845,7 @@ let%expect_test "large packet" =
   Raised at Base__Error.raise in file "src/error.ml", line 15, characters 34-62
   Called from Base__Error.raise_s in file "src/error.ml" (inlined), line 24, characters 48-72
   Called from Hardcaml_io_controller_test__Test_end_to_end_dma_uart.test.(fun).issue_read in file "io_controller/test/test_end_to_end_dma_uart.ml", line 251, characters 15-88
-  Called from Base__List0.iter.loop in file "src/list0.ml", line 94, characters 6-9
+  Called from Base__List0.iter.iter_loop in file "src/list0.ml", line 110, characters 6-9
   Called from Base__Exn.protectx in file "src/exn.ml", line 53, characters 8-11
   Re-raised at Base__Exn.raise_with_original_backtrace in file "src/exn.ml" (inlined), line 33, characters 2-50
   Called from Base__Exn.protectx in file "src/exn.ml", line 60, characters 13-49
