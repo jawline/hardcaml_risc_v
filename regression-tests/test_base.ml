@@ -79,6 +79,7 @@ struct
               let num_cache_lines = 2048
               let register_responses = true
               let register_axi_requests = true
+              let num_ways = 2
             end : System_intf.Cache_config)
         ;;
 

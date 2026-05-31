@@ -537,8 +537,7 @@ let%expect_test "pixel test" =
     let cache_memory = None
   end
   in
-  let module Memory_controller =
-    Bram_memory_controller.Make (struct
+  let module Memory_controller = Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
       let address_width = 32
       let data_bus_width = 32
@@ -623,8 +622,7 @@ let%expect_test "margins and scaling factor tests" =
     let cache_memory = None
   end
   in
-  let module Memory_controller =
-    Bram_memory_controller.Make (struct
+  let module Memory_controller = Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
       let address_width = 32
       let data_bus_width = 32

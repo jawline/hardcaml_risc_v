@@ -28,8 +28,7 @@ module Data_config : Shared_access_ports_intf.Config = struct
 end
 
 let test ~packets =
-  let module Memory_controller =
-    Bram_memory_controller.Make (struct
+  let module Memory_controller = Bram_memory_controller.Make (struct
       let capacity_in_bytes = 256
       let address_width = 32
       let data_bus_width = 32

@@ -127,6 +127,7 @@ struct
             let num_cache_lines = lines
             let register_responses = register_responses
             let register_axi_requests = true
+            let num_ways = 2
           end : System_intf.Cache_config)
       | None -> None
     ;;
@@ -145,6 +146,7 @@ struct
             let num_cache_lines = lines
             let register_responses = register_responses
             let register_axi_requests = true
+            let num_ways = 2
           end : System_intf.Cache_config)
       | None -> None
     ;;
@@ -278,8 +280,7 @@ let bram =
          ~doc:"location of the framebuffer in memory"
      in
      fun () ->
-       let module M =
-         Make_with_bram (struct
+       let module M = Make_with_bram (struct
            let hart_frequency = hart_frequency
            let capacity_in_bytes = capacity_in_bytes
            let video_clock = Custom_clock_domain.create video_frequency
@@ -351,8 +352,7 @@ let axi =
        else Custom_clock_domain.create video_frequency
      in
      fun () ->
-       let module M =
-         Make_with_axi_memory (struct
+       let module M = Make_with_axi_memory (struct
            let memory_tag_width = memory_tag_width
            let memory_width = memory_width
            let memory_address_width = memory_address_width

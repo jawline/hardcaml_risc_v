@@ -51,8 +51,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~address ~pa
   let module Dma = Packet_to_memory.Make (Memory_controller.Memory_bus) (Axi8) in
   let module Uart_tx = Uart_tx.Make (Config) in
   let module Uart_rx = Uart_rx.Make (Config) in
-  let module Serial_buffer =
-    Serial_buffer.Make (struct
+  let module Serial_buffer = Serial_buffer.Make (struct
       let serial_input_width = 8
     end)
   in
