@@ -1039,7 +1039,7 @@ module Cpu_with_no_io_controller =
             let num_cache_lines = 8
             let register_responses = true
             let register_axi_requests = true
-            let num_ways = 2
+            let num_ways = 4
           end : System_intf.Cache_config)
       ;;
 
@@ -1164,7 +1164,7 @@ module Cpu_with_dma_memory =
             let num_cache_lines = 8
             let register_responses = true
             let register_axi_requests = true
-            let num_ways = 2
+            let num_ways = 4
           end : System_intf.Cache_config)
       ;;
 

@@ -10,6 +10,7 @@ module Cache_parameters = struct
     { line_width : int
     ; lines_instruction : int
     ; lines_data : int
+    ; num_ways : int
     ; register_responses_instruction : bool
     ; register_responses_data : bool
     }
@@ -119,6 +120,7 @@ struct
           { Cache_parameters.line_width
           ; lines_instruction = lines
           ; register_responses_instruction = register_responses
+          ; num_ways
           ; _
           } ->
         Some
@@ -127,7 +129,7 @@ struct
             let num_cache_lines = lines
             let register_responses = register_responses
             let register_axi_requests = true
-            let num_ways = 2
+            let num_ways = num_ways
           end : System_intf.Cache_config)
       | None -> None
     ;;
@@ -138,6 +140,7 @@ struct
           { Cache_parameters.line_width
           ; lines_data = lines
           ; register_responses_data = register_responses
+          ; num_ways
           ; _
           } ->
         Some
@@ -146,7 +149,7 @@ struct
             let num_cache_lines = lines
             let register_responses = register_responses
             let register_axi_requests = true
-            let num_ways = 2
+            let num_ways = num_ways
           end : System_intf.Cache_config)
       | None -> None
     ;;

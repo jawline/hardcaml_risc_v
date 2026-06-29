@@ -14,7 +14,6 @@ module M (Registers : Registers_intf.S) = struct
       ; argument_3 : 'a [@bits register_width]
         (** [argument_3] is the third argument to the opcode if appropriate. It is decoded from the current registers and the instruction and is opcode specific. *)
       ; rd : 'a [@bits 5]
-      ; rd_value : 'a [@bits register_width]
       ; csr : 'a [@bits 12]
       ; is_ecall : 'a
       ; is_csr : 'a

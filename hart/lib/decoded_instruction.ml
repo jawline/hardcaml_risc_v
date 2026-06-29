@@ -184,7 +184,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
       ; argument_3 : 'a [@bits register_width]
       ; rd : 'a [@bits 5]
         (** Rd just points to the rd slot rather than containing the register *)
-      ; rd_value : 'a [@bits register_width]
       ; csr : 'a [@bits 12]
       ; is_ecall : 'a
       ; is_csr : 'a
@@ -288,7 +287,6 @@ module Make (Hart_config : Hart_config_intf.S) (Registers : Registers_intf.S) = 
             (opcodes.is_system &: opcodes.is_ecall)
             (of_unsigned_int ~width:5 5)
             rd_index
-      ; rd_value = reg_indices.rd
       ; csr = immediates.csr
       ; is_ecall = opcodes.is_ecall
       ; is_csr = opcodes.is_csr
